@@ -18,33 +18,33 @@ yarn tests_rn:ios:test          # E2E on iOS (iPhone 16 simulator)
 
 ## Jest Configuration
 
-- **Config file**: `jest.config.js` (at project root, rootDir: `..`)
+- **Config file**: `tests_react_native/jest.config.js` (rootDir points to repo root `..`)
 - **Preset**: react-native
 - **Transforms**: babel-jest (JS), ts-jest (TS/TSX)
-- **Test pattern**: `__tests__/**/*.test.ts`
-- **Setup**: `jest-mock.js` (mocks NativeModules.NotifeeApiModule)
-- **Coverage**: Collects from `packages/react-native/src/` and `plugin/`
+- **Test pattern**: `tests_react_native/__tests__/**/*.test.ts`
+- **Setup**: `jest-mock.js` mocks `NativeModules.NotifeeApiModule` with stubbed methods, sets `Platform.OS` to `'android'`
+- **Coverage**: Collects from `packages/react-native/src/` only (jest.config also references `plugin/` but that directory does not exist)
 
 ## Test Structure
 
-```
-__tests__/
-├── notifeeAppModule.test.ts              # Module initialization tests
-└── validators/
-    ├── validateAndroidChannel.test.ts
-    ├── validateAndroidAction.test.ts
-    ├── validateIOSAttachment.test.ts
-    └── validateIOSCategory.test.ts
+### Unit Tests (`__tests__/`)
 
-specs/                                     # E2E test specs (Cavy)
-├── notification.spec.ts
-└── api.spec.ts
-```
+- `NotifeeApiModule.test.ts` — Tests public API methods (mocks native module, tests both platforms)
+- `notifeeAppModule.test.ts` — Module initialization and version checks
+- `testSetup.ts` — Utility: `setPlatform('android'|'ios')` to override platform detection
+- `validators/` — 17 test files, one per validator, following `validate{Feature}.test.ts` naming
+  - Known typo in filesystem: `validateAndriodAction.test.ts` (misspelling of "Android" — this is the actual filename on disk)
+
+### E2E Tests (`specs/`)
+
+- `notification.spec.ts`, `api.spec.ts` — Cavy E2E specs run on real devices/emulators
 
 ## Writing Tests
 
-### Unit Tests (Validators)
-Follow existing pattern - test valid inputs pass through and invalid inputs throw with descriptive messages:
+### Validator Tests
+
+Follow existing pattern — test valid inputs pass through and invalid inputs throw with descriptive messages:
+
 ```typescript
 describe('validateAndroidChannel', () => {
   test('throws if channel id is not a string', () => {
@@ -54,14 +54,26 @@ describe('validateAndroidChannel', () => {
 });
 ```
 
+### Platform-Specific Tests
+
+Use `setPlatform()` from `testSetup.ts` to override platform detection:
+
+```typescript
+import { setPlatform } from './testSetup';
+
+beforeEach(() => setPlatform('ios'));  // overrides isIOS/isAndroid for subsequent calls
+```
+
 ### Mocking
-Native modules are mocked in `jest-mock.js`. The mock provides a `NotifeeApiModule` with all native methods stubbed. Tests validate TypeScript logic, NOT native behavior.
+
+Native modules are mocked in `jest-mock.js` (loaded via `setupFilesAfterSetup`). The mock provides `NotifeeApiModule` with all native methods stubbed as `jest.fn()`. Tests validate TypeScript logic, NOT native behavior.
 
 ## E2E Tests
 
-Use [Cavy](https://github.com/pixielabs/cavy) test framework. Specs in `specs/` directory run on real devices/emulators via `cavy-cli`.
+Use [Cavy](https://github.com/pixielabs/cavy) test framework. Specs in `specs/` run on real devices/emulators via `cavy-cli`.
 
 **Important**: For E2E tests with local (unpublished) code, you may need to symlink:
+
 ```bash
 cd tests_react_native/node_modules/@notifee && rm -fr react-native && ln -s ../../../packages/react-native .
 ```

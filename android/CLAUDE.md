@@ -2,36 +2,19 @@
 
 Standalone Android library (`app.notifee.core`) providing all notification functionality. Compiled to AAR and consumed by the React Native bridge.
 
-## Package Structure
+## Package Organization
 
-```
-src/main/java/app/notifee/core/
-├── Notifee.java                    # Public facade (singleton entry point)
-├── NotificationManager.java        # Core notification creation/display/cancel
-├── ChannelManager.java             # Notification channel management (API 26+)
-├── NotifeeAlarmManager.java        # AlarmManager-based scheduling
-├── Worker.java                     # WorkManager integration for triggers
-├── ForegroundService.java          # Foreground service implementation
-├── EventBus.java                   # Internal event distribution (greenrobot)
-├── EventSubscriber.java            # Event subscription interface
-├── Logger.java                     # Logging facility
-├── Preferences.java                # SharedPreferences wrapper
-├── ContextHolder.java              # Application context holder
-├── InitProvider.java               # ContentProvider for auto-initialization
-├── ReceiverService.java            # Service for notification actions
-├── NotificationPendingIntent.java  # PendingIntent construction
-├── NotificationReceiverActivity.java # Activity for notification taps
-├── NotificationReceiverHandler.java  # Handler for notification actions
-├── NotificationAlarmReceiver.java  # BroadcastReceiver for alarms
-├── RebootBroadcastReceiver.java    # Reschedule alarms after device reboot
-├── AlarmPermissionBroadcastReceiver.java # Alarm permission handling
-├── BlockStateBroadcastReceiver.java # Channel block state changes
-├── database/                       # Room database for trigger persistence
-├── event/                          # Event model classes
-├── interfaces/                     # Callback interfaces
-├── model/                          # Data models (NotifeeNotification, etc.)
-└── utility/                        # Utility classes
-```
+All classes in `src/main/java/app/notifee/core/`:
+
+- **Entry point**: `Notifee.java` — Public singleton facade for all operations
+- **Core managers**: `NotificationManager.java` (notification CRUD), `ChannelManager.java` (channels/groups, API 26+)
+- **Scheduling**: `NotifeeAlarmManager.java` (AlarmManager-based), `Worker.java` (WorkManager integration)
+- **Services**: `ForegroundService.java`, `ReceiverService.java`
+- **Event system**: `EventBus.java` + `EventSubscriber.java` (greenrobot-based distribution)
+- **Receivers**: Follow `*Receiver.java` / `*BroadcastReceiver.java` naming — `NotificationAlarmReceiver`, `RebootBroadcastReceiver`, `AlarmPermissionBroadcastReceiver`, `BlockStateBroadcastReceiver`
+- **Intent handling**: `NotificationPendingIntent.java`, `NotificationReceiverActivity.java`, `NotificationReceiverHandler.java`
+- **Infrastructure**: `Logger.java`, `Preferences.java` (SharedPreferences), `ContextHolder.java`, `InitProvider.java` (ContentProvider auto-init)
+- **Sub-packages**: `database/` (Room persistence), `event/` (event models), `interfaces/` (callbacks), `model/` (data models), `utility/` (helpers)
 
 ## Build & Test
 
@@ -68,7 +51,9 @@ yarn test:core:android              # ./gradlew testDebugUnit
 ## Key Patterns
 
 ### Async Operations
+
 All async work uses `ListenableFuture` from Guava/AndroidX concurrent:
+
 ```java
 ListenableFuture<Void> displayNotification(Bundle notification, Bundle trigger) {
     return Futures.submit(() -> { ... }, executor);
@@ -76,21 +61,26 @@ ListenableFuture<Void> displayNotification(Bundle notification, Bundle trigger) 
 ```
 
 ### Event System
+
 Uses greenrobot EventBus with annotation-based index (`app.notifee.core.EventBusIndex`):
+
 ```java
 @Subscribe(threadMode = ThreadMode.MAIN)
 public void onNotifeeEvent(MainComponentEvent event) { ... }
 ```
 
 ### Database (Room)
+
 Trigger notifications are persisted in Room database. Schema exports go to `schemas/` directory for migration testing.
 
 ### ProGuard
+
 ProGuard rules in `proguard-rules.pro` and consumer rules in `consumer-rules.pro`. Release builds are minified.
 
 ## Code Style
 
 MUST use **google-java-format**. Format with:
+
 ```bash
 yarn format:core:android        # Format all Java files
 yarn format:core:android:check  # Check formatting (CI)
