@@ -1,12 +1,15 @@
+# Notifee for React Native
+
 <!-- markdownlint-disable MD033 -->
 <p align="center">
-  <img width="140px" src="https://static.invertase.io/assets/notifee-logo.png"><br/>
-  <h3 align="center">Notifee for React Native</h3>
+  <img
+    width="140px"
+    src="https://static.invertase.io/assets/notifee-logo.png"
+    alt="Notifee logo"
+  ><br/>
 </p>
 
 <hr/>
-
-<!-- markdownlint-disable MD041 -->
 
 An actively maintained fork of Notifee for React Native notifications, continued and improved by Marco Crupi.
 

@@ -84,19 +84,17 @@ Maintainers with write access to the repo and the npm organization can publish n
 
 #### Automated Process
 
-**Note: release is fully automated now in `.github/workflows/publish.yml` and controlled by the `.releaserc` file**
+**Note: release configuration is defined in `.releaserc`, but this fork does not currently include a dedicated GitHub Actions publish workflow.**
 
-Simply navigate to the release publish workflow, and use the manual trigger to publish from main branch:
-
-1. https://github.com/invertase/notifee/actions/workflows/publish.yml
+If you want fully automated publishing from GitHub Actions, add a workflow in `.github/workflows/` that runs `semantic-release` from the `main` branch with the required GitHub and npm credentials.
 
 Afterwards, you may verify that everything worked by checking the expected work products:
 
-1. Verify that there is a new github release: https://github.com/invertase/notifee/releases
+1. Verify that there is a new github release: https://github.com/marcocrupi/react-native-notify-kit/releases
 1. Verify that there is a new npmjs release (may take a moment to update): https://www.npmjs.com/package/@notifee/react-native?activeTab=versions
 1. Verify that the changelog is updated: https://docs.page/invertase/notifee/react-native/release-notes
-1. Verify that there is a new tag correctly created: https://github.com/invertase/notifee/tags
-1. Verify that there is a commit with that tag, with the updated release notes: https://github.com/invertase/notifee/commits/main/
+1. Verify that there is a new tag correctly created: https://github.com/marcocrupi/react-native-notify-kit/tags
+1. Verify that there is a commit with that tag, with the updated release notes: https://github.com/marcocrupi/react-native-notify-kit/commits/main/
 
 #### Manual Process
 

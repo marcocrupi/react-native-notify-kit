@@ -112,7 +112,7 @@ After modifying native core code, you MUST rebuild before testing:
 
 ## Release Process
 
-Fully automated via semantic-release (`.releaserc`). Manual trigger on main branch via GitHub Actions `publish.yml`. Path-filtered to React Native changes only (`.releaserc.react-native-path-filter.js`).
+Release configuration is defined via semantic-release (`.releaserc`) and path-filtered to React Native changes only (`.releaserc.react-native-path-filter.js`). This fork does not currently include a dedicated GitHub Actions publish workflow.
 
 ## Commit Conventions
 
