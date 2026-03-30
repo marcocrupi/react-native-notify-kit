@@ -24,7 +24,6 @@ export default tseslint.config(
       'sendPushNotification.js',
       '**/version.ts',
       '**/version.js',
-      'packages/react-native/example/**',
     ],
   },
 
