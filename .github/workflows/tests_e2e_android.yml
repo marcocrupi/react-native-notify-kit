@@ -58,21 +58,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+          cache: 'yarn'
 
       - name: Set workflow variables
         id: workflow-variables
         run: |
-          echo "yarn-cache=$(yarn cache dir)" >> $GITHUB_OUTPUT
           echo "metro-cache=$HOME/.metro" >> $GITHUB_OUTPUT
-
-      - uses: actions/cache@v4
-        name: Yarn Cache
-        id: yarn-cache
-        with:
-          path: ${{ steps.workflow-variables.outputs.yarn-cache }}
-          key: ${{ runner.os }}-yarn-v1-${{ hashFiles('package.json', 'packages/react-native/package.json', 'tests_react_native/package.json') }}
-          restore-keys: ${{ runner.os }}-yarn-v1
 
       - uses: actions/cache@v4
         name: Gradle Cache
@@ -107,7 +99,7 @@ jobs:
           timeout_minutes: 15
           retry_wait_seconds: 60
           max_attempts: 4
-          command: yarn --no-audit --prefer-offline && npm i -g cavy-cli
+          command: yarn install --immutable && npm i -g cavy-cli
 
       - name: Configure JDK
         uses: actions/setup-java@v4

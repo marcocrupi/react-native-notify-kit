@@ -23,31 +23,20 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+          cache: 'yarn'
       - name: Configure JDK
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Set workflow variables
-        id: workflow-variables
-        run: |
-          echo "yarn-cache=$(yarn cache dir)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v4
-        name: Yarn Cache
-        id: yarn-cache
-        with:
-          path: ${{ steps.workflow-variables.outputs.yarn-cache }}
-          key: ${{ runner.os }}-yarn-v1-${{ hashFiles('package.json', 'packages/react-native/package.json', 'tests_react_native/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
       - name: Yarn Install
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 3
           retry_wait_seconds: 30
           max_attempts: 3
-          command: yarn --no-audit --prefer-offline
+          command: yarn install --immutable
       - name: Lint javascript
         run: yarn validate:all:js
       - name: Lint Native - validate:all:check
@@ -64,26 +53,15 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Set workflow variables
-        id: workflow-variables
-        run: |
-          echo "yarn-cache=$(yarn cache dir)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v4
-        name: Yarn Cache
-        id: yarn-cache
-        with:
-          path: ${{ steps.workflow-variables.outputs.yarn-cache }}
-          key: ${{ runner.os }}-yarn-v1-${{ hashFiles('package.json', 'packages/react-native/package.json', 'tests_react_native/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          node-version: 24
+          cache: 'yarn'
       - name: Yarn Install
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 3
           retry_wait_seconds: 30
           max_attempts: 3
-          command: yarn --no-audit --prefer-offline
+          command: yarn install --immutable
       - name: Lint
         run: yarn validate:all:ts
 
@@ -98,25 +76,14 @@ jobs:
           submodules: recursive
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Set workflow variables
-        id: workflow-variables
-        run: |
-          echo "yarn-cache=$(yarn cache dir)" >> $GITHUB_OUTPUT
-      - uses: actions/cache@v4
-        name: Yarn Cache
-        id: yarn-cache
-        with:
-          path: ${{ steps.workflow-variables.outputs.yarn-cache }}
-          key: ${{ runner.os }}-yarn-v1-${{ hashFiles('package.json', 'packages/react-native/package.json', 'tests_react_native/package.json') }}}-with-website
-          restore-keys: |
-            ${{ runner.os }}-yarn-
+          node-version: 24
+          cache: 'yarn'
       - name: Yarn Install
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 3
           retry_wait_seconds: 30
           max_attempts: 3
-          command: yarn --no-audit --prefer-offline
+          command: yarn install --immutable
       - name: Generate TypeDoc
         run: yarn gen:reference
