@@ -24,14 +24,12 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "lib": [
-      "es6"
-    ]
+    "lib": ["es6"]
   },
   "exclude": [
     "node_modules",
     "babel.config.js",
     "metro.config.js",
-    "tests_react_native/jest.config.js",
+    "tests_react_native/jest.config.js"
   ]
 }

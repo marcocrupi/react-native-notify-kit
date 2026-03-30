@@ -48,8 +48,9 @@ Follow existing pattern — test valid inputs pass through and invalid inputs th
 ```typescript
 describe('validateAndroidChannel', () => {
   test('throws if channel id is not a string', () => {
-    expect(() => validateAndroidChannel({ id: 123 }))
-      .toThrow("'channel.id' expected a string value.");
+    expect(() => validateAndroidChannel({ id: 123 })).toThrow(
+      "'channel.id' expected a string value.",
+    );
   });
 });
 ```
@@ -61,7 +62,7 @@ Use `setPlatform()` from `testSetup.ts` to override platform detection:
 ```typescript
 import { setPlatform } from './testSetup';
 
-beforeEach(() => setPlatform('ios'));  // overrides isIOS/isAndroid for subsequent calls
+beforeEach(() => setPlatform('ios')); // overrides isIOS/isAndroid for subsequent calls
 ```
 
 ### Mocking

@@ -43,13 +43,13 @@ The APIs for Android allow for creating rich, styled and highly interactive noti
 
 Below you'll find guides that cover the supported iOS features.
 
-| Topic                                                             |                                                                          |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| [Appearance](https://notifee.app/react-native/docs/ios/appearance)           | Change now the notification is displayed to your users.       |
-| [Behaviour](https://notifee.app/react-native/docs/ios/behaviour)            | Control how notifications behave when they are displayed to a device; sound, crtitial alerts etc.  |
-| [Categories](https://notifee.app/react-native/docs/ios/categories) | Create & assign categories to notifications.          |
-| [Interaction](https://notifee.app/react-native/docs/ios/interaction)                 | Handle user interaction with your notifications. |                                                    |
-| [Permissions](https://notifee.app/react-native/docs/ios/permissions)                 | Request permission from your application users to display notifications. |                                                    |
+| Topic                                                                |                                                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --- |
+| [Appearance](https://notifee.app/react-native/docs/ios/appearance)   | Change now the notification is displayed to your users.                                           |
+| [Behaviour](https://notifee.app/react-native/docs/ios/behaviour)     | Control how notifications behave when they are displayed to a device; sound, crtitial alerts etc. |
+| [Categories](https://notifee.app/react-native/docs/ios/categories)   | Create & assign categories to notifications.                                                      |
+| [Interaction](https://notifee.app/react-native/docs/ios/interaction) | Handle user interaction with your notifications.                                                  |     |
+| [Permissions](https://notifee.app/react-native/docs/ios/permissions) | Request permission from your application users to display notifications.                          |     |
 
 ### Jest Testing
 
@@ -80,7 +80,7 @@ setupFiles: ['<rootDir>/jest.setup.js'],
 You can then add the following line to that setup file to mock `notifee`:
 
 ```js
-jest.mock('@notifee/react-native', () => require('@notifee/react-native/jest-mock'))
+jest.mock('@notifee/react-native', () => require('@notifee/react-native/jest-mock'));
 ```
 
 You will also need to add `@notifee` to `transformIgnorePatterns` in your config file (`jest.config.js`):

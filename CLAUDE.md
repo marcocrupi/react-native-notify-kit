@@ -126,6 +126,7 @@ Types: `fix`, `feat`, `docs`, `style`, `refactor`, `test`, `chore`, `build`
 Scopes: `android`, `ios`, `expo` (optional)
 
 Examples:
+
 - `fix(android): prevent headless task double-invocation`
 - `feat: add web notification support`
 - `docs: update installation guidance`

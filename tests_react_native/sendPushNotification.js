@@ -25,7 +25,7 @@ var payload = {
         ios: {
           communicationInfo: {
             conversationId: 'id-abcde',
-            groupName: "Friends",
+            groupName: 'Friends',
             sender: {
               id: 'senderId',
               avatar: 'https://placeimg.com/640/480/any',

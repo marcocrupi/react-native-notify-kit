@@ -39,14 +39,14 @@ yarn test:core:android              # ./gradlew testDebugUnit
 
 ## Key Dependencies
 
-| Library | Version | Purpose |
-|---------|---------|---------|
-| androidx.room | 2.5.0 | SQLite database for trigger persistence |
-| greenrobot EventBus | 3.3.1 | Internal event distribution |
-| androidx.work | 2.8.0 | WorkManager for background trigger scheduling |
-| Fresco | 2.6.0 | Image loading for large icons/big picture style |
-| Guava | 33.3.1 | ListenableFuture and utilities |
-| JUnit | 4.13.2 | Unit testing |
+| Library             | Version | Purpose                                         |
+| ------------------- | ------- | ----------------------------------------------- |
+| androidx.room       | 2.5.0   | SQLite database for trigger persistence         |
+| greenrobot EventBus | 3.3.1   | Internal event distribution                     |
+| androidx.work       | 2.8.0   | WorkManager for background trigger scheduling   |
+| Fresco              | 2.6.0   | Image loading for large icons/big picture style |
+| Guava               | 33.3.1  | ListenableFuture and utilities                  |
+| JUnit               | 4.13.2  | Unit testing                                    |
 
 ## Key Patterns
 

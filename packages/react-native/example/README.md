@@ -2,31 +2,32 @@
 
 ## Installation
 
-* `git clone https://github.com/invertase/notifee.git`
-* `cd packages/react-native/example`
-* `yarn`
+- `git clone https://github.com/invertase/notifee.git`
+- `cd packages/react-native/example`
+- `yarn`
 
 ## Running Android
 
-* Make sure you have no other packagers running!
-* `react-native start`
-* Start an emulator (e.g., using Android Studio -> Tools -> AVD Manager -> start one)
-* `react-native run-android`
+- Make sure you have no other packagers running!
+- `react-native start`
+- Start an emulator (e.g., using Android Studio -> Tools -> AVD Manager -> start one)
+- `react-native run-android`
 
 ## Running iOS
 
-* Make sure you have no other packagers running!
-* `react-native start`
-* `cd ios && pod install && cd ..`
-* `react-native run-ios`
+- Make sure you have no other packagers running!
+- `react-native start`
+- `cd ios && pod install && cd ..`
+- `react-native run-ios`
 
 ## Troubleshooting
 
-* If things don't work, clean up your build and node_modules folders, `yarn install` and rebuild.
+- If things don't work, clean up your build and node_modules folders, `yarn install` and rebuild.
 
 ## How to use
 
 The app consists of 3 buttons:
+
 - One to display a notification
 - One to create a trigger notification
 - One to test out other APIs
@@ -81,24 +82,25 @@ const getTimestamp = () => {
 
 /* Trigger */
 const trigger = {
-    timestamp: timestampDate,
-    type: TriggerType.TIMESTAMP,
-}
+  timestamp: timestampDate,
+  type: TriggerType.TIMESTAMP,
+};
 ```
 
 ### Interval
 
 The interval trigger is set to trigger every 60 seconds, to customise the interval you can update the code in [src/utils/triggers](https://github.com/invertase/notifee/blob/main/packages/react-native/example/src/utils/triggers.ts#L28):
+
 ```js
 /* Interval */
 const interval = 60;
 
 /* Trigger */
 const trigger = {
-    timeUnit: TimeUnit.SECONDS,
-    type: TriggerType.INTERVAL,
-    interval: interval,
-  }
+  timeUnit: TimeUnit.SECONDS,
+  type: TriggerType.INTERVAL,
+  interval: interval,
+};
 ```
 
 ## Other APIs
@@ -119,11 +121,11 @@ const onAPIPress = async () => {
 On iOS, it's required to request permissions to be able to display a notification, this is called in [App.tsx](https://github.com/invertase/notifee/blob/main/packages/react-native/example/App.tsx):
 
 ```js
-  useEffect(() => {
-    (async () => {
-      await requestUserPermission();
-    })();
-  }, []);
+useEffect(() => {
+  (async () => {
+    await requestUserPermission();
+  })();
+}, []);
 ```
 
 ## Subscribing to events

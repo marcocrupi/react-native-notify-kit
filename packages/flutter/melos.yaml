@@ -3,7 +3,7 @@ repository: https://github.com/invertase/notifee
 
 packages:
   - packages/**
-  - "tests/*"
+  - 'tests/*'
 
 command:
   version:

@@ -1,7 +1,5 @@
 {
-  "include": [
-    "packages/react-native/src/types/**/*.ts"
-  ],
+  "include": ["packages/react-native/src/types/**/*.ts"],
   "compilerOptions": {
     "noEmit": true,
     "target": "es5",

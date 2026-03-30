@@ -9,7 +9,6 @@ Tests are powered by [Jet ✈️](https://github.com/invertase/jet).
 - Make sure you have Xcode installed (tested with Xcode 10+).
 - Make sure you have NodeJS installed (Node 8.4.0 and up is required).
 - Make sure you have all required dependencies installed:
-
   - [Apple Sim Utils](https://github.com/wix/AppleSimulatorUtils):
 
     ```bash

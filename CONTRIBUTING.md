@@ -111,7 +111,7 @@ If for some reason the automated process is not working, or you want to re-autom
 1. Push the release notes / version / tag to the repo: `git push --tags`
 1. Create a release on the repo:
 
-    ```bash
-    export TAGNAME=`git tag --list|sort -r|head -1`
-    gh release create ${TAGNAME} --title "${TAGNAME}" --notes "[Release Notes](https://github.com/invertase/notifee/blob/main/docs/react-native/release-notes.mdx)"
-    ```
+   ```bash
+   export TAGNAME=`git tag --list|sort -r|head -1`
+   gh release create ${TAGNAME} --title "${TAGNAME}" --notes "[Release Notes](https://github.com/invertase/notifee/blob/main/docs/react-native/release-notes.mdx)"
+   ```
