@@ -18,14 +18,21 @@
     "format:ios:check": "npm_config_yes=true npx clang-format --glob=\"ios/**/*.{h,cpp,m,mm}\" --style=Google -n -Werror"
   },
   "devDependencies": {
-    "@types/react-native": "0.67.2",
     "genversion": "^3.0.2",
     "prettier": "^3.8.1",
     "rimraf": "^3.0.2",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "react-native": "*"
+    "react-native": ">=0.73.0"
+  },
+  "codegenConfig": {
+    "name": "NotifeeSpec",
+    "type": "modules",
+    "jsSrcsDir": "src/specs",
+    "android": {
+      "javaPackageName": "io.invertase.notifee"
+    }
   },
   "repository": {
     "type": "git",

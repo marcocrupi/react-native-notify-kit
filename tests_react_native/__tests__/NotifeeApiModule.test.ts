@@ -101,7 +101,12 @@ describe('Notifee Api Module', () => {
     const res = await apiModule.cancelAllNotifications(['id']);
 
     expect(res).toBe(undefined);
-    expect(mockNotifeeNativeModule.cancelAllNotificationsWithIds).nthCalledWith(1, ['id']);
+    expect(mockNotifeeNativeModule.cancelAllNotificationsWithIds).nthCalledWith(
+      1,
+      ['id'],
+      0,
+      null,
+    );
   });
 
   test('cancelDisplayedNotifications(ids)', async () => {

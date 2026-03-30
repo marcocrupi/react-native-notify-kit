@@ -3,12 +3,8 @@
  */
 
 import NotifeeJSEventEmitter from './NotifeeJSEventEmitter';
-import {
-  EventSubscription,
-  NativeEventEmitter,
-  NativeModules,
-  NativeModulesStatic,
-} from 'react-native';
+import { EventSubscription, NativeEventEmitter, TurboModuleRegistry } from 'react-native';
+import type { Spec } from './specs/NativeNotifeeModule';
 
 export interface NativeModuleConfig {
   version: string;
@@ -17,13 +13,11 @@ export interface NativeModuleConfig {
 }
 
 export default class NotifeeNativeModule {
-  private readonly _moduleConfig: NativeModuleConfig;
-  private _nativeModule: NativeModulesStatic | null;
+  private _nativeModule: Spec;
   private _nativeEmitter: NativeEventEmitter;
 
   public constructor(config: NativeModuleConfig) {
-    this._nativeModule = null;
-    this._moduleConfig = Object.assign({}, config);
+    this._nativeModule = TurboModuleRegistry.getEnforcing<Spec>(config.nativeModuleName);
 
     // @ts-ignore - change here needs resolution https://github.com/DefinitelyTyped/DefinitelyTyped/pull/49560/files
     this._nativeEmitter = new NativeEventEmitter(this.native as EventSubscription['subscriber']);
@@ -39,16 +33,7 @@ export default class NotifeeNativeModule {
     return NotifeeJSEventEmitter;
   }
 
-  public get native(): NativeModulesStatic {
-    if (this._nativeModule) {
-      return this._nativeModule;
-    }
-
-    this._nativeModule = NativeModules[this._moduleConfig.nativeModuleName];
-    if (this._nativeModule == null) {
-      throw new Error('Notifee native module not found.');
-    }
-
+  public get native(): Spec {
     return this._nativeModule;
   }
 }
