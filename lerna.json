@@ -1,19 +1,9 @@
 {
-  "npmClient": "yarn",
-  "npmClientArgs": [
-    "--no-lockfile"
-  ],
-  "packages": [
-    "packages/*",
-    "tests_react_native"
-  ],
-  "useWorkspaces": true,
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json",
+  "version": "0.2.3",
   "command": {
     "publish": {
-      "ignoreChanges": [
-        "*.md"
-      ]
+      "ignoreChanges": ["*.md"]
     }
-  },
-  "version": "0.2.3"
+  }
 }
