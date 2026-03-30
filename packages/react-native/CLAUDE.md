@@ -1,6 +1,6 @@
-# @notifee/react-native Package
+# react-native-notify-kit Package
 
-Main NPM package published as `@notifee/react-native` (v9.1.8).
+Main NPM package published as `react-native-notify-kit` (v9.1.8).
 
 ## Source Organization
 
@@ -42,7 +42,7 @@ Output goes to `dist/` (configured in tsconfig.json). Entry point: `dist/index.j
 
 ### Module Export
 
-`NotifeeApiModule` is instantiated as singleton and exported as default with static methods attached. Consumer usage: `import notifee from '@notifee/react-native'`.
+`NotifeeApiModule` is instantiated as singleton and exported as default with static methods attached. Consumer usage: `import notifee from 'react-native-notify-kit'`.
 
 ### Validation Pattern
 

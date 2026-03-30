@@ -1,8 +1,8 @@
 {
-  "name": "@notifee/react-native",
+  "name": "react-native-notify-kit",
   "version": "9.1.8",
   "author": "Invertase <oss@invertase.io> (http://invertase.io)",
-  "description": "Notifee - a feature rich notifications library for React Native.",
+  "description": "React Native Notify Kit - a feature rich notifications library for React Native.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -36,7 +36,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/invertase/notifee.git"
+    "url": "git+https://github.com/marcocrupi/react-native-notify-kit.git"
+  },
+  "homepage": "https://github.com/marcocrupi/react-native-notify-kit#readme",
+  "bugs": {
+    "url": "https://github.com/marcocrupi/react-native-notify-kit/issues"
   },
   "license": "Apache-2.0",
   "keywords": [

@@ -56,7 +56,7 @@ Ensure that your new extension has access to `NotifeeExtensionHelper` by adding 
 $NotifeeExtension = true
 
 target 'NotifeeNotificationService' do
-  pod 'RNNotifeeCore', :path => '../node_modules/@notifee/react-native/RNNotifeeCore.podspec'
+  pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit/RNNotifeeCore.podspec'
 end
 
 ```
@@ -176,7 +176,7 @@ To know identify when an interaction is from a remote notification, we can check
 
 ```jsx
 import { useEffect } from 'react';
-import notifee, { EventType } from '@notifee/react-native';
+import notifee, { EventType } from 'react-native-notify-kit';
 
 function App() {
   // Subscribe to events

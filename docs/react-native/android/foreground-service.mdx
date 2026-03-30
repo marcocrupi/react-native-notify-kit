@@ -30,7 +30,7 @@ Let's create our foreground service which we'll later hook into. The callback we
 a notification object when called.
 
 ```js
-import notifee from '@notifee/react-native';
+import notifee from 'react-native-notify-kit';
 
 notifee.registerForegroundService((notification) => {
   return new Promise(() => {
@@ -48,7 +48,7 @@ To attach a new notification to the service, the `asForegroundService` property 
 `true`:
 
 ```js
-import notifee, { AndroidColor } from '@notifee/react-native';
+import notifee, { AndroidColor } from 'react-native-notify-kit';
 
 notifee.displayNotification({
   title: 'Foreground service',
@@ -137,7 +137,7 @@ For example, to stop the foreground service when a user presses an action, we ca
 task:
 
 ```js
-import notifee, { EventType } from '@notifee/react-native';
+import notifee, { EventType } from 'react-native-notify-kit';
 
 // Create the task runner
 notifee.registerForegroundService((notification) => {
@@ -196,7 +196,7 @@ To specify which service types you require, add `notifee`'s foreground service t
 From Android 14 (API level 34) or higher, the operating system checks when you create a foreground service to make sure your app has all the appropriate permissions for that service type. For example, when you create a foreground service of type `microphone`, the operating system verifies that your app currently has the `RECORD_AUDIO` permission. If you don't have that permission, the system throws a `SecurityException`. To support this, a notification can be created with `foregroundServiceTypes` property which specifies the types to be used while creating the service:
 
 ```js
-import notifee, { AndroidForegroundServiceType } from '@notifee/react-native';
+import notifee, { AndroidForegroundServiceType } from 'react-native-notify-kit';
 
 notifee.displayNotification({
   title: 'Foreground service',

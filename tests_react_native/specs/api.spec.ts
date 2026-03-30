@@ -8,7 +8,7 @@ import notifee, {
   TriggerType,
   Notification,
   TimestampTrigger,
-} from '@notifee/react-native';
+} from 'react-native-notify-kit';
 import { Platform } from 'react-native';
 
 export function ApiSpec(spec: TestScope): void {

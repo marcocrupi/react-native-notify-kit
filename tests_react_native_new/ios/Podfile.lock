@@ -1976,7 +1976,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
-  - "RNNotifee (from `../node_modules/@notifee/react-native`)"
+  - "RNNotifee (from `../node_modules/react-native-notify-kit`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 EXTERNAL SOURCES:
@@ -2128,7 +2128,7 @@ EXTERNAL SOURCES:
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNNotifee:
-    :path: "../node_modules/@notifee/react-native"
+    :path: "../node_modules/react-native-notify-kit"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 

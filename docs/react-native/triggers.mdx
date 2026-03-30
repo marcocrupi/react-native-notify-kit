@@ -16,7 +16,7 @@ For example, you may wish to notify your user when they have a meeting at work.
 ```js
 import React from 'react';
 import { View, Button } from 'react-native';
-import notifee, { TimestampTrigger, TriggerType } from '@notifee/react-native';
+import notifee, { TimestampTrigger, TriggerType } from 'react-native-notify-kit';
 
 function Screen() {
   async function onCreateTriggerNotification() {
@@ -64,7 +64,7 @@ Trigger notifications work in the same way as any other notification. They have 
 Let's update our trigger we created previously to occur weekly.
 
 ```js
-import notifee, { TimestampTrigger, TriggerType } from '@notifee/react-native';
+import notifee, { TimestampTrigger, TriggerType } from 'react-native-notify-kit';
 
 async function onCreateTriggerNotification() {
   const date = new Date(Date.now());
@@ -116,7 +116,7 @@ It's also possible to cancel all of your trigger notifications, by calling [canc
 The [`TimestampTrigger`](/react-native/reference/timestamptrigger) allows you to create a trigger that displays a notification at a specific time and date, using the property `timestamp` and an optional `repeatFrequency` property:
 
 ```js
-import notifee, { TimestampTrigger, TriggerType, TimeUnit, AlarmType } from '@notifee/react-native';
+import notifee, { TimestampTrigger, TriggerType, TimeUnit, AlarmType } from 'react-native-notify-kit';
 
 const trigger: TimestampTrigger = {
   type: TriggerType.TIMESTAMP,
@@ -186,7 +186,7 @@ This trigger can be used to implement timers.
 For example, to set a trigger to repeat every 30 minutes from now:
 
 ```js
-import notifee, { IntervalTrigger, TriggerType, TimeUnit } from '@notifee/react-native';
+import notifee, { IntervalTrigger, TriggerType, TimeUnit } from 'react-native-notify-kit';
 
 const trigger: IntervalTrigger = {
   type: TriggerType.INTERVAL,

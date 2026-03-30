@@ -16,7 +16,7 @@ import {
 import firebase from '@react-native-firebase/app';
 import { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 
-import Notifee, { EventType, Event, AuthorizationStatus } from '@notifee/react-native';
+import Notifee, { EventType, Event, AuthorizationStatus } from 'react-native-notify-kit';
 
 type RemoteMessage = FirebaseMessagingTypes.RemoteMessage;
 

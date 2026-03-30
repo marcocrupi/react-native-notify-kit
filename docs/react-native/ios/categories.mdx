@@ -13,7 +13,7 @@ method, one of more categories will be set on the device. All categories must be
 overrides any pre-existing categories on the device.
 
 ```js
-import notifee from '@notifee/react-native';
+import notifee from 'react-native-notify-kit';
 
 async function setCategories() {
   await notifee.setNotificationCategories([
@@ -45,7 +45,7 @@ Once created, a notification can then be displayed using the `categoryId` identi
 using the `post` category:
 
 ```js
-import notifee from '@notifee/react-native';
+import notifee from 'react-native-notify-kit';
 
 notifee.displayNotification({
   title: 'New post from John',
@@ -80,7 +80,7 @@ These unique values can be placed inside of the `summaryFormat` field, and contr
 `summaryArgumentCount` properties on the notification body, for example:
 
 ```js
-import notifee from '@notifee/react-native';
+import notifee from 'react-native-notify-kit';
 
 await notifee.setNotificationCategories([
   {

@@ -1,6 +1,6 @@
 # Notifee - React Native Notification Library
 
-Fork of [invertase/notifee](https://github.com/invertase/notifee). Feature-rich local notification library for React Native (Android + iOS).
+Fork of [invertase/notifee](https://github.com/marcocrupi/react-native-notify-kit). Feature-rich local notification library for React Native (Android + iOS).
 
 ## Critical Rules
 

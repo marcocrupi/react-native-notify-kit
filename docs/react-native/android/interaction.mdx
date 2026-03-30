@@ -143,7 +143,7 @@ When dismissing you can hook into the `DISMISSED` event, for example, you could 
 not read a notification:
 
 ```js
-import notifee, { EventType } from '@notifee/react-native';
+import notifee, { EventType } from 'react-native-notify-kit';
 
 notifee.onBackgroundEvent(async ({ type, detail, headless }) => {
   if (type === EventType.DISMISSED) {
@@ -212,7 +212,7 @@ At a minimum, each `pressAction` requires a unique ID, which can be used with [e
 hook into what action was pressed. When pressed, an action sends the `ACTION_PRESS` event type to any subscribers:
 
 ```js
-import notifee, { EventType } from '@notifee/react-native';
+import notifee, { EventType } from 'react-native-notify-kit';
 
 notifee.onForegroundEvent(({ type, detail }) => {
   if (type === EventType.ACTION_PRESS && detail.pressAction.id) {
@@ -330,7 +330,7 @@ View the [`AndroidInput`](/react-native/reference/androidinput) documentation fo
 If the user has provided custom input via free text or choices, we're able to grab the input via the `onBackgroundEvent` subscriber:
 
 ```js
-import notifee, { EventType } from '@notifee/react-native';
+import notifee, { EventType } from 'react-native-notify-kit';
 
 notifee.onBackgroundEvent(async ({ type, detail }) => {
   if (type === EventType.ACTION_PRESS && detail.pressAction.id === 'reply') {

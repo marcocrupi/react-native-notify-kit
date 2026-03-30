@@ -1,5 +1,5 @@
 name: Notifee
-repository: https://github.com/invertase/notifee
+repository: https://github.com/marcocrupi/react-native-notify-kit
 
 packages:
   - packages/**

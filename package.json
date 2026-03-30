@@ -1,5 +1,5 @@
 {
-  "name": "@notifications/root",
+  "name": "react-native-notify-kit-root",
   "private": true,
   "license": "Apache-2.0",
   "scripts": {

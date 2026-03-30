@@ -1,5 +1,5 @@
-import validateIOSInput from '@notifee/react-native/src/validators/validateIOSInput';
-import { IOSInput } from '@notifee/react-native/src/types/NotificationIOS';
+import validateIOSInput from 'react-native-notify-kit/src/validators/validateIOSInput';
+import { IOSInput } from 'react-native-notify-kit/src/types/NotificationIOS';
 
 describe('Validate IOS Input', () => {
   describe('validateIOSInput()', () => {

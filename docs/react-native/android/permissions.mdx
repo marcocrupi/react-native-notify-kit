@@ -25,7 +25,7 @@ the users of your application full control of how notifications are handled:
 The following example shows how to trigger a permission dialog:
 
 ```js
-import notifee, { AuthorizationStatus } from '@notifee/react-native';
+import notifee, { AuthorizationStatus } from 'react-native-notify-kit';
 
 async function requestUserPermission() {
   const settings = await notifee.requestPermission();
@@ -47,7 +47,7 @@ For each level, you can check whether notifications are permitted through a dire
 To check whether the user has enabled notifications for your app, call [`getNotificationSettings`](/react-native/reference/getnotificationsettings). The `authorizationStatus` attributes will returns `DENIED` if user has denied the permission, and `AUTHORIZED` if it's granted.
 
 ```js
-import notifee, {AuthorizationStatus} from '@notifee/react-native';
+import notifee, {AuthorizationStatus} from 'react-native-notify-kit';
 
 async function checkNotificationPermission() {
   const settings = await notifee.getNotificationSettings();
@@ -67,7 +67,7 @@ If you determine notifications are disabled, you may want to offer the user the 
 To check whether the user has enabled notifications for specific channels or channel groups, call either [`getChannel`](/react-native/reference/getchannel) or [`getChannelGroups`](/react-native/reference/getchannelgroups). Both of these functions will return a respective object with `blocked` attributes in it.
 
 ```js
-import notifee from '@notifee/react-native';
+import notifee from 'react-native-notify-kit';
 
 async function checkChannelPermission() {
   const channel = await notifee.getChannel();

@@ -162,7 +162,7 @@ accepts one of three types:
 The default type used is "Large". To use a different type:
 
 ```js
-import notifee, { AndroidBadgeIconType } from '@notifee/react-native';
+import notifee, { AndroidBadgeIconType } from 'react-native-notify-kit';
 
 notifee.displayNotification({
   body: 'Notification using small icon in badged mode',
@@ -223,7 +223,7 @@ On devices with [channel](/react-native/android/channels) support, the importanc
 without channel support, the importance can be set directly on the notification:
 
 ```js
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance } from 'react-native-notify-kit';
 
 const channelId = await notifee.createChannel({
   id: 'important',
@@ -264,7 +264,7 @@ On devices with [channel](/react-native/android/channels) support, the visibilit
 without channel support, the visibility can be set directly on the notification:
 
 ```js
-import notifee, { AndroidVisibility } from '@notifee/react-native';
+import notifee, { AndroidVisibility } from 'react-native-notify-kit';
 
 const channelId = await notifee.createChannel({
   id: 'secret',
@@ -305,7 +305,7 @@ The device uses the color to change various parts of the notification:
 You can use system colors, or a custom hexadecimal color, for example:
 
 ```js
-import notifee, { AndroidColor } from '@notifee/react-native';
+import notifee, { AndroidColor } from 'react-native-notify-kit';
 
 notifee.displayNotification({
   android: {

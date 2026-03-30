@@ -1,19 +1,19 @@
 // @ts-ignore
-import NotifeeApiModule from '@notifee/react-native/src/NotifeeApiModule';
-import Notifee, { AuthorizationStatus } from '@notifee/react-native';
+import NotifeeApiModule from 'react-native-notify-kit/src/NotifeeApiModule';
+import Notifee, { AuthorizationStatus } from 'react-native-notify-kit';
 
 import {
   /* @ts-ignore */
   mockNotifeeNativeModule,
-} from '@notifee/react-native/src/NotifeeNativeModule';
+} from 'react-native-notify-kit/src/NotifeeNativeModule';
 import {
   AndroidChannel,
   AndroidNotificationSetting,
-} from '@notifee/react-native/src/types/NotificationAndroid';
+} from 'react-native-notify-kit/src/types/NotificationAndroid';
 import { setPlatform } from './testSetup';
-import { TriggerNotification, TriggerType } from '@notifee/react-native/src';
+import { TriggerNotification, TriggerType } from 'react-native-notify-kit/src';
 
-jest.mock('@notifee/react-native/src/NotifeeNativeModule');
+jest.mock('react-native-notify-kit/src/NotifeeNativeModule');
 
 const apiModule = new NotifeeApiModule({
   version: Notifee.SDK_VERSION,

@@ -1,4 +1,4 @@
-import { NotificationFullScreenAction } from '@notifee/react-native/src/types/Notification';
+import { NotificationFullScreenAction } from 'react-native-notify-kit/src/types/Notification';
 import validateAndroidFullScreenAction from '../../../packages/react-native/src/validators/validateAndroidFullScreenAction';
 
 describe('Validate Android Full-screen Action', () => {

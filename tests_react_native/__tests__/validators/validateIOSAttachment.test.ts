@@ -1,10 +1,10 @@
 import validateIOSAttachment, {
   validateThumbnailClippingRect,
-} from '@notifee/react-native/src/validators/validateIOSAttachment';
+} from 'react-native-notify-kit/src/validators/validateIOSAttachment';
 import {
   IOSAttachmentThumbnailClippingRect,
   IOSNotificationAttachment,
-} from '@notifee/react-native/src/types/NotificationIOS';
+} from 'react-native-notify-kit/src/types/NotificationIOS';
 
 const testUrl = 'test-url';
 const testId = 'test-id';

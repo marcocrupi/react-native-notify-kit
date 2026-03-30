@@ -3,7 +3,7 @@ import {
   isValidLightPattern,
   isValidVibratePattern,
   isValidTimestamp,
-} from '@notifee/react-native/src/validators/validate';
+} from 'react-native-notify-kit/src/validators/validate';
 
 describe('Validate', () => {
   describe('isValidColor', () => {

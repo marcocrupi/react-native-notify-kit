@@ -1,5 +1,5 @@
-import validateAndroidInput from '@notifee/react-native/src/validators/validateAndroidInput';
-import { AndroidInput } from '@notifee/react-native/src/types/NotificationAndroid';
+import validateAndroidInput from 'react-native-notify-kit/src/validators/validateAndroidInput';
+import { AndroidInput } from 'react-native-notify-kit/src/types/NotificationAndroid';
 
 describe('Validate Android Channel Group', () => {
   describe('validateAndroidChannelGroup()', () => {

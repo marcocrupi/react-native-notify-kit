@@ -12,7 +12,7 @@ import notifee, {
   TriggerType,
   EventType,
   AndroidImportance,
-} from '@notifee/react-native';
+} from 'react-native-notify-kit';
 
 type LogEntry = { time: string; msg: string };
 

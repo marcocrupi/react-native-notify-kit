@@ -3,7 +3,7 @@ import { OptionDefaults } from 'typedoc';
 
 const config = {
   entryPoints: ['./packages/react-native/src/index.ts'],
-  hostedBaseUrl: 'https://docs.page/invertase/notifee/react-native/reference',
+  hostedBaseUrl: 'https://docs.page/marcocrupi/react-native-notify-kit/react-native/reference',
 
   // If we generate markdown directly then replace the internal links with
   // a version that strips the `.mdx` suffix, we can match what docs.page

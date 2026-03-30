@@ -1,5 +1,5 @@
-import validateIOSCategory from '@notifee/react-native/src/validators/validateIOSCategory';
-import { IOSNotificationCategory } from '@notifee/react-native/src/types/NotificationIOS';
+import validateIOSCategory from 'react-native-notify-kit/src/validators/validateIOSCategory';
+import { IOSNotificationCategory } from 'react-native-notify-kit/src/types/NotificationIOS';
 
 describe('Validate IOS Category', () => {
   describe('validateIOSCategory()', () => {

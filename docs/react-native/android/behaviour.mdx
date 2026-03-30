@@ -59,7 +59,7 @@ To use a device sound, you will need the file location of where it is stored. It
 
 ```js
 import NotificationSounds from 'react-native-notification-sounds';
-import notifee from '@notifee/react-native';
+import notifee from 'react-native-notify-kit';
 
 // Retrieve a list of system notification sounds
 const soundsList = await NotificationSounds.getNotifications('notification');
@@ -128,7 +128,7 @@ For devices on lower API versions the `lights` property accepts an array, with t
 schema. For example, "red" light which shows for 300ms and stays off for 600ms:
 
 ```js
-import notifee, { AndroidColor } from '@notifee/react-native';
+import notifee, { AndroidColor } from 'react-native-notify-kit';
 // Android >= 8.0 (API level 26)
 notifee.createChannel({
   id: 'custom-lights',
