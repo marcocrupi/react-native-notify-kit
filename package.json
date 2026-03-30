@@ -99,37 +99,16 @@
       "git add"
     ]
   },
-  "workspaces": {
-    "packages": [
-      "packages/*",
-      "tests_react_native"
-    ],
-    "nohoist": [
-      "**/chai",
-      "**/chai/**",
-      "**/cavy",
-      "**/cavy/**",
-      "**/cavy-native-reporter",
-      "**/cavy-native-reporter/**",
-      "**/chalk/",
-      "**/chalk/**",
-      "**/lru-cache/",
-      "**/lru-cache/**",
-      "**/prop-types",
-      "**/prop-types/**",
-      "**/patch-package",
-      "**/patch-package/**",
-      "**/react",
-      "**/react/**",
-      "**/react-native",
-      "**/react-native/**",
-      "**/@react-native-community",
-      "**/@react-native-community/**"
-    ]
-  },
+  "workspaces": [
+    "packages/*",
+    "tests_react_native"
+  ],
   "dependencies": {
     "axios": "^0.26.0",
     "shelljs": "^0.8.5"
   },
-  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "yarn@4.6.0"
 }
