@@ -2658,7 +2658,7 @@ __metadata:
     eslint-config-prettier: "npm:^8.5.0"
     eslint-plugin-prettier: "npm:^4.0.0"
     genversion: "npm:^3.0.2"
-    prettier: "npm:^2.5.1"
+    prettier: "npm:^3.8.1"
     rimraf: "npm:^3.0.2"
     typescript: "npm:^5.7.2"
   peerDependencies:
@@ -2723,7 +2723,7 @@ __metadata:
     eslint-plugin-react-native: "npm:^4.1.0"
     google-java-format: "npm:^1.4.0"
     lerna: "npm:^9.0.7"
-    prettier: "npm:^2.5.1"
+    prettier: "npm:^3.8.1"
     remark-link-rewrite: "npm:^1.0.7"
     rimraf: "npm:^3.0.2"
     semantic-release: "npm:^24.2.0"
@@ -16217,12 +16217,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettier@npm:^2.5.1":
-  version: 2.8.8
-  resolution: "prettier@npm:2.8.8"
+"prettier@npm:^3.8.1":
+  version: 3.8.1
+  resolution: "prettier@npm:3.8.1"
   bin:
-    prettier: bin-prettier.js
-  checksum: 10c0/463ea8f9a0946cd5b828d8cf27bd8b567345cf02f56562d5ecde198b91f47a76b7ac9eae0facd247ace70e927143af6135e8cf411986b8cb8478784a4d6d724a
+    prettier: bin/prettier.cjs
+  checksum: 10c0/33169b594009e48f570471271be7eac7cdcf88a209eed39ac3b8d6d78984039bfa9132f82b7e6ba3b06711f3bfe0222a62a1bfb87c43f50c25a83df1b78a2c42
   languageName: node
   linkType: hard
 

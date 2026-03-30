@@ -26,7 +26,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
     "genversion": "^3.0.2",
-    "prettier": "^2.5.1",
+    "prettier": "^3.8.1",
     "rimraf": "^3.0.2",
     "typescript": "^5.7.2"
   },
