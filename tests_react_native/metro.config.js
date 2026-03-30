@@ -2,8 +2,6 @@
  * Copyright (c) 2016-present Invertase Limited
  */
 
-/* eslint-disable */
-
 const { resolve, join } = require('path');
 
 const exclusionList = require('metro-config/src/defaults/exclusionList');

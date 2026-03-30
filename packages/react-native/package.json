@@ -6,7 +6,6 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "validate:all:js": "eslint . --ext .js,.jsx,.ts,.tsx --resolve-plugins-relative-to .",
     "validate:all:ts": "tsc --project ./",
     "build": "genversion --es6 --semi src/version.ts && tsc",
     "build:clean": "rimraf android/libs && rimraf android/build && rimraf ios/build && rimraf dist",
@@ -20,11 +19,6 @@
   },
   "devDependencies": {
     "@types/react-native": "0.67.2",
-    "@typescript-eslint/eslint-plugin": "^5.14.0",
-    "@typescript-eslint/parser": "^5.14.0",
-    "eslint": "^7.32.0",
-    "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-prettier": "^4.0.0",
     "genversion": "^3.0.2",
     "prettier": "^3.8.1",
     "rimraf": "^3.0.2",

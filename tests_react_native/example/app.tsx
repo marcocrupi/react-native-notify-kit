@@ -90,7 +90,7 @@ async function onMessage(message: RemoteMessage): Promise<void> {
 }
 
 function Root(): any {
-  const [id, _] = React.useState<string | null>(null);
+  const [id] = React.useState<string | null>(null);
 
   async function init(): Promise<void> {
     const fcmToken = await firebase.messaging().getToken();

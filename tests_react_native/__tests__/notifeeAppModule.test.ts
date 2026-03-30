@@ -5,7 +5,6 @@ describe('Notifee App Module', () => {
     expect(Notifee).toBeDefined();
   });
   test('Version from module package.json matches SDK_VERSION', () => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const notifeePackageJSON = require('@notifee/react-native/package.json');
     expect(Notifee.SDK_VERSION).toEqual(notifeePackageJSON.version);
   });

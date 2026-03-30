@@ -1,7 +1,7 @@
 /**
  * @format
  */
-/* eslint-env jest */
+/* global jest */
 
 import NotifeeJSEventEmitter from '../NotifeeJSEventEmitter';
 

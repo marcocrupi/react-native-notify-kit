@@ -1,4 +1,4 @@
-path = require('path');
+const path = require('path');
 
 const reactNativePaths = ['ios', 'android', 'packages/react-native', 'build_ios_core.sh'];
 
