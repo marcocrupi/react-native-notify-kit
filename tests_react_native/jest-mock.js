@@ -5,6 +5,7 @@ jest.mock('react-native', () => {
 
   RN.NativeModules.NotifeeApiModule = {
     addListener: () => jest.fn(),
+    removeListeners: () => jest.fn(),
   };
 
   RN.Platform = jest.fn().mockImplementation(() => ({
