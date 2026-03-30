@@ -11,13 +11,16 @@ buildscript {
     }
 
     dependencies {
-      classpath("com.android.tools.build:gradle:7.0.3")
+      classpath("com.android.tools.build:gradle:8.2.2")
+      classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
     }
   }
 }
 
 plugins {
-  id "io.invertase.gradle.build" version "1.5"
+  id "com.android.library"
+  id "com.facebook.react"
+  id "org.jetbrains.kotlin.android"
 }
 
 // https://github.com/facebook/react-native/blob/a70354df12ef71aec08583cca4f1fed5fb77d874/ReactAndroid/build.gradle#L168-L201
@@ -46,45 +49,41 @@ if (project.hasProperty('reactNativeProjects')) {
   project.evaluationDependsOn(':app')
 }
 
-project.ext {
-  set('react-native', [
-    versions: [
-      android: [
-        minSdk    : 20,
-        targetSdk : 33,
-        compileSdk: 34,
-        // optional as gradle.buildTools comes with one by default
-        // overriding here though to match the version RN uses
-        // buildTools: "29.0.2"
-      ],
-    ],
-  ])
-}
-
 android {
-  def agpVersion = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
-  // Check AGP version for backward compatibility w/react-native versions still on gradle plugin 6
-  if (agpVersion.tokenize('.')[0].toInteger() >= 7) {
-    namespace = "io.invertase.notifee"
-  }
+  namespace = "io.invertase.notifee"
+  compileSdk = 35
 
   defaultConfig {
+    minSdk = 24
+    targetSdk = 33
     multiDexEnabled true
   }
-  lintOptions {
+
+  lint {
     disable 'GradleCompatible'
     abortOnError false
   }
+
   compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
   }
+
+  kotlinOptions {
+    jvmTarget = "17"
+  }
+
+  sourceSets {
+    main {
+      kotlin.srcDirs += 'src/main/kotlin'
+    }
+  }
+
   buildTypes {
     release {
       consumerProguardFiles 'proguard-rules.pro'
     }
   }
-  compileSdkVersion = 34
 }
 
 repositories {
@@ -104,12 +103,11 @@ dependencies {
   implementation 'androidx.work:work-runtime:2.8.0' // https://developer.android.com/jetpack/androidx/releases/work
   implementation 'org.greenrobot:eventbus:3.3.1' // https://github.com/greenrobot/EventBus/releases
   implementation 'androidx.lifecycle:lifecycle-process:2.3.1'
+
+  //noinspection GradleDynamicVersion
+  implementation 'com.facebook.react:react-android:+'
 }
 
-ReactNative.shared.applyPackageVersion()
-ReactNative.shared.applyDefaultExcludes()
-ReactNative.module.applyAndroidVersions()
-ReactNative.module.applyReactNativeDependency("api")
 rootProject.allprojects {
   repositories {
     maven {
