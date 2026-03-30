@@ -456,7 +456,9 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
     }
 
     if (isAndroid && this.native.getConstants().ANDROID_API_LEVEL >= 26) {
-      return this.native.getChannelGroup(channelGroupId) as Promise<NativeAndroidChannelGroup | null>;
+      return this.native.getChannelGroup(
+        channelGroupId,
+      ) as Promise<NativeAndroidChannelGroup | null>;
     }
 
     return Promise.resolve(null);
@@ -521,32 +523,31 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
     permissions: IOSNotificationPermissions = {},
   ): Promise<NotificationSettings> => {
     if (isAndroid) {
-      return (this.native.requestPermission({}) as Promise<any>)
-        .then(
-          ({
+      return (this.native.requestPermission({}) as Promise<any>).then(
+        ({
+          authorizationStatus,
+          android,
+        }: Pick<NotificationSettings, 'authorizationStatus' | 'android'>) => {
+          return {
             authorizationStatus,
             android,
-          }: Pick<NotificationSettings, 'authorizationStatus' | 'android'>) => {
-            return {
+            ios: {
+              alert: 1,
+              badge: 1,
+              criticalAlert: 1,
+              showPreviews: 1,
+              sound: 1,
+              carPlay: 1,
+              lockScreen: 1,
+              announcement: 1,
+              notificationCenter: 1,
+              inAppNotificationSettings: 1,
               authorizationStatus,
-              android,
-              ios: {
-                alert: 1,
-                badge: 1,
-                criticalAlert: 1,
-                showPreviews: 1,
-                sound: 1,
-                carPlay: 1,
-                lockScreen: 1,
-                announcement: 1,
-                notificationCenter: 1,
-                inAppNotificationSettings: 1,
-                authorizationStatus,
-              },
-              web: {},
-            };
-          },
-        );
+            },
+            web: {},
+          };
+        },
+      );
     }
 
     if (isIOS) {
@@ -557,22 +558,21 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
         throw new Error(`notifee.requestPermission(*) ${e.message}`);
       }
 
-      return (this.native.requestPermission(options) as Promise<any>)
-        .then(
-          ({
+      return (this.native.requestPermission(options) as Promise<any>).then(
+        ({
+          authorizationStatus,
+          ios,
+        }: Pick<NotificationSettings, 'authorizationStatus' | 'ios'>) => {
+          return {
             authorizationStatus,
             ios,
-          }: Pick<NotificationSettings, 'authorizationStatus' | 'ios'>) => {
-            return {
-              authorizationStatus,
-              ios,
-              android: {
-                alarm: AndroidNotificationSetting.ENABLED,
-              },
-              web: {},
-            };
-          },
-        );
+            android: {
+              alarm: AndroidNotificationSetting.ENABLED,
+            },
+            web: {},
+          };
+        },
+      );
     }
 
     // assume web
@@ -645,51 +645,49 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
 
   public getNotificationSettings = (): Promise<NotificationSettings> => {
     if (isAndroid) {
-      return (this.native.getNotificationSettings() as Promise<any>)
-        .then(
-          ({
+      return (this.native.getNotificationSettings() as Promise<any>).then(
+        ({
+          authorizationStatus,
+          android,
+        }: Pick<NotificationSettings, 'authorizationStatus' | 'android'>) => {
+          return {
             authorizationStatus,
             android,
-          }: Pick<NotificationSettings, 'authorizationStatus' | 'android'>) => {
-            return {
+            ios: {
+              alert: 1,
+              badge: 1,
+              criticalAlert: 1,
+              showPreviews: 1,
+              sound: 1,
+              carPlay: 1,
+              lockScreen: 1,
+              announcement: 1,
+              notificationCenter: 1,
+              inAppNotificationSettings: 1,
               authorizationStatus,
-              android,
-              ios: {
-                alert: 1,
-                badge: 1,
-                criticalAlert: 1,
-                showPreviews: 1,
-                sound: 1,
-                carPlay: 1,
-                lockScreen: 1,
-                announcement: 1,
-                notificationCenter: 1,
-                inAppNotificationSettings: 1,
-                authorizationStatus,
-              },
-              web: {},
-            };
-          },
-        );
+            },
+            web: {},
+          };
+        },
+      );
     }
 
     if (isIOS) {
-      return (this.native.getNotificationSettings() as Promise<any>)
-        .then(
-          ({
+      return (this.native.getNotificationSettings() as Promise<any>).then(
+        ({
+          authorizationStatus,
+          ios,
+        }: Pick<NotificationSettings, 'authorizationStatus' | 'ios'>) => {
+          return {
             authorizationStatus,
             ios,
-          }: Pick<NotificationSettings, 'authorizationStatus' | 'ios'>) => {
-            return {
-              authorizationStatus,
-              ios,
-              android: {
-                alarm: AndroidNotificationSetting.ENABLED,
-              },
-              web: {},
-            };
-          },
-        );
+            android: {
+              alarm: AndroidNotificationSetting.ENABLED,
+            },
+            web: {},
+          };
+        },
+      );
     }
 
     // assume web

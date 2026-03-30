@@ -16,7 +16,12 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "react-native": ["../../tests_react_native_new/node_modules/react-native"],
+      "react-native/*": ["../../tests_react_native_new/node_modules/react-native/*"]
+    }
   },
   "exclude": ["node_modules", "./src/__mocks__"],
   "include": ["./src"]

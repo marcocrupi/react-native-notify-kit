@@ -24,12 +24,23 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "lib": ["es6"]
+    "lib": ["es6"],
+    "baseUrl": ".",
+    "paths": {
+      "react-native": ["tests_react_native_new/node_modules/react-native"],
+      "react-native/*": ["tests_react_native_new/node_modules/react-native/*"]
+    },
+    "typeRoots": [
+      "./tests_react_native/node_modules/@types",
+      "./tests_react_native_new/node_modules/@types",
+      "./node_modules/@types"
+    ]
   },
   "exclude": [
     "node_modules",
     "babel.config.js",
     "metro.config.js",
-    "tests_react_native/jest.config.js"
+    "tests_react_native/jest.config.js",
+    "packages/react-native/src/__mocks__"
   ]
 }

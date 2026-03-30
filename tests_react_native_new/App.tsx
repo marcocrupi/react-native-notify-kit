@@ -72,9 +72,7 @@ function App() {
     run('getNotificationSettings', () => notifee.getNotificationSettings());
 
   const getDisplayed = () =>
-    run('getDisplayedNotifications', () =>
-      notifee.getDisplayedNotifications(),
-    );
+    run('getDisplayedNotifications', () => notifee.getDisplayedNotifications());
 
   const createTrigger = () =>
     run('createTriggerNotification', async () => {
@@ -95,8 +93,7 @@ function App() {
       );
     });
 
-  const getBadge = () =>
-    run('getBadgeCount', () => notifee.getBadgeCount());
+  const getBadge = () => run('getBadgeCount', () => notifee.getBadgeCount());
 
   const setBadge = () =>
     run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
@@ -132,7 +129,8 @@ function App() {
           <TouchableOpacity
             key={b.label}
             style={styles.button}
-            onPress={b.onPress}>
+            onPress={b.onPress}
+          >
             <Text style={styles.buttonText}>{b.label}</Text>
           </TouchableOpacity>
         ))}
@@ -161,8 +159,18 @@ const styles = StyleSheet.create({
   },
   buttonText: { color: '#fff', fontSize: 13 },
   logTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  logContainer: { flex: 1, backgroundColor: '#1e1e1e', borderRadius: 8, padding: 8 },
-  logEntry: { color: '#0f0', fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 2 },
+  logContainer: {
+    flex: 1,
+    backgroundColor: '#1e1e1e',
+    borderRadius: 8,
+    padding: 8,
+  },
+  logEntry: {
+    color: '#0f0',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginBottom: 2,
+  },
 });
 
 export default App;

@@ -94,4 +94,20 @@ export default tseslint.config(
       '@typescript-eslint/no-shadow': 'error',
     },
   },
+
+  // TurboModule spec files intentionally use Object in the codegen surface.
+  {
+    files: ['packages/react-native/src/specs/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-wrapper-object-types': 'off',
+    },
+  },
+
+  // React Native 0.84 no longer exports a compatible top-level EventEmitter type.
+  {
+    files: ['packages/react-native/src/NotifeeJSEventEmitter.ts'],
+    rules: {
+      '@react-native/no-deep-imports': 'off',
+    },
+  },
 );
