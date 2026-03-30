@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.social_media_url    = 'http://twitter.com/notifee_app'
 
   s.cocoapods_version        = '>= 1.10.0'
-  s.ios.deployment_target   = '10.0'
+  s.ios.deployment_target   = '15.1'
     
   if defined?($NotifeeCoreFromSources) && $NotifeeCoreFromSources == true
     # internal dev flag used by Notifee devs, ignore
