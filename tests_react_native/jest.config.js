@@ -1,9 +1,17 @@
+const rnPreset = require('./node_modules/react-native/jest-preset.js');
+
 module.exports = {
   maxConcurrency: 30,
-  preset: './tests_react_native/node_modules/react-native/jest-preset.js',
+  ...rnPreset,
   transform: {
-    '^.+\\.(js)$': 'babel-jest',
-    '\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(js)$': require.resolve('babel-jest'),
+    '\\.(ts|tsx)$': require.resolve('ts-jest'),
+  },
+  globals: {
+    'ts-jest': {
+      tsconfig: require('path').resolve(__dirname, 'tsconfig.jest.json'),
+      diagnostics: false,
+    },
   },
   rootDir: '..',
   testMatch: [
