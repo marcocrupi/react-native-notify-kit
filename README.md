@@ -1,29 +1,30 @@
 <!-- markdownlint-disable MD033 -->
 <p align="center">
-  <a href="https://invertase.io">
-    <img width="140px" src="https://static.invertase.io/assets/notifee-logo.png"><br/>
-  </a>
-  <h3 align="center">Notifee Notifications</h3>
-  <a href="https://invertase.link/discord">
-   <img src="https://img.shields.io/discord/295953187817521152.svg?style=flat-square&colorA=7289da&label=Chat%20on%20Discord" alt="Chat on Discord">
- </a>
+  <img width="140px" src="https://static.invertase.io/assets/notifee-logo.png"><br/>
+  <h3 align="center">Notifee for React Native</h3>
 </p>
 
 <hr/>
 
 <!-- markdownlint-disable MD041 -->
 
-A feature rich Android & iOS notifications library for React Native.
+An actively maintained fork of Notifee for React Native notifications, continued and improved by Marco Crupi.
+
+This repository preserves the original Notifee APIs and native core while continuing development for modern React Native releases.
+
+## Project Status
+
+- Maintained fork of Notifee
+- New Architecture only
+- Minimum supported React Native: `0.73`
+- Development target: React Native `0.84`
+- License: `Apache-2.0`
 
 [> Learn More](https://docs.page/invertase/notifee/)
 
----
-
-> Notifee is going Noti-'free' - free and fully open source. [[Learn more]](https://invertase.io/blog/open-sourcing-notifee)
-
----
-
 ## Documentation
+
+The upstream Notifee documentation remains the best reference for the public API and platform guides used by this fork.
 
 - [Overview](https://docs.page/invertase/notifee/react-native/overview)
 - [Reference](https://docs.page/invertase/notifee/react-native/reference)
@@ -58,15 +59,10 @@ Below you'll find guides that cover the supported iOS features.
 
 ## License
 
-- See [LICENSE](/LICENSE)
+- See [LICENSE](/LICENSE). This fork remains licensed under Apache-2.0.
 
 ---
 
 <p align="center">
-  <a href="https://invertase.io/?utm_source=readme&utm_medium=footer&utm_campaign=docs.page">
-    <img width="75px" src="https://static.invertase.io/assets/invertase/invertase-rounded-avatar.png">
-  </a>
-  <p align="center">
-    Built and maintained by <a href="https://invertase.io/?utm_source=readme&utm_medium=footer&utm_campaign=docs.page">Invertase</a>.
-  </p>
+  Originally built by Invertase. This fork is independently maintained by Marco Crupi.
 </p>
