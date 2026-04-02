@@ -13782,7 +13782,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jest@npm:^29.6.3":
+"jest@npm:^29.6.3, jest@npm:^29.7.0":
   version: 29.7.0
   resolution: "jest@npm:29.7.0"
   dependencies:
@@ -19236,9 +19236,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "react-native-notify-kit@workspace:packages/react-native"
   dependencies:
+    "@babel/preset-env": "npm:^7.25.3"
+    "@babel/runtime": "npm:^7.25.0"
+    "@react-native/babel-preset": "npm:0.84.1"
+    "@types/jest": "npm:^29.5.13"
+    babel-jest: "npm:^29.7.0"
     genversion: "npm:^3.0.2"
+    jest: "npm:^29.7.0"
     prettier: "npm:^3.8.1"
+    react-native: "npm:0.84.1"
     rimraf: "npm:^3.0.2"
+    ts-jest: "npm:^29.2.5"
     typescript: "npm:^5.9.3"
   peerDependencies:
     react-native: ">=0.73.0"

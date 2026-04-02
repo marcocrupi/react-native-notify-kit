@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest", "react-native"],
+    "lib": ["es2017"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  }
+}
