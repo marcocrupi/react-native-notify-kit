@@ -84,7 +84,7 @@ object NotifeeReactUtils {
     fun sendEvent(eventName: String, eventMap: com.facebook.react.bridge.WritableMap) {
         try {
             val reactContext = HeadlessTask.getReactContext(EventSubscriber.getContext()) ?: return
-            if (!reactContext.hasActiveCatalystInstance()) return
+            if (!reactContext.hasActiveReactInstance()) return
 
             reactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)

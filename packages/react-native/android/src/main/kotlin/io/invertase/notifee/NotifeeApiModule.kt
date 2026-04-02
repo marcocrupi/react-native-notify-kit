@@ -157,7 +157,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
 
     override fun openAlarmPermissionSettings(promise: Promise) {
         Notifee.getInstance()
-            .openAlarmPermissionSettings(currentActivity) { e, _ ->
+            .openAlarmPermissionSettings(getCurrentActivity()) { e, _ ->
                 NotifeeReactUtils.promiseResolver(promise, e)
             }
     }
@@ -220,7 +220,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
 
     override fun getInitialNotification(promise: Promise) {
         Notifee.getInstance()
-            .getInitialNotification(currentActivity) { e, bundle ->
+            .getInitialNotification(getCurrentActivity()) { e, bundle ->
                 NotifeeReactUtils.promiseResolver(promise, e, bundle)
             }
     }
@@ -242,7 +242,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
             return
         }
 
-        val activity = currentActivity as? PermissionAwareActivity
+        val activity = getCurrentActivity() as? PermissionAwareActivity
         if (activity == null) {
             Logger.d(
                 "requestPermission",
@@ -277,14 +277,14 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
 
     override fun openNotificationSettings(channelId: String?, promise: Promise) {
         Notifee.getInstance()
-            .openNotificationSettings(channelId, currentActivity) { e, _ ->
+            .openNotificationSettings(channelId, getCurrentActivity()) { e, _ ->
                 NotifeeReactUtils.promiseResolver(promise, e)
             }
     }
 
     override fun openBatteryOptimizationSettings(promise: Promise) {
         Notifee.getInstance()
-            .openBatteryOptimizationSettings(currentActivity) { e, _ ->
+            .openBatteryOptimizationSettings(getCurrentActivity()) { e, _ ->
                 NotifeeReactUtils.promiseResolver(promise, e)
             }
     }
@@ -305,7 +305,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
 
     override fun openPowerManagerSettings(promise: Promise) {
         Notifee.getInstance()
-            .openPowerManagerSettings(currentActivity) { e, _ ->
+            .openPowerManagerSettings(getCurrentActivity()) { e, _ ->
                 NotifeeReactUtils.promiseResolver(promise, e)
             }
     }
