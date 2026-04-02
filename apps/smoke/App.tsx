@@ -2,12 +2,12 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ScrollView,
   Text,
-  TouchableOpacity,
+  Pressable,
   Platform,
   StyleSheet,
   View,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import notifee, {
   TriggerType,
   EventType,
@@ -15,18 +15,21 @@ import notifee, {
 } from 'react-native-notify-kit';
 import messaging from '@react-native-firebase/messaging';
 
-type LogEntry = { time: string; msg: string };
+type LogEntry = { id: number; time: string; msg: string };
+type Section = {
+  title: string;
+  buttons: Array<{ label: string; onPress: () => void }>;
+};
 
 function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const logRef = useRef<((msg: string) => void) | undefined>(undefined);
+  const logIdRef = useRef(0);
 
   const log = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString();
-    setLogs(prev => [{ time, msg }, ...prev]);
+    const id = ++logIdRef.current;
+    setLogs(prev => [{ id, time, msg }, ...prev]);
   }, []);
-
-  logRef.current = log;
 
   // Create default Android channel at startup
   useEffect(() => {
@@ -37,19 +40,20 @@ function App() {
           name: 'Default Channel',
           importance: AndroidImportance.HIGH,
         })
-        .then(() => logRef.current?.('startup: default channel created'))
-        .catch(e => logRef.current?.(`startup: channel error ${e.message}`));
+        .then(() => log('startup: default channel created'))
+        .catch((e: unknown) => {
+          const message = e instanceof Error ? e.message : String(e);
+          log(`startup: channel error ${message}`);
+        });
     }
-  }, []);
+  }, [log]);
 
   // Display incoming FCM messages as local notifications when app is in foreground.
   // Wrapped in try/catch so the app works without Firebase configured.
   useEffect(() => {
     try {
       const unsubscribe = messaging().onMessage(async remoteMessage => {
-        logRef.current?.(
-          `FCM received: ${remoteMessage.notification?.title ?? 'no title'}`,
-        );
+        log(`FCM received: ${remoteMessage.notification?.title ?? 'no title'}`);
         await notifee.displayNotification({
           title: remoteMessage.notification?.title ?? 'Push Notification',
           body: remoteMessage.notification?.body ?? '',
@@ -59,20 +63,18 @@ function App() {
       return unsubscribe;
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      logRef.current?.(`FCM not available: ${message}`);
+      log(`FCM not available: ${message}`);
     }
-  }, []);
+  }, [log]);
 
   // Register foreground event listener with proper cleanup
   useEffect(() => {
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       const typeName = EventType[type] || String(type);
-      logRef.current?.(
-        `ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'}`,
-      );
+      log(`ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'}`);
     });
     return unsubscribe;
-  }, []);
+  }, [log]);
 
   const run = useCallback(
     async (label: string, fn: () => Promise<unknown>) => {
@@ -148,56 +150,122 @@ function App() {
   const setBadge = () =>
     run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
 
-  const buttons: Array<{ label: string; onPress: () => void }> = [
-    { label: 'requestPermission', onPress: requestPermission },
-    { label: 'createChannel (Android)', onPress: createChannel },
-    { label: 'displayNotification', onPress: displayNotification },
-    { label: 'cancelAllNotifications', onPress: cancelAll },
-    { label: 'getNotificationSettings', onPress: getSettings },
-    { label: 'getDisplayedNotifications', onPress: getDisplayed },
-    { label: 'createTriggerNotification (+10s)', onPress: createTrigger },
-    { label: 'getBadgeCount (iOS)', onPress: getBadge },
-    { label: 'setBadgeCount(5) (iOS)', onPress: setBadge },
+  const sections: Section[] = [
+    {
+      title: 'Permissions',
+      buttons: [{ label: 'requestPermission', onPress: requestPermission }],
+    },
+    {
+      title: 'Channels',
+      buttons: [{ label: 'createChannel (Android)', onPress: createChannel }],
+    },
+    {
+      title: 'Notifications',
+      buttons: [
+        { label: 'displayNotification', onPress: displayNotification },
+        { label: 'cancelAllNotifications', onPress: cancelAll },
+        { label: 'getDisplayedNotifications', onPress: getDisplayed },
+        { label: 'getNotificationSettings', onPress: getSettings },
+      ],
+    },
+    {
+      title: 'Triggers',
+      buttons: [
+        { label: 'createTriggerNotification (+10s)', onPress: createTrigger },
+      ],
+    },
+    {
+      title: 'Badge',
+      buttons: [
+        { label: 'getBadgeCount (iOS)', onPress: getBadge },
+        { label: 'setBadgeCount(5) (iOS)', onPress: setBadge },
+      ],
+    },
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Notifee Smoke Test</Text>
-      <View style={styles.buttons}>
-        {buttons.map(b => (
-          <TouchableOpacity
-            key={b.label}
-            style={styles.button}
-            onPress={b.onPress}
-          >
-            <Text style={styles.buttonText}>{b.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <Text style={styles.logTitle}>Log</Text>
-      <ScrollView style={styles.logContainer}>
-        {logs.map((entry, i) => (
-          <Text key={i} style={styles.logEntry}>
-            [{entry.time}] {entry.msg}
-          </Text>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Notifee Smoke Test</Text>
+        <ScrollView style={styles.sectionsContainer}>
+          {sections.map(section => (
+            <View key={section.title} style={styles.section}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <View style={styles.sectionButtons}>
+                {section.buttons.map(b => (
+                  <Pressable
+                    key={b.label}
+                    style={({ pressed }) => [
+                      styles.button,
+                      pressed && styles.buttonPressed,
+                    ]}
+                    onPress={b.onPress}
+                    android_ripple={{ color: 'rgba(255,255,255,0.3)' }}
+                  >
+                    <Text style={styles.buttonText}>{b.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.logHeader}>
+          <Text style={styles.logTitle}>Log</Text>
+          <Pressable onPress={() => setLogs([])} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>Clear</Text>
+          </Pressable>
+        </View>
+        <ScrollView style={styles.logContainer}>
+          {logs.map(entry => (
+            <Text key={entry.id} style={styles.logEntry}>
+              [{entry.time}] {entry.msg}
+            </Text>
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
   title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
-  buttons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  sectionsContainer: { flexShrink: 1, marginBottom: 12 },
+  section: { marginBottom: 12 },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#555',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    paddingLeft: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  sectionButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   button: {
     backgroundColor: '#007AFF',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
   },
+  buttonPressed: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: 13 },
-  logTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  logHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  logTitle: { fontSize: 16, fontWeight: '600' },
+  clearButton: {
+    backgroundColor: '#ff3b30',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  clearButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   logContainer: {
     flex: 1,
     backgroundColor: '#1e1e1e',
