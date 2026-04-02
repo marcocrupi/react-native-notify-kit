@@ -13,6 +13,7 @@ import notifee, {
   EventType,
   AndroidImportance,
 } from 'react-native-notify-kit';
+import messaging from '@react-native-firebase/messaging';
 
 type LogEntry = { time: string; msg: string };
 
@@ -38,6 +39,27 @@ function App() {
         })
         .then(() => logRef.current?.('startup: default channel created'))
         .catch(e => logRef.current?.(`startup: channel error ${e.message}`));
+    }
+  }, []);
+
+  // Display incoming FCM messages as local notifications when app is in foreground.
+  // Wrapped in try/catch so the app works without Firebase configured.
+  useEffect(() => {
+    try {
+      const unsubscribe = messaging().onMessage(async remoteMessage => {
+        logRef.current?.(
+          `FCM received: ${remoteMessage.notification?.title ?? 'no title'}`,
+        );
+        await notifee.displayNotification({
+          title: remoteMessage.notification?.title ?? 'Push Notification',
+          body: remoteMessage.notification?.body ?? '',
+          android: { channelId: 'default' },
+        });
+      });
+      return unsubscribe;
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      logRef.current?.(`FCM not available: ${message}`);
     }
   }, []);
 
