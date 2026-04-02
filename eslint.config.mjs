@@ -75,7 +75,7 @@ export default tseslint.config(
 
   // Test files
   {
-    files: ['tests_react_native/**/*.{ts,tsx,js,jsx}'],
+    files: ['packages/react-native/__tests__/**/*.{ts,tsx,js,jsx}'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-unused-expressions': 'off',

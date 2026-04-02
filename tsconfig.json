@@ -1,8 +1,7 @@
 {
   "include": [
     "packages/react-native/src/**/*.ts",
-    "tests_react_native/__tests__",
-    "tests_react_native/example"
+    "packages/react-native/__tests__"
   ],
   "compilerOptions": {
     "noEmit": true,
@@ -31,7 +30,6 @@
       "react-native/*": ["tests_react_native_new/node_modules/react-native/*"]
     },
     "typeRoots": [
-      "./tests_react_native/node_modules/@types",
       "./tests_react_native_new/node_modules/@types",
       "./node_modules/@types"
     ]
@@ -40,7 +38,7 @@
     "node_modules",
     "babel.config.js",
     "metro.config.js",
-    "tests_react_native/jest.config.js",
+    "packages/react-native/jest.config.js",
     "packages/react-native/src/__mocks__"
   ]
 }
