@@ -1,131 +1,212 @@
-<p align="center">
-  <a href="https://notifee.app">
-    <img width="160px" src="https://notifee.app/logo-icon.png"><br/>
-  </a>
-  <h2 align="center">Notifee - React Native</h2>
-</p>
+# react-native-notify-kit
 
----
+A feature-rich local and push notification library for React Native (Android & iOS).
 
-A feature rich Android & iOS notifications library for React Native.
+Maintained fork of [Notifee](https://github.com/invertase/notifee) — New Architecture only (TurboModules).
 
-[> Learn More](https://notifee.app/)
+## Requirements
+
+- React Native >= 0.73 (New Architecture required)
+- Android: minSdk 24, compileSdk 35
+- iOS: deployment target 15.1+
+- Node.js >= 22
 
 ## Installation
 
 ```bash
 yarn add react-native-notify-kit
+# or
+npm install react-native-notify-kit
+```
+
+### iOS
+
+```bash
+cd ios && pod install
+```
+
+### Android
+
+No additional steps — the library is auto-linked via React Native CLI.
+
+## Quick Start
+
+### 1. Request permission (required on Android 13+ and iOS)
+
+```ts
+import notifee from 'react-native-notify-kit';
+
+const settings = await notifee.requestPermission();
+```
+
+### 2. Create a channel (Android only, required for Android 8+)
+
+```ts
+import notifee, { AndroidImportance } from 'react-native-notify-kit';
+
+await notifee.createChannel({
+  id: 'default',
+  name: 'Default Channel',
+  importance: AndroidImportance.HIGH,
+});
+```
+
+### 3. Display a notification
+
+```ts
+await notifee.displayNotification({
+  title: 'Hello',
+  body: 'This is a local notification',
+  android: { channelId: 'default' },
+});
+```
+
+### 4. Handle events
+
+In your `index.js` (before `AppRegistry.registerComponent`):
+
+```ts
+import notifee from 'react-native-notify-kit';
+
+// Background/killed state events
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  console.log('Background event:', type, detail.notification?.id);
+});
+```
+
+In your React component:
+
+```ts
+import { useEffect } from 'react';
+import notifee, { EventType } from 'react-native-notify-kit';
+
+useEffect(() => {
+  return notifee.onForegroundEvent(({ type, detail }) => {
+    if (type === EventType.PRESS) {
+      console.log('Notification pressed:', detail.notification?.id);
+    }
+  });
+}, []);
+```
+
+## Push Notifications (Firebase)
+
+This library handles notification **display and management**. For receiving push notifications, pair it with [`@react-native-firebase/messaging`](https://rnfirebase.io/messaging/usage):
+
+### Android setup
+
+1. Add Firebase dependencies to your app:
+
+   ```bash
+   yarn add @react-native-firebase/app @react-native-firebase/messaging
+   ```
+
+2. Add the google-services plugin to `android/build.gradle`:
+
+   ```gradle
+   classpath("com.google.gms:google-services:4.4.2")
+   ```
+
+3. Apply the plugin in `android/app/build.gradle`:
+
+   ```gradle
+   apply plugin: "com.google.gms.google-services"
+   ```
+
+4. Download `google-services.json` from [Firebase Console](https://console.firebase.google.com/) and place it in `android/app/`.
+
+5. Add `POST_NOTIFICATIONS` permission to `AndroidManifest.xml` (required for Android 13+):
+
+   ```xml
+   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+   ```
+
+### iOS setup
+
+1. Download `GoogleService-Info.plist` from Firebase Console and add it to your Xcode project.
+
+2. Enable **Push Notifications** capability in Xcode:
+   - Select your target > **Signing & Capabilities** > **+ Capability** > **Push Notifications**
+
+3. Enable **Background Modes** > **Remote notifications**:
+   - Select your target > **Signing & Capabilities** > **+ Capability** > **Background Modes** > check **Remote notifications**
+
+4. Configure APNs certificates or keys in Firebase Console > Project Settings > Cloud Messaging.
+
+### Display a push notification
+
+```ts
+import messaging from '@react-native-firebase/messaging';
+import notifee from 'react-native-notify-kit';
+
+messaging().onMessage(async remoteMessage => {
+  await notifee.displayNotification({
+    title: remoteMessage.notification?.title,
+    body: remoteMessage.notification?.body,
+    android: { channelId: 'default' },
+  });
+});
+```
+
+## iOS Notification Service Extension
+
+To modify push notification content before display (e.g., attach images), create a Notification Service Extension:
+
+1. In Xcode: **File > New > Target > Notification Service Extension**
+2. Add to your Podfile:
+
+   ```ruby
+   target 'YourNSETarget' do
+     pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit/RNNotifeeCore.podspec'
+   end
+   ```
+
+3. Use `NotifeeExtensionHelper` in your `NotificationService.m`:
+
+   ```objc
+   #import "NotifeeExtensionHelper.h"
+
+   - (void)didReceiveNotificationRequest:(UNNotificationRequest *)request
+                      withContentHandler:(void (^)(UNNotificationContent *))contentHandler {
+       self.contentHandler = contentHandler;
+       self.bestAttemptContent = [request.content mutableCopy];
+       [NotifeeExtensionHelper populateNotificationContent:request
+                                               withContent:self.bestAttemptContent
+                                        withContentHandler:contentHandler];
+   }
+   ```
+
+4. Run `cd ios && pod install`
+
+## Jest Testing
+
+Mock the native module in your Jest setup file:
+
+```js
+// jest.setup.js
+jest.mock('react-native-notify-kit', () => require('react-native-notify-kit/jest-mock'));
+```
+
+Add to your Jest config:
+
+```js
+setupFiles: ['<rootDir>/jest.setup.js'],
+transformIgnorePatterns: [
+  'node_modules/(?!(jest-)?react-native|@react-native|react-native-notify-kit)'
+],
 ```
 
 ## Documentation
 
-- [Overview](https://notifee.app/react-native/docs/overview)
-- [Licensing](https://notifee.app/react-native/docs/license-keys)
-- [Reference](https://notifee.app/react-native/reference)
+The upstream Notifee documentation remains a valid reference for the API:
 
-### Android
-
-The APIs for Android allow for creating rich, styled and highly interactive notifications. Below you'll find guides that cover the supported Android features.
-
-| Topic                                                                                    |                                                                                                                                   |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| [Appearance](https://notifee.app/react-native/docs/android/appearance)                   | Change the appearance of a notification; icons, colors, visibility etc.                                                           |
-| [Behaviour](https://notifee.app/react-native/docs/android/behaviour)                     | Customize how a notification behaves when it is delivered to a device; sound, vibration, lights etc.                              |
-| [Channels & Groups](https://notifee.app/react-native/docs/android/channels)              | Organize your notifications into channels & groups to allow users to control how notifications are handled on their device        |
-| [Foreground Service](https://notifee.app/react-native/docs/android/foreground-service)   | Long running background tasks can take advantage of a Android Foreground Services to display an on-going, prominent notification. |
-| [Grouping & Sorting](https://notifee.app/react-native/docs/android/grouping-and-sorting) | Group and sort related notifications in a single notification pane.                                                               |
-| [Interaction](https://notifee.app/react-native/docs/android/interaction)                 | Allow users to interact with your application directly from the notification with actions.                                        |
-| [Progress Indicators](https://notifee.app/react-native/docs/android/progress-indicators) | Show users a progress indicator of an on-going background task, and learn how to keep it updated.                                 |
-| [Styles](https://notifee.app/react-native/docs/android/styles)                           | Style notifications to show richer content, such as expandable images/text, or message conversations.                             |
-| [Timers](https://notifee.app/react-native/docs/android/timers)                           | Display counting timers on your notification, useful for on-going tasks such as a phone call, or event time remaining.            |
-
-### iOS
-
-Below you'll find guides that cover the supported iOS features.
-
-| Topic                                                                |                                                                                                   |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --- |
-| [Appearance](https://notifee.app/react-native/docs/ios/appearance)   | Change now the notification is displayed to your users.                                           |
-| [Behaviour](https://notifee.app/react-native/docs/ios/behaviour)     | Control how notifications behave when they are displayed to a device; sound, crtitial alerts etc. |
-| [Categories](https://notifee.app/react-native/docs/ios/categories)   | Create & assign categories to notifications.                                                      |
-| [Interaction](https://notifee.app/react-native/docs/ios/interaction) | Handle user interaction with your notifications.                                                  |     |
-| [Permissions](https://notifee.app/react-native/docs/ios/permissions) | Request permission from your application users to display notifications.                          |     |
-
-### Jest Testing
-
-To run jest tests after integrating this module, you will need to mock out the native parts of Notifee or you will get an error that looks like:
-
-```bash
- ● Test suite failed to run
-
-    Notifee native module not found.
-
-      59 |     this._nativeModule = NativeModules[this._moduleConfig.nativeModuleName];
-      60 |     if (this._nativeModule == null) {
-    > 61 |       throw new Error('Notifee native module not found.');
-         |             ^
-      62 |     }
-      63 |
-      64 |     return this._nativeModule;
-```
-
-Add this to a setup file in your project e.g. `jest.setup.js`:
-
-If you don't already have a Jest setup file configured, please add the following to your Jest configuration file and create the new jest.setup.js file in project root:
-
-```js
-setupFiles: ['<rootDir>/jest.setup.js'],
-```
-
-You can then add the following line to that setup file to mock `notifee`:
-
-```js
-jest.mock('react-native-notify-kit', () => require('react-native-notify-kit/jest-mock'));
-```
-
-You will also need to add `@notifee` to `transformIgnorePatterns` in your config file (`jest.config.js`):
-
-```bash
-transformIgnorePatterns: [
-    'node_modules/(?!(jest-)?react-native|@react-native|@notifee)'
-]
-```
-
-### Detox Testing
-
-To utilise Detox's functionality to mock a local notification and trigger notifee's event handlers, you will need a payload with a key `__notifee_notification`:
-
-```js
-{
-  title: 'test',
-  body: 'Body',
-  payload: {
-    __notifee_notification: {
-      ios: {
-        foregroundPresentationOptions: {
-          banner: true,
-          list: true,
-        },
-      },
-      data: {}
-    },
-  },
-}
-```
-
-The important part is to make sure you have a `__notifee_notification` object under `payload` with the default properties.
+- [Overview](https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview)
+- [API Reference](https://docs.page/marcocrupi/react-native-notify-kit/react-native/reference)
+- [Android Guides](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/channels)
+- [iOS Guides](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/permissions)
 
 ## License
 
-- See [LICENSE](/LICENSE)
+Apache-2.0 — see [LICENSE](/LICENSE).
 
----
-
-<p>
-  <img align="left" width="50px" src="https://static.invertase.io/assets/invertase/invertase-rounded.png">
-  <p align="left">
-    Built and maintained with 💛 by <a href="https://invertase.io">Invertase</a>.
-  </p>
-</p>
-
----
+Originally built by [Invertase](https://invertase.io). This fork is independently maintained by Marco Crupi.

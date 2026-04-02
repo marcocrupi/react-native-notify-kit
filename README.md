@@ -18,12 +18,43 @@ This repository preserves the original Notifee APIs and native core while contin
 ## Project Status
 
 - Maintained fork of Notifee
-- New Architecture only
+- New Architecture only (TurboModules)
 - Minimum supported React Native: `0.73`
 - Development target: React Native `0.84`
 - License: `Apache-2.0`
 
-[> Learn More](https://docs.page/marcocrupi/react-native-notify-kit/)
+## Installation
+
+```bash
+yarn add react-native-notify-kit
+```
+
+For iOS, run `cd ios && pod install` after installing.
+
+## Quick Start
+
+```ts
+import notifee, { AndroidImportance } from 'react-native-notify-kit';
+
+// 1. Request permission (required on Android 13+ and iOS)
+await notifee.requestPermission();
+
+// 2. Create a channel (Android only, required for Android 8+)
+await notifee.createChannel({
+  id: 'default',
+  name: 'Default Channel',
+  importance: AndroidImportance.HIGH,
+});
+
+// 3. Display a notification
+await notifee.displayNotification({
+  title: 'Hello',
+  body: 'This is a local notification',
+  android: { channelId: 'default' },
+});
+```
+
+For push notifications, Firebase/APNs setup, Notification Service Extension, and more, see the [package README](packages/react-native/README.md).
 
 ## Documentation
 
