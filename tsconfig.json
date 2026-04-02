@@ -26,11 +26,11 @@
     "lib": ["es6"],
     "baseUrl": ".",
     "paths": {
-      "react-native": ["tests_react_native_new/node_modules/react-native"],
-      "react-native/*": ["tests_react_native_new/node_modules/react-native/*"]
+      "react-native": ["apps/smoke/node_modules/react-native"],
+      "react-native/*": ["apps/smoke/node_modules/react-native/*"]
     },
     "typeRoots": [
-      "./tests_react_native_new/node_modules/@types",
+      "./apps/smoke/node_modules/@types",
       "./node_modules/@types"
     ]
   },

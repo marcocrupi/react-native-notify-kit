@@ -54,18 +54,13 @@ The following package scripts are exported to help you run tests;
 - `yarn tests_rn:jest-watch` - run Jest tests in interactive mode and watch for changes.
 - `yarn tests_rn:jest-coverage` - run Jest tests with coverage. Coverage is output to `./coverage`.
 
-### End-to-end Testing
+### Smoke Testing on Device
 
-Tests can be found in the `tests_react_native/specs` directory.
+Use the smoke app at `apps/smoke/` (RN 0.84, New Architecture) for manual testing:
 
-FIXME: Currently to get native code working correctly you need to do this:
-`cd tests_react_native/node_modules/@notifee && \rm -fr react-native && ln -s ../../../packages/react-native .`
-...that allows xcodebuild and android to link in the raw / maybe-unpublished code from local files instead of NPM package
-
-To run tests, use these commands:
-
-- `Android`: run `yarn tests_rn:android:test`
-- `iOS`: run `yarn tests_rn:ios:test`
+- `yarn smoke:android` — run on Android device/emulator
+- `yarn smoke:ios` — run on iOS simulator
+- `yarn smoke:start` — start Metro bundler
 
 ### Linting & type checking files
 

@@ -39,9 +39,9 @@
     "tests_rn:test": "cd packages/react-native && npx jest --config jest.config.js",
     "tests_rn:test-watch": "cd packages/react-native && npx jest --config jest.config.js --watch",
     "tests_rn:test-coverage": "cd packages/react-native && npx jest --config jest.config.js --coverage",
-    "run:android:new": "cd tests_react_native_new && npx react-native run-android",
-    "run:ios:new": "cd tests_react_native_new && npx react-native run-ios",
-    "tests_rn_new:packager": "cd tests_react_native_new && npx react-native start"
+    "smoke:android": "cd apps/smoke && npx react-native run-android",
+    "smoke:ios": "cd apps/smoke && npx react-native run-ios",
+    "smoke:start": "cd apps/smoke && npx react-native start"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.4.1",
@@ -89,7 +89,7 @@
   },
   "workspaces": [
     "packages/*",
-    "tests_react_native_new"
+    "apps/*"
   ],
   "engines": {
     "node": ">=22"

@@ -6,7 +6,7 @@ A Notification Service Extension allows your app to modify notification content 
 
 - Xcode installed
 - Apple Developer account with push notification capability
-- The smoke app (`tests_react_native_new/ios/NotifeeExample.xcworkspace`) open in Xcode
+- The smoke app (`apps/smoke/ios/NotifeeExample.xcworkspace`) open in Xcode
 
 ## Steps
 

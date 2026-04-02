@@ -17,7 +17,6 @@ Monorepo managed with **Lerna + Yarn Workspaces**. Detailed guidance in sub-file
 - `packages/react-native/CLAUDE.md` — TypeScript API, validators, types, native bridge
 - `android/CLAUDE.md` — Native Android core (Java)
 - `ios/CLAUDE.md` — Native iOS core (Objective-C)
-- `tests_react_native/CLAUDE.md` — Jest unit tests + Cavy E2E tests
 - `packages/flutter/` — Flutter package (separate ecosystem, uses Melos — not covered here)
 
 ## Essential Commands
@@ -39,8 +38,8 @@ yarn tests_rn:test              # Jest unit tests
 yarn tests_rn:test-watch        # Jest watch mode
 yarn tests_rn:test-coverage     # Jest with coverage
 yarn test:core:android          # Android JUnit tests (./gradlew testDebugUnit)
-yarn tests_rn:android:test      # E2E Android (cavy-cli)
-yarn tests_rn:ios:test          # E2E iOS (cavy-cli, iPhone 16 simulator)
+yarn smoke:android              # Run smoke app on Android device/emulator
+yarn smoke:ios                  # Run smoke app on iOS simulator
 ```
 
 ### Lint & Validate
@@ -64,19 +63,19 @@ yarn format:rn:ios              # RN bridge Objective-C
 ### Run Test App
 
 ```bash
-yarn tests_rn:packager          # Start Metro bundler
-yarn run:android                # Run Android test app
-yarn run:ios                    # Run iOS test app (iPhone 16 simulator)
+yarn smoke:start                # Start Metro bundler for smoke app
+yarn smoke:android              # Run smoke app on Android
+yarn smoke:ios                  # Run smoke app on iOS
 ```
 
 ### Smoke Test App (New Architecture)
 
-`tests_react_native_new/` — RN 0.84 smoke app with TurboModules for device testing:
+`apps/smoke/` — RN 0.84 smoke app with TurboModules for device testing:
 
 - Firebase/FCM configured (requires `google-services.json` / `GoogleService-Info.plist`)
 - Background event handler + foreground service registered in `index.js`
 - Default Android channel created at startup
-- NSE guide: `tests_react_native_new/NOTIFICATION_SERVICE_EXTENSION.md`
+- NSE guide: `apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md`
 
 ## Architecture
 
