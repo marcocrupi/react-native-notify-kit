@@ -11,9 +11,8 @@ Pod::Spec.new do |s|
                           DESC
   s.homepage            = "https://github.com/marcocrupi/react-native-notify-kit"
   s.license             = package['license']
-  s.authors             = "Invertase Limited"
+  s.authors             = "Marco Crupi"
   s.source              = { :git => "https://github.com/marcocrupi/react-native-notify-kit", :tag => "react-native-notify-kit@#{s.version}" }
-  s.social_media_url    = 'http://twitter.com/notifee_app'
 
   s.cocoapods_version        = '>= 1.10.0'
   s.platforms                = { :ios => '15.1' }

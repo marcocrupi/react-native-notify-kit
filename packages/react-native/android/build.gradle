@@ -55,7 +55,7 @@ android {
 
   defaultConfig {
     minSdk = 24
-    targetSdk = 33
+    targetSdk = 35
     multiDexEnabled true
   }
 

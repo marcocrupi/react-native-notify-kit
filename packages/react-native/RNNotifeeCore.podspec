@@ -9,11 +9,10 @@ Pod::Spec.new do |s|
   s.summary             = <<-DESC
                             A feature rich local notifications library for React Native Android & iOS.
                           DESC
-  s.homepage            = "https://notifee.app"
+  s.homepage            = "https://github.com/marcocrupi/react-native-notify-kit"
   s.license             = package['license']
-  s.authors             = "Invertase Limited"
-  s.source              = { :git => "https://github.com/notifee/react-native-notifee", :tag => "v#{s.version}" }
-  s.social_media_url    = 'http://twitter.com/notifee_app'
+  s.authors             = "Marco Crupi"
+  s.source              = { :git => "https://github.com/marcocrupi/react-native-notify-kit", :tag => "react-native-notify-kit@#{s.version}" }
 
   s.cocoapods_version        = '>= 1.10.0'
   s.ios.deployment_target   = '15.1'
