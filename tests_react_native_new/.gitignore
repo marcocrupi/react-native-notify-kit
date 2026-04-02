@@ -53,6 +53,10 @@ yarn-error.log
 **/fastlane/screenshots
 **/fastlane/test_output
 
+# Firebase credentials (use .example files as templates)
+android/app/google-services.json
+ios/GoogleService-Info.plist
+
 # Bundle artifact
 *.jsbundle
 
