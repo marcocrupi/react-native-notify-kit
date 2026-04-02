@@ -74,18 +74,18 @@ const isIOS = Platform.OS === 'ios';
 
 ## Native Bridge Code
 
-### Android (`android/src/main/java/io/invertase/notifee/`)
+### Android (`android/src/main/kotlin/io/invertase/notifee/`)
 
-6 Java files:
+6 Kotlin files (TurboModule, extends `NativeNotifeeModuleSpec`):
 
-- `NotifeeApiModule.java` — React Native module (`@ReactMethod` annotations)
-- `NotifeePackage.java` — Package registration
-- `NotifeeInitProvider.java` — Auto-initialization via ContentProvider
-- `NotifeeEventSubscriber.java` — Subscribes to core EventBus events
-- `HeadlessTask.java` — Background JS execution
-- `NotifeeReactUtils.java` — Conversion utilities
+- `NotifeeApiModule.kt` — TurboModule bridge (all `@ReactMethod` implementations)
+- `NotifeePackage.kt` — `TurboReactPackage` registration (`isTurboModule=true`)
+- `NotifeeInitProvider.kt` — Auto-initialization via ContentProvider
+- `NotifeeEventSubscriber.kt` — Subscribes to core EventBus events
+- `HeadlessTask.kt` — Background JS execution
+- `NotifeeReactUtils.kt` — Conversion utilities
 
 ### iOS (`ios/RNNotifee/`)
 
-- `NotifeeApiModule.m` — React Native module (`RCT_EXPORT_METHOD` macros)
+- `NotifeeApiModule.mm` — TurboModule bridge (Objective-C++, `getTurboModule:` returns `NativeNotifeeModuleSpecJSI`)
 - `NotifeeExtensionHelper.m` — Notification Service Extension support

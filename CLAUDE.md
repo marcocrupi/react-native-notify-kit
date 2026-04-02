@@ -69,6 +69,15 @@ yarn run:android                # Run Android test app
 yarn run:ios                    # Run iOS test app (iPhone 16 simulator)
 ```
 
+### Smoke Test App (New Architecture)
+
+`tests_react_native_new/` — RN 0.84 smoke app with TurboModules for device testing:
+
+- Firebase/FCM configured (requires `google-services.json` / `GoogleService-Info.plist`)
+- Background event handler + foreground service registered in `index.js`
+- Default Android channel created at startup
+- NSE guide: `tests_react_native_new/NOTIFICATION_SERVICE_EXTENSION.md`
+
 ## Architecture
 
 ### Three-Layer Design
@@ -80,11 +89,11 @@ yarn run:ios                    # Run iOS test app (iPhone 16 simulator)
 ### Key Patterns
 
 - **Validation-first**: All notification objects validated in TypeScript before native calls. Validators throw descriptive errors with property paths.
-- **Event-driven**: Android uses headless tasks (`AppRegistry.registerHeadlessTask()`). iOS uses `RCTEventEmitter` with deferred delivery.
+- **Event-driven**: Android uses headless tasks via `notifee.onBackgroundEvent()`. iOS uses `RCTEventEmitter` with deferred delivery.
 - **Platform detection**: `Platform.OS` checks via `isAndroid`, `isIOS`, `isWeb` constants in `src/utils/`.
 - **Web support**: Stub only — `NotifeeNativeModule.web.ts` returns empty modules. No web functionality implemented.
 - **Auto-linking**: Configured in `packages/react-native/react-native.config.js` (imports `io.invertase.notifee.NotifeePackage`).
-- **CI/CD**: 10 GitHub Actions workflows in `.github/workflows/` (linting, Jest, JUnit, E2E Android/iOS, docs, publish).
+- **CI/CD**: 5 GitHub Actions workflows in `.github/workflows/` (linting, Jest, JUnit, E2E Android, E2E iOS).
 
 ### Native Core Rebuild
 
@@ -97,10 +106,10 @@ After modifying native core code, you MUST rebuild before testing:
 
 ## Platform Requirements
 
-- **Android**: compileSdk 34, minSdk 20, targetSdk 33, Java 8/11/17/21
-- **iOS**: Deployment target iOS 10.0+, Objective-C
-- **React Native**: Compatible with any version (peer dependency)
-- **Node/Yarn**: Yarn 1.22.19+ (pinned), no package-lock (npm disabled)
+- **Android**: compileSdk 35, minSdk 24, targetSdk 35, Java 17
+- **iOS**: Deployment target iOS 15.1+, Objective-C++
+- **React Native**: >=0.73.0 (New Architecture only, peer dependency)
+- **Node/Yarn**: Yarn 4.6.0, Node >=22, no package-lock (npm disabled)
 
 ## Code Style
 
