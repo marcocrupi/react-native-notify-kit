@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ScrollView,
   Text,
@@ -18,10 +18,39 @@ type LogEntry = { time: string; msg: string };
 
 function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const logRef = useRef<(msg: string) => void>(undefined);
 
   const log = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString();
     setLogs(prev => [{ time, msg }, ...prev]);
+  }, []);
+
+  logRef.current = log;
+
+  // Create default Android channel at startup
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      notifee
+        .createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        })
+        .then(() => logRef.current?.('startup: default channel created'))
+        .catch(e => logRef.current?.(`startup: channel error ${e.message}`));
+    }
+  }, []);
+
+  // Register foreground event listener with proper cleanup
+  useEffect(() => {
+    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      const typeName = EventType[type] || String(type);
+      logRef.current?.(
+        `ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'}`,
+      );
+    });
+    logRef.current?.('onForegroundEvent: registered');
+    return unsubscribe;
   }, []);
 
   const run = useCallback(
@@ -98,16 +127,6 @@ function App() {
   const setBadge = () =>
     run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
 
-  const registerForeground = () => {
-    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
-      const typeName = EventType[type] || String(type);
-      log(`ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'}`);
-    });
-    log('onForegroundEvent: registered (call again to re-register)');
-    // Store unsubscribe if needed; for smoke test, re-registering is fine
-    return unsubscribe;
-  };
-
   const buttons: Array<{ label: string; onPress: () => void }> = [
     { label: 'requestPermission', onPress: requestPermission },
     { label: 'createChannel (Android)', onPress: createChannel },
@@ -118,7 +137,6 @@ function App() {
     { label: 'createTriggerNotification (+10s)', onPress: createTrigger },
     { label: 'getBadgeCount (iOS)', onPress: getBadge },
     { label: 'setBadgeCount(5) (iOS)', onPress: setBadge },
-    { label: 'onForegroundEvent', onPress: registerForeground },
   ];
 
   return (
