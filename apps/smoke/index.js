@@ -2,6 +2,8 @@
  * @format
  */
 
+import '@react-native-firebase/app';
+import '@react-native-firebase/messaging';
 import { AppRegistry, Platform } from 'react-native';
 import notifee from 'react-native-notify-kit';
 import App from './App';

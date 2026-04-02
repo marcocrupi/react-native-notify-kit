@@ -13,7 +13,11 @@ import notifee, {
   EventType,
   AndroidImportance,
 } from 'react-native-notify-kit';
-import messaging from '@react-native-firebase/messaging';
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+} from '@react-native-firebase/messaging/lib/modular';
 
 type LogEntry = { id: number; time: string; msg: string };
 type Section = {
@@ -52,7 +56,8 @@ function App() {
   // Wrapped in try/catch so the app works without Firebase configured.
   useEffect(() => {
     try {
-      const unsubscribe = messaging().onMessage(async remoteMessage => {
+      const messaging = getMessaging();
+      const unsubscribe = onMessage(messaging, async remoteMessage => {
         log(`FCM received: ${remoteMessage.notification?.title ?? 'no title'}`);
         await notifee.displayNotification({
           title: remoteMessage.notification?.title ?? 'Push Notification',
@@ -120,6 +125,14 @@ function App() {
   const requestPermission = () =>
     run('requestPermission', () => notifee.requestPermission());
 
+  const getFCMToken = () =>
+    run('getFCMToken', async () => {
+      const messaging = getMessaging();
+      const token = await getToken(messaging);
+      console.log('FCM Token:', token);
+      return token;
+    });
+
   const getSettings = () =>
     run('getNotificationSettings', () => notifee.getNotificationSettings());
 
@@ -154,6 +167,10 @@ function App() {
     {
       title: 'Permissions',
       buttons: [{ label: 'requestPermission', onPress: requestPermission }],
+    },
+    {
+      title: 'Firebase',
+      buttons: [{ label: 'getFCMToken', onPress: getFCMToken }],
     },
     {
       title: 'Channels',
