@@ -1,7 +1,6 @@
 {
   "include": [
-    "packages/react-native/src/**/*.ts",
-    "packages/react-native/__tests__"
+    "packages/react-native/src/**/*.ts"
   ],
   "compilerOptions": {
     "noEmit": true,

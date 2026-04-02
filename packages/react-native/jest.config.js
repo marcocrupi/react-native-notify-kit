@@ -22,11 +22,7 @@ module.exports = {
     '^react-native-notify-kit$': '<rootDir>/src/index.ts',
   },
   collectCoverage: true,
-  collectCoverageFrom: [
-    '<rootDir>/src/**/*.{ts,tsx}',
-    '!**/node_modules/**',
-    '!**/vendor/**',
-  ],
+  collectCoverageFrom: ['<rootDir>/src/**/*.{ts,tsx}', '!**/node_modules/**', '!**/vendor/**'],
   setupFilesAfterEnv: ['<rootDir>/__tests__/jest-setup.js'],
   moduleFileExtensions: ['ts', 'tsx', 'js'],
 };

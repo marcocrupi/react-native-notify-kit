@@ -3,7 +3,7 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
-    "prepare": "lerna run prepare && yarn build:core:ios && (yarn tests_rn:ios:pod:install || true)",
+    "prepare": "lerna run prepare && yarn build:core:ios",
     "precommit": "yarn build:all:clean && yarn prepare && yarn build:all && yarn gen:reference && yarn validate:all && yarn test:all",
     "build:all": "yarn build:core && yarn build:rn",
     "build:core": "yarn build:core:android && yarn build:core:ios",
