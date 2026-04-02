@@ -157,7 +157,7 @@ To modify push notification content before display (e.g., attach images), create
 
    ```ruby
    target 'YourNSETarget' do
-     pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit/RNNotifeeCore.podspec'
+     pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'
    end
    ```
 

@@ -26,7 +26,7 @@ Add the NSE target to `ios/Podfile`:
 
 ```ruby
 target 'NotifeeNSE' do
-  pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit/RNNotifeeCore.podspec'
+  pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'
 end
 ```
 

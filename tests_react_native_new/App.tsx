@@ -18,7 +18,7 @@ type LogEntry = { time: string; msg: string };
 
 function App() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const logRef = useRef<(msg: string) => void>(undefined);
+  const logRef = useRef<((msg: string) => void) | undefined>(undefined);
 
   const log = useCallback((msg: string) => {
     const time = new Date().toLocaleTimeString();
@@ -49,7 +49,6 @@ function App() {
         `ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'}`,
       );
     });
-    logRef.current?.('onForegroundEvent: registered');
     return unsubscribe;
   }, []);
 

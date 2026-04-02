@@ -2,7 +2,7 @@
  * @format
  */
 
-import { AppRegistry } from 'react-native';
+import { AppRegistry, Platform } from 'react-native';
 import notifee from 'react-native-notify-kit';
 import App from './App';
 import { name as appName } from './app.json';
@@ -16,12 +16,15 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 // Register a foreground service runner for notifications displayed with
 // android.asForegroundService = true. The runner receives the notification
 // and must return a Promise that resolves when the service work is done.
-notifee.registerForegroundService(notification => {
-  return new Promise(resolve => {
-    console.log('[ForegroundService] started for', notification.id);
-    // Resolve immediately for smoke testing; real apps do long-running work here.
-    resolve();
+// Android-only API — no-op on iOS but guarded for clarity.
+if (Platform.OS === 'android') {
+  notifee.registerForegroundService(notification => {
+    return new Promise(resolve => {
+      console.log('[ForegroundService] started for', notification.id);
+      // Resolve immediately for smoke testing; real apps do long-running work here.
+      resolve();
+    });
   });
-});
+}
 
 AppRegistry.registerComponent(appName, () => App);
