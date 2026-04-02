@@ -30,6 +30,7 @@ function App() {
   const logIdRef = useRef(0);
 
   const log = useCallback((msg: string) => {
+    console.log(`[Notifee] ${msg}`);
     const time = new Date().toLocaleTimeString();
     const id = ++logIdRef.current;
     setLogs(prev => [{ id, time, msg }, ...prev]);
