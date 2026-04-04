@@ -91,7 +91,7 @@ yarn smoke:ios                  # Run smoke app on iOS
 - **Platform detection**: `Platform.OS` checks via `isAndroid`, `isIOS`, `isWeb` constants in `src/utils/`.
 - **Web support**: Stub only — `NotifeeNativeModule.web.ts` returns empty modules. No web functionality implemented.
 - **Auto-linking**: Configured in `packages/react-native/react-native.config.js` (imports `io.invertase.notifee.NotifeePackage`).
-- **CI/CD**: 5 GitHub Actions workflows in `.github/workflows/` (linting, Jest, JUnit, E2E Android, E2E iOS).
+- **CI/CD**: 3 GitHub Actions workflows in `.github/workflows/` (linting, Jest, JUnit). E2E workflows from the original fork have been removed.
 
 ### Native Core Rebuild
 
