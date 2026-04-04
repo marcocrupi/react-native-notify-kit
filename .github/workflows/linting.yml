@@ -17,22 +17,22 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - name: Enable Corepack
+        run: corepack enable
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'yarn'
-      - name: Enable Corepack
-        run: corepack enable
       - name: Configure JDK
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
       - name: Yarn Install
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 3
           retry_wait_seconds: 30
@@ -48,17 +48,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - name: Enable Corepack
+        run: corepack enable
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'yarn'
-      - name: Enable Corepack
-        run: corepack enable
       - name: Yarn Install
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 3
           retry_wait_seconds: 30
@@ -72,17 +72,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - name: Enable Corepack
+        run: corepack enable
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'yarn'
-      - name: Enable Corepack
-        run: corepack enable
       - name: Yarn Install
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 3
           retry_wait_seconds: 30
