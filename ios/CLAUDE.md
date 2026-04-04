@@ -11,7 +11,7 @@ All files in `NotifeeCore/`:
   - `+UNUserNotificationCenter` — UNUserNotificationCenterDelegate handling
   - `+NSNotificationCenter` — App lifecycle event observation (UIApplication notifications)
   - `+NSURLSession` — HTTP downloads for notification attachments
-- `NotifeeCoreDelegateHolder` — Delegate pattern for event forwarding to consuming framework (RN/Flutter)
+- `NotifeeCoreDelegateHolder` — Delegate pattern for event forwarding to consuming framework (React Native)
 - `NotifeeCoreDownloadDelegate` — NSURLSession download delegate
 - `NotifeeCoreExtensionHelper` — Notification Service Extension support (modify notifications before display)
 - `NotifeeCoreUtil` — Utility functions

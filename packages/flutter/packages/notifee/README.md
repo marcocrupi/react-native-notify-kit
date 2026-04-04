@@ -1,3 +1,0 @@
-# Notifee - Flutter
-
-TODO

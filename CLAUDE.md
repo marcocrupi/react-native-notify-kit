@@ -1,6 +1,6 @@
 # Notifee - React Native Notification Library
 
-Fork of [invertase/notifee](https://github.com/invertase/notifee), published as `react-native-notify-kit` on npm. Feature-rich local notification library for React Native (Android + iOS). Device testing completed on both Android and iOS (local notifications + FCM push, foreground and background).
+Fork of [invertase/notifee](https://github.com/invertase/notifee), published as `react-native-notify-kit` on npm. Feature-rich local notification library for React Native (Android + iOS). This project is **React Native only** — the Flutter support from the original repository has been removed. Device testing completed on both Android and iOS (local notifications + FCM push, foreground and background).
 
 ## Critical Rules
 
@@ -17,7 +17,6 @@ Monorepo managed with **Lerna + Yarn Workspaces**. Detailed guidance in sub-file
 - `packages/react-native/CLAUDE.md` — TypeScript API, validators, types, native bridge
 - `android/CLAUDE.md` — Native Android core (Java)
 - `ios/CLAUDE.md` — Native iOS core (Objective-C)
-- `packages/flutter/` — Flutter package (separate ecosystem, uses Melos — not covered here)
 
 ## Essential Commands
 
