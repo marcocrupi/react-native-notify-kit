@@ -47,7 +47,7 @@ yarn smoke:ios                  # Run smoke app on iOS simulator
 ```bash
 yarn validate:all:js            # ESLint
 yarn validate:all:ts            # TypeScript type check
-yarn validate:all               # ESLint + TypeScript + TypeDoc
+yarn validate:all               # ESLint + TypeScript
 ```
 
 ### Format

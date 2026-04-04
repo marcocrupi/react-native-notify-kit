@@ -30,7 +30,7 @@
     "format:android:check": "yarn google-java-format --set-exit-if-changed --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",
     "format:ios": "yarn clang-format -i --glob=\"ios/**/*.{h,cpp,m,mm}\" --style=Google",
     "format:ios:check": "yarn clang-format --glob=\"ios/**/*.{h,cpp,m,mm}\" --style=Google -n -Werror",
-    "validate:all": "yarn validate:all:js && yarn validate:all:ts && yarn gen:reference",
+    "validate:all": "yarn validate:all:js && yarn validate:all:ts",
     "validate:all:js": "eslint .",
     "validate:all:ts": "tsc --project ./",
     "gen:reference": "yarn typedoc",
