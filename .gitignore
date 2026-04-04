@@ -182,6 +182,8 @@ fabric.properties
 .idea
 **/node_modules/*
 **/.firebaserc
+**/GoogleService-Info.plist
+**/google-services.json
 
 ### Firebase Patch ###
 .runtimeconfig.json
