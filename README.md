@@ -9,6 +9,13 @@
   ><br/>
 </p>
 
+<p align="center">
+  <a href="https://www.npmjs.com/package/react-native-notify-kit"><img src="https://img.shields.io/npm/v/react-native-notify-kit.svg" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/React%20Native-%3E%3D0.73-blue.svg" alt="React Native">
+</p>
+
 <hr/>
 
 An actively maintained fork of Notifee for React Native notifications, continued and improved by Marco Crupi.
@@ -55,6 +62,17 @@ await notifee.displayNotification({
 ```
 
 For push notifications, Firebase/APNs setup, Notification Service Extension, and more, see the [package README](packages/react-native/README.md).
+
+## What's Different from Notifee
+
+This fork is a complete migration to React Native's **New Architecture**:
+
+- **TurboModules only** — no legacy Bridge support (`NativeModules` replaced with `TurboModuleRegistry`)
+- **Android bridge rewritten in Kotlin** (original was Java)
+- **iOS bridge uses Objective-C++** with `NativeNotifeeModuleSpecJSI` TurboModule conformance
+- **Minimum React Native 0.73**, development target **0.84**
+- **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
+- **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
 
 ## Documentation
 
