@@ -6,6 +6,8 @@
 
 # Interface: AndroidChannelGroup
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1018](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1018)
+
 An interface for describing an Android Channel Group.
 
 Channel groups have no impact on the notification, they are used to help group channels in the applications
@@ -27,6 +29,8 @@ android API Level >= 26
 
 > `optional` **description**: `string`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1039](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1039)
+
 An optional description of the group. This is visible to the user.
 
 On Android APIs less than 28 this will always be undefined.
@@ -35,21 +39,15 @@ On Android APIs less than 28 this will always be undefined.
 
 android API Level >= 28
 
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:1039](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1039)
-
 ***
 
 ### id
 
 > **id**: `string`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1022](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1022)
+
 Unique id for this channel group.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:1022](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1022)
 
 ***
 
@@ -57,11 +55,9 @@ Unique id for this channel group.
 
 > **name**: `string`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1030](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1030)
+
 The name of the group. This is visible to the user so should be a descriptive name which
 categorizes other channels (e.g. reminders).
 
 The recommended maximum length is 40 characters; the value may be truncated if it is too long.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:1030](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1030)

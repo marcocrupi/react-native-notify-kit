@@ -6,6 +6,8 @@
 
 # Interface: EventDetail
 
+Defined in: [packages/react-native/src/types/Notification.ts:392](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L392)
+
 An interface representing the different detail values which can be provided with a notification event.
 
 View the [Events](/react-native/events) documentation to learn more.
@@ -16,6 +18,8 @@ View the [Events](/react-native/events) documentation to learn more.
 
 > `optional` **blocked**: `boolean`
 
+Defined in: [packages/react-native/src/types/Notification.ts:461](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L461)
+
 The notification blocked status of your entire application.
 
 The blocked detail is available when the event type is [`EventType.APP_BLOCKED`](/react-native/reference/eventtype#app_blocked).
@@ -24,15 +28,13 @@ The blocked detail is available when the event type is [`EventType.APP_BLOCKED`]
 
 android API Level >= 28
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:461](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L461)
-
 ***
 
 ### channel?
 
 > `optional` **channel**: [`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)
+
+Defined in: [packages/react-native/src/types/Notification.ts:441](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L441)
 
 The channel that had its block state changed.
 
@@ -44,15 +46,13 @@ The channel detail is available when the event type is [`EventType.CHANNEL_BLOCK
 
 android API Level >= 28
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:441](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L441)
-
 ***
 
 ### channelGroup?
 
 > `optional` **channelGroup**: [`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)
+
+Defined in: [packages/react-native/src/types/Notification.ts:452](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L452)
 
 The channel group that had its block state changed.
 
@@ -64,15 +64,13 @@ The channel group detail is available when the event type is [`EventType.CHANNEL
 
 android API Level >= 28
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:452](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L452)
-
 ***
 
 ### input?
 
 > `optional` **input**: `string`
+
+Defined in: [packages/react-native/src/types/Notification.ts:430](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L430)
 
 The input from a notification action.
 
@@ -85,15 +83,13 @@ The input detail is available when the [`EventType`](/react-native/reference/eve
 
 android API Level >= 20
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:430](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L430)
-
 ***
 
 ### notification?
 
 > `optional` **notification**: [`Notification`](react-native/reference/Interface.Notification)
+
+Defined in: [packages/react-native/src/types/Notification.ts:405](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L405)
 
 The notification this event relates to.
 
@@ -106,15 +102,13 @@ The notification details is available when the [`EventType`](/react-native/refer
 * [`EventType.TRIGGER_NOTIFICATION_CREATED`](/react-native/reference/eventtype#trigger_notification_created)
 * [`EventType.FG_ALREADY_EXIST`](/react-native/reference/eventtype#fg_already_exist)
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:405](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L405)
-
 ***
 
 ### pressAction?
 
 > `optional` **pressAction**: [`NotificationPressAction`](react-native/reference/Interface.NotificationPressAction)
+
+Defined in: [packages/react-native/src/types/Notification.ts:418](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L418)
 
 The press action which triggered the event.
 
@@ -125,7 +119,3 @@ The press action details is available when the [`EventType`](/react-native/refer
 
 * [`EventType.PRESS`](/react-native/reference/eventtype#press)
 * [`EventType.ACTION_PRESS`](/react-native/reference/eventtype#action_press)
-
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:418](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L418)

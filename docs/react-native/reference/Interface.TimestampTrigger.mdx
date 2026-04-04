@@ -6,6 +6,8 @@
 
 # Interface: TimestampTrigger
 
+Defined in: [packages/react-native/src/types/Trigger.ts:6](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L6)
+
 Interface for building a trigger with a timestamp.
 
 View the [Triggers](/react-native/triggers) documentation to learn more.
@@ -16,6 +18,8 @@ View the [Triggers](/react-native/triggers) documentation to learn more.
 
 > `optional` **alarmManager**: `boolean` | [`TimestampTriggerAlarmManager`](react-native/reference/Interface.TimestampTriggerAlarmManager)
 
+Defined in: [packages/react-native/src/types/Trigger.ts:34](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L34)
+
 Choose to schedule your trigger notification with Android's AlarmManager API.
 
 By default, trigger notifications are created with Android's WorkManager API.
@@ -24,15 +28,13 @@ By default, trigger notifications are created with Android's WorkManager API.
 
 android
 
-#### Defined in
-
-[packages/react-native/src/types/Trigger.ts:34](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L34)
-
 ***
 
 ### repeatFrequency?
 
 > `optional` **repeatFrequency**: [`RepeatFrequency`](react-native/reference/Enumeration.RepeatFrequency)
+
+Defined in: [packages/react-native/src/types/Trigger.ts:25](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L25)
 
 The frequency at which the trigger repeats.
 If unset, the notification will only be displayed once.
@@ -42,21 +44,15 @@ if set to `RepeatFrequency.HOURLY`, the notification will repeat every hour from
 if set to `RepeatFrequency.DAILY`, the notification will repeat every day from the timestamp specified.
 if set to `RepeatFrequency.WEEKLY`, the notification will repeat every week from the timestamp specified.
 
-#### Defined in
-
-[packages/react-native/src/types/Trigger.ts:25](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L25)
-
 ***
 
 ### timestamp
 
 > **timestamp**: `number`
 
+Defined in: [packages/react-native/src/types/Trigger.ts:14](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L14)
+
 The timestamp when the notification should first be shown, in milliseconds since 1970.
-
-#### Defined in
-
-[packages/react-native/src/types/Trigger.ts:14](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L14)
 
 ***
 
@@ -64,8 +60,6 @@ The timestamp when the notification should first be shown, in milliseconds since
 
 > **type**: [`TIMESTAMP`](react-native/reference/Enumeration.TriggerType#timestamp)
 
+Defined in: [packages/react-native/src/types/Trigger.ts:10](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L10)
+
 Constant enum value used to identify the trigger type.
-
-#### Defined in
-
-[packages/react-native/src/types/Trigger.ts:10](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L10)

@@ -6,6 +6,8 @@
 
 # Interface: AndroidProgress
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:824](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L824)
+
 Interface for defining the progress of an Android Notification.
 
 <Vimeo id="android-progress-summary" caption="Android Progress (w/ Big Picture Style)" />
@@ -22,13 +24,11 @@ android
 
 > `optional` **current**: `number`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:837](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L837)
+
 The current progress value.
 
 E.g. setting to `4` with a `max` value of `10` would set a fixed progress bar on the notification at 40% complete.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:837](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L837)
 
 ***
 
@@ -36,14 +36,12 @@ E.g. setting to `4` with a `max` value of `10` would set a fixed progress bar on
 
 > `optional` **indeterminate**: `boolean`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:845](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L845)
+
 If `true`, overrides the `max` and `current` values and displays an unknown progress style. Useful when you have no
 knowledge of a tasks completion state.
 
 Defaults to `false`.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:845](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L845)
 
 ***
 
@@ -51,10 +49,8 @@ Defaults to `false`.
 
 > `optional` **max**: `number`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:830](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L830)
+
 The maximum progress number. E.g `10`.
 
 Must be greater than the `current` value.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:830](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L830)

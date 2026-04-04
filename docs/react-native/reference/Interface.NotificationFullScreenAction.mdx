@@ -6,6 +6,8 @@
 
 # Interface: NotificationFullScreenAction
 
+Defined in: [packages/react-native/src/types/Notification.ts:261](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L261)
+
 The interface used to describe a full-screen action for a notification.
 
 By setting a `fullScreenAction`, when the notification is displayed, it will launch a full-screen intent.
@@ -27,20 +29,20 @@ Please see the [FullScreen Action](/react-native/android/behaviour#full-screen) 
 
 > **id**: `string`
 
+Defined in: [packages/react-native/src/types/Notification.ts:268](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L268)
+
 The unique ID for the action.
 
 The `id` property is used to differentiate between full-screen actions. When listening to notification
 events, the ID can be read from the `event.detail.notification.android.fullScreenAction` object.
-
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:268](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L268)
 
 ***
 
 ### launchActivity?
 
 > `optional` **launchActivity**: `string`
+
+Defined in: [packages/react-native/src/types/Notification.ts:280](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L280)
 
 The custom Android Activity to launch on a full-screen action.
 
@@ -53,15 +55,13 @@ View the [Android Full Screen](/react-native/android/behaviour#full-screen) docs
 
 android
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:280](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L280)
-
 ***
 
 ### launchActivityFlags?
 
 > `optional` **launchActivityFlags**: [`AndroidLaunchActivityFlag`](react-native/reference/Enumeration.AndroidLaunchActivityFlag)\[]
+
+Defined in: [packages/react-native/src/types/Notification.ts:289](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L289)
 
 Custom flags that are added to the Android [Intent](https://developer.android.com/reference/android/content/Intent.html) that launches your Activity.
 
@@ -71,15 +71,13 @@ These are only required if you need to customise the behaviour of how your activ
 
 android
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:289](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L289)
-
 ***
 
 ### mainComponent?
 
 > `optional` **mainComponent**: `string`
+
+Defined in: [packages/react-native/src/types/Notification.ts:301](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L301)
 
 A custom registered React component to launch on press action.
 
@@ -91,7 +89,3 @@ View the [Full-screen Action](/react-native/android/behaviour#full-screen) docum
 #### Platform
 
 android
-
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:301](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L301)

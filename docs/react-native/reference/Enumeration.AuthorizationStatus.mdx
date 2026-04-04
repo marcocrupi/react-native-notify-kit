@@ -6,6 +6,8 @@
 
 # Enumeration: AuthorizationStatus
 
+Defined in: [packages/react-native/src/types/Notification.ts:471](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L471)
+
 An enum representing the notification authorization status for this app on the device.
 
 Value is greater than 0 if authorized, compare against an exact status (e.g. PROVISIONAL) for a more
@@ -17,11 +19,9 @@ granular status.
 
 > **AUTHORIZED**: `1`
 
+Defined in: [packages/react-native/src/types/Notification.ts:488](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L488)
+
 The app is authorized to create notifications.
-
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:488](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L488)
 
 ***
 
@@ -29,17 +29,17 @@ The app is authorized to create notifications.
 
 > **DENIED**: `0`
 
+Defined in: [packages/react-native/src/types/Notification.ts:483](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L483)
+
 The app is not authorized to create notifications.
-
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:483](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L483)
 
 ***
 
 ### NOT\_DETERMINED
 
 > **NOT\_DETERMINED**: `-1`
+
+Defined in: [packages/react-native/src/types/Notification.ts:478](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L478)
 
 The app user has not yet chosen whether to allow the application to create notifications. Usually
 this status is returned prior to the first call of `requestPermission`.
@@ -48,22 +48,16 @@ this status is returned prior to the first call of `requestPermission`.
 
 ios
 
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:478](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L478)
-
 ***
 
 ### PROVISIONAL
 
 > **PROVISIONAL**: `2`
 
+Defined in: [packages/react-native/src/types/Notification.ts:494](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L494)
+
 The app is currently authorized to post non-interrupting user notifications
 
 #### Platform
 
 ios iOS >= 12
-
-#### Defined in
-
-[packages/react-native/src/types/Notification.ts:494](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L494)

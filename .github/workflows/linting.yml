@@ -64,6 +64,8 @@ jobs:
           retry_wait_seconds: 30
           max_attempts: 3
           command: yarn install --immutable
+      - name: Generate version.ts
+        run: cd packages/react-native && npx genversion --es6 --semi src/version.ts
       - name: Lint
         run: yarn validate:all:ts
 

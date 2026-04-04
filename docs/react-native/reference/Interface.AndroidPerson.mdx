@@ -6,6 +6,8 @@
 
 # Interface: AndroidPerson
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:763](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L763)
+
 The interface used to describe a person shown in notifications.
 
 Currently used with [`AndroidMessagingStyle`](/react-native/reference/androidmessagingstyle) notifications.
@@ -20,13 +22,11 @@ android
 
 > `optional` **bot**: `boolean`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:782](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L782)
+
 If `true` this person represents a machine rather than a human. This is used primarily for testing and automated tooling.
 
 Defaults to `false`.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:782](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L782)
 
 ***
 
@@ -34,14 +34,12 @@ Defaults to `false`.
 
 > `optional` **icon**: `string`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:801](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L801)
+
 The icon to display next to the person in the notification. The icon can be URL or local
 Android resource.
 
 If not provided, an icon will be automatically creating using the `name` property.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:801](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L801)
 
 ***
 
@@ -49,18 +47,18 @@ If not provided, an icon will be automatically creating using the `name` propert
 
 > `optional` **id**: `string`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:775](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L775)
+
 An optional unique ID of the person. Setting this property is preferred for unique identification,
 however not required. If no value is provided, the `name` will be used instead..
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:775](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L775)
 
 ***
 
 ### important?
 
 > `optional` **important**: `boolean`
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:793](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L793)
 
 If `true` this person will be marked as important.
 
@@ -70,29 +68,25 @@ if the person has been whitelisted on the device.
 
 Defaults to `false`.
 
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:793](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L793)
-
 ***
 
 ### name
 
 > **name**: `string`
 
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:769](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L769)
+
 The name of the person.
 
 If no `id` is provided, the name will be used as the unique identifier.
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:769](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L769)
 
 ***
 
 ### uri?
 
 > `optional` **uri**: `string`
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:812](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L812)
 
 URI contact of the person.
 
@@ -101,7 +95,3 @@ The URI can be any of the following:
 * The representation of a contact URI, e.g. `android.provider.ContactsContract.Contacts#CONTENT_LOOKUP_URI`
 * A `mailto:` string
 * A `tel:` string
-
-#### Defined in
-
-[packages/react-native/src/types/NotificationAndroid.ts:812](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L812)
