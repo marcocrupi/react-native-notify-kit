@@ -1,110 +1,121 @@
-# Getting Started
+# Contributing
 
 ## Prerequisites
 
-Ensure you have the following software installed:
-
-- Java 11 (the default in Android Studio 2020.3.1 and higher)
+- Java 17 (bundled with Android Studio 2024+)
+- Node.js >= 22
+- Yarn 4.6.0 (corepack-managed)
+- Xcode 16+ (for iOS development)
+- Android Studio (for Android development)
 
 ## Step 1: Clone the repository
 
 ```bash
 git clone https://github.com/marcocrupi/react-native-notify-kit.git
-cd notifee/
+cd react-native-notify-kit/
 ```
 
-## Step 2: Install test project dependencies
+## Step 2: Install dependencies
 
 ```bash
 yarn
 ```
 
-Note: During this step, the `package.json` script `prepare` is called, which includes a call to `build:core:ios`.
-During that step, the current "NotifeeCore" iOS files are copied into `packages/react-native/ios/...`. If you modify
-iOS core code and want to test it you will want to re-run that step, or temporarily modify `packages/react-native/RNNotifee.podspec`
-to contain `$NotifeeCoreFromSources=true` so that the up to date source files are actually incorporated in the final build.
+During this step, the `prepare` script runs `build:core:ios`, which copies the current NotifeeCore iOS source files into `packages/react-native/ios/`. If you modify iOS core code, re-run that step or temporarily set `$NotifeeCoreFromSources=true` in the consuming app's Podfile to use live sources.
 
-The same issue applies to Android code if you need to see development changes to the NotifeeCore Android code in an Android build. Run `yarn build:core:android` to generate a new AAR file for Android then rebuild/restart the Android app for core Android
-changes to take effect.
+The same applies to Android core code: run `yarn build:core:android` to generate a new AAR file, then rebuild the app.
 
-This "core build" process may change in the future and we are open to suggestions that maintain the NotifeeCore code as a separate item
-so that it may be re-used by other projects (e.g. Flutter), not just the react-native API wrapper.
-
-## Step 3: Start React Native packager
-
-```bash
-yarn tests_rn:packager
-```
-
-## Step 4
-
-Ensure you have TypeScript compiler running to listen to `react-native` submodule changes:
+## Step 3: Start TypeScript compiler in watch mode
 
 ```bash
 yarn build:rn:watch
 ```
 
-## Testing Code
+## Step 4: Run the smoke app
 
-### Unit Testing
-
-The following package scripts are exported to help you run tests;
-
-- `yarn tests_rn:test` - run Jest tests once and exit.
-- `yarn tests_rn:jest-watch` - run Jest tests in interactive mode and watch for changes.
-- `yarn tests_rn:jest-coverage` - run Jest tests with coverage. Coverage is output to `./coverage`.
-
-### Smoke Testing on Device
-
-Use the smoke app at `apps/smoke/` (RN 0.84, New Architecture) for manual testing:
-
-- `yarn smoke:android` — run on Android device/emulator
-- `yarn smoke:ios` — run on iOS simulator
-- `yarn smoke:start` — start Metro bundler
-
-### Linting & type checking files
-
-Runs ESLint and respective type checks on project files
+The smoke app at `apps/smoke/` (React Native 0.84, New Architecture) is used for manual testing:
 
 ```bash
-yarn validate:all:js
-yarn validate:all:ts
+yarn smoke:start      # Start Metro bundler
+yarn smoke:android    # Run on Android device/emulator
+yarn smoke:ios        # Run on iOS simulator
 ```
+
+## Testing
+
+### Unit tests
+
+```bash
+yarn tests_rn:test              # Run Jest tests once
+yarn tests_rn:test-watch        # Run Jest tests in watch mode
+yarn tests_rn:test-coverage     # Run Jest tests with coverage
+```
+
+### Android JUnit tests
+
+```bash
+yarn test:core:android          # Run ./gradlew testDebugUnit
+```
+
+### Linting & type checking
+
+```bash
+yarn validate:all:js            # ESLint
+yarn validate:all:ts            # TypeScript type check
+yarn validate:all               # ESLint + TypeScript + TypeDoc
+```
+
+## Commit Conventions
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) (enforced by semantic-release):
+
+```text
+<type>(<scope>): <subject>
+```
+
+**Types:** `fix`, `feat`, `docs`, `style`, `refactor`, `test`, `chore`, `build`
+
+**Scopes (optional):** `android`, `ios`, `expo`
+
+**Examples:**
+
+- `fix(android): prevent headless task double-invocation`
+- `feat: add web notification support`
+- `docs: update installation guidance`
+
+## Code Style
+
+- **TypeScript/JavaScript**: Prettier (single quotes, trailing commas, 100 char width, 2-space indent)
+- **Kotlin**: Android Studio default formatting
+- **Objective-C**: clang-format Google style (`yarn format:rn:ios`)
 
 ## Publishing
 
-Maintainers with write access to the repo and the npm organization can publish new versions by following the release checklist below.
+### Automated Process
 
-### Release Checklist
+Release configuration is defined in `.releaserc` using semantic-release. This fork does not currently include a dedicated GitHub Actions publish workflow.
 
-#### Automated Process
+To enable fully automated publishing, add a workflow in `.github/workflows/` that runs `semantic-release` from the `main` branch with the required GitHub and npm credentials.
 
-**Note: release configuration is defined in `.releaserc`, but this fork does not currently include a dedicated GitHub Actions publish workflow.**
-
-If you want fully automated publishing from GitHub Actions, add a workflow in `.github/workflows/` that runs `semantic-release` from the `main` branch with the required GitHub and npm credentials.
-
-Afterwards, you may verify that everything worked by checking the expected work products:
-
-1. Verify that there is a new github release: https://github.com/marcocrupi/react-native-notify-kit/releases
-1. Verify that there is a new npmjs release (may take a moment to update): https://www.npmjs.com/package/react-native-notify-kit?activeTab=versions
-1. Verify that the changelog is updated: https://docs.page/marcocrupi/react-native-notify-kit/react-native/release-notes
-1. Verify that there is a new tag correctly created: https://github.com/marcocrupi/react-native-notify-kit/tags
-1. Verify that there is a commit with that tag, with the updated release notes: https://github.com/marcocrupi/react-native-notify-kit/commits/main/
-
-#### Manual Process
-
-If for some reason the automated process is not working, or you want to re-automate it using some other tools, these are the steps to take to correctly create and publish a release:
+### Manual Process
 
 1. Navigate to the React Native package: `cd packages/react-native`
-1. Update release notes [here](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/react-native/release-notes.mdx)
-1. Bump version: `npm version {major/minor/patch} --legacy-peer-deps`
-1. Publish to npm: `npm publish` (this generates a new core AAR, and requires a valid NPM login with permission to publish the `react-native-notify-kit` package on npmjs.com)
-1. Commit those changes (after npm publish so new AAR files are committed)
-1. Tag the repo (current format is `react-native-notify-kit@x.y.z`)
-1. Push the release notes / version / tag to the repo: `git push --tags`
-1. Create a release on the repo:
+2. Update release notes in `docs/react-native/release-notes.mdx`
+3. Bump version: `npm version {major/minor/patch} --legacy-peer-deps`
+4. Publish to npm: `npm publish` (generates a new core AAR; requires npm login with publish permissions for `react-native-notify-kit`)
+5. Commit changes (after npm publish so new AAR files are committed)
+6. Tag the repo: `react-native-notify-kit@x.y.z`
+7. Push: `git push --tags`
+8. Create a GitHub release:
 
    ```bash
-   export TAGNAME=`git tag --list|sort -r|head -1`
+   export TAGNAME=$(git tag --list | sort -r | head -1)
    gh release create ${TAGNAME} --title "${TAGNAME}" --notes "[Release Notes](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/react-native/release-notes.mdx)"
    ```
+
+### Verify
+
+1. [GitHub releases](https://github.com/marcocrupi/react-native-notify-kit/releases)
+2. [npm versions](https://www.npmjs.com/package/react-native-notify-kit?activeTab=versions)
+3. [Changelog](https://docs.page/marcocrupi/react-native-notify-kit/react-native/release-notes)
+4. [Tags](https://github.com/marcocrupi/react-native-notify-kit/tags)
