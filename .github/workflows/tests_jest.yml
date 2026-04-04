@@ -39,5 +39,7 @@ jobs:
           retry_wait_seconds: 60
           max_attempts: 4
           command: yarn install --immutable
+      - name: Generate version.ts
+        run: cd packages/react-native && npx genversion --es6 --semi src/version.ts
       - name: Jest
         run: yarn tests_rn:test
