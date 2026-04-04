@@ -1,14 +1,8 @@
-# Notifee for React Native
+# react-native-notify-kit
+
+A feature-rich local notification library for React Native (Android & iOS).
 
 <!-- markdownlint-disable MD033 -->
-<p align="center">
-  <img
-    width="140px"
-    src="https://static.invertase.io/assets/notifee-logo.png"
-    alt="Notifee logo"
-  ><br/>
-</p>
-
 <p align="center">
   <a href="https://www.npmjs.com/package/react-native-notify-kit"><img src="https://img.shields.io/npm/v/react-native-notify-kit.svg" alt="npm version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>

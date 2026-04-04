@@ -61,8 +61,7 @@
     "firebase",
     "fcm",
     "notifee",
-    "notifications",
-    "onesignal"
+    "notifications"
   ],
   "publishConfig": {
     "access": "public"
