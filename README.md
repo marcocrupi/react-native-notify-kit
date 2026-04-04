@@ -101,13 +101,15 @@ The APIs for Android allow for creating rich, styled and highly interactive noti
 
 Below you'll find guides that cover the supported iOS features.
 
-| Topic                                                                           |                                                                                                    |
-| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --- |
-| [Appearance](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/appearance)   | Change how the notification is displayed to your users.                                            |
-| [Behaviour](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/behaviour)     | Control how notifications behave when they are displayed on a device; sound, crtitial alerts, etc. |
-| [Categories](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/categories)   | Create & assign categories to notifications.                                                       |
-| [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/interaction) | Handle user interaction with your notifications.                                                   |     |
-| [Permissions](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/permissions) | Request permission from your application users to display notifications.                           |     |
+| Topic | |
+| --- | --- |
+| [Appearance](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/appearance) | Change how the notification is displayed to your users. |
+| [Badges](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/badges) | Manage the app icon badge count on iOS devices. |
+| [Behaviour](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/behaviour) | Control how notifications behave when they are displayed on a device; sound, critical alerts, etc. |
+| [Categories](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/categories) | Create & assign categories to notifications. |
+| [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/interaction) | Handle user interaction with your notifications. |
+| [Permissions](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/permissions) | Request permission from your application users to display notifications. |
+| [Remote Notification Support](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/remote-notification-support) | Handle and display remote notifications with Notification Service Extension. |
 
 ## License
 
