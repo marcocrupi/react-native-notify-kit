@@ -1,23 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  ScrollView,
-  Text,
-  Pressable,
-  Platform,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ScrollView, Text, Pressable, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import notifee, {
-  TriggerType,
-  EventType,
-  AndroidImportance,
-} from 'react-native-notify-kit';
-import {
-  getMessaging,
-  getToken,
-  onMessage,
-} from '@react-native-firebase/messaging/lib/modular';
+import notifee, { TriggerType, EventType, AndroidImportance } from 'react-native-notify-kit';
+import { getMessaging, getToken, onMessage } from '@react-native-firebase/messaging/lib/modular';
 
 type LogEntry = { id: number; time: string; msg: string };
 type Section = {
@@ -120,11 +105,9 @@ function App() {
       });
     });
 
-  const cancelAll = () =>
-    run('cancelAllNotifications', () => notifee.cancelAllNotifications());
+  const cancelAll = () => run('cancelAllNotifications', () => notifee.cancelAllNotifications());
 
-  const requestPermission = () =>
-    run('requestPermission', () => notifee.requestPermission());
+  const requestPermission = () => run('requestPermission', () => notifee.requestPermission());
 
   const getFCMToken = () =>
     run('getFCMToken', async () => {
@@ -134,8 +117,7 @@ function App() {
       return token;
     });
 
-  const getSettings = () =>
-    run('getNotificationSettings', () => notifee.getNotificationSettings());
+  const getSettings = () => run('getNotificationSettings', () => notifee.getNotificationSettings());
 
   const getDisplayed = () =>
     run('getDisplayedNotifications', () => notifee.getDisplayedNotifications());
@@ -161,8 +143,7 @@ function App() {
 
   const getBadge = () => run('getBadgeCount', () => notifee.getBadgeCount());
 
-  const setBadge = () =>
-    run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
+  const setBadge = () => run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
 
   const sections: Section[] = [
     {
@@ -188,9 +169,7 @@ function App() {
     },
     {
       title: 'Triggers',
-      buttons: [
-        { label: 'createTriggerNotification (+10s)', onPress: createTrigger },
-      ],
+      buttons: [{ label: 'createTriggerNotification (+10s)', onPress: createTrigger }],
     },
     {
       title: 'Badge',
@@ -213,10 +192,7 @@ function App() {
                 {section.buttons.map(b => (
                   <Pressable
                     key={b.label}
-                    style={({ pressed }) => [
-                      styles.button,
-                      pressed && styles.buttonPressed,
-                    ]}
+                    style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
                     onPress={b.onPress}
                     android_ripple={{ color: 'rgba(255,255,255,0.3)' }}
                   >

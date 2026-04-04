@@ -1,6 +1,6 @@
 const path = require('path');
 
-const rnPreset = require('react-native/jest-preset');
+const rnPreset = require('react-native/jest-preset'); // eslint-disable-line @react-native/no-deep-imports
 
 module.exports = {
   ...rnPreset,

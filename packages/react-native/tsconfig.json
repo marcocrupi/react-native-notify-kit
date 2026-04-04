@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "module": "esnext",
     "lib": ["esnext"],
     "allowJs": false,
     "jsx": "react-native",
@@ -13,14 +13,13 @@
     "removeComments": false,
     "isolatedModules": false,
     "strict": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "react-native": ["../../apps/smoke/node_modules/react-native"],
-      "react-native/*": ["../../apps/smoke/node_modules/react-native/*"]
+      "react-native": ["./../../apps/smoke/node_modules/react-native"],
+      "react-native/*": ["./../../apps/smoke/node_modules/react-native/*"]
     }
   },
   "exclude": ["node_modules", "./src/__mocks__"],

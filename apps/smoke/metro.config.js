@@ -5,32 +5,20 @@ const monorepoRoot = path.resolve(__dirname, '../..');
 const smokeNodeModules = path.resolve(__dirname, 'node_modules');
 
 // Escape path for use in RegExp (handles macOS / and Windows \)
-const escape = (p) => p.replace(/[/\\]/g, '[/\\\\]');
+const escape = p => p.replace(/[/\\]/g, '[/\\\\]');
 
 const config = {
   watchFolders: [monorepoRoot],
   resolver: {
-    nodeModulesPaths: [
-      smokeNodeModules,
-      path.resolve(monorepoRoot, 'node_modules'),
-    ],
+    nodeModulesPaths: [smokeNodeModules, path.resolve(monorepoRoot, 'node_modules')],
     // Block duplicate react-native/react from packages/react-native/node_modules
     blockList: [
       new RegExp(
-        escape(
-          path.resolve(
-            monorepoRoot,
-            'packages/react-native/node_modules/react-native',
-          ),
-        ) + '/.*',
+        escape(path.resolve(monorepoRoot, 'packages/react-native/node_modules/react-native')) +
+          '/.*',
       ),
       new RegExp(
-        escape(
-          path.resolve(
-            monorepoRoot,
-            'packages/react-native/node_modules/react',
-          ),
-        ) + '/.*',
+        escape(path.resolve(monorepoRoot, 'packages/react-native/node_modules/react')) + '/.*',
       ),
     ],
     // Force singleton resolution for these critical packages

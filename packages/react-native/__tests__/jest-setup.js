@@ -1,5 +1,3 @@
-/* eslint-disable no-undef */
-
 jest.mock('react-native', () => {
   const RN = jest.requireActual('react-native');
 

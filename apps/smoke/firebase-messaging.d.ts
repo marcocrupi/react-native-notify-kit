@@ -9,9 +9,7 @@ declare module '@react-native-firebase/messaging' {
   }
 
   interface Messaging {
-    onMessage(
-      listener: (message: RemoteMessage) => Promise<void> | void,
-    ): () => void;
+    onMessage(listener: (message: RemoteMessage) => Promise<void> | void): () => void;
   }
 
   export default function messaging(): Messaging;

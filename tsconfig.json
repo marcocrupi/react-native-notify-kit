@@ -7,7 +7,7 @@
     "allowJs": true,
     "target": "es6",
     "isolatedModules": true,
-    "module": "commonjs",
+    "module": "esnext",
     "declaration": true,
     "importHelpers": true,
     "jsx": "react",
@@ -18,15 +18,14 @@
     "noImplicitReturns": true,
     "preserveConstEnums": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "lib": ["es6"],
-    "baseUrl": ".",
     "paths": {
-      "react-native": ["apps/smoke/node_modules/react-native"],
-      "react-native/*": ["apps/smoke/node_modules/react-native/*"]
+      "react-native": ["./apps/smoke/node_modules/react-native"],
+      "react-native/*": ["./apps/smoke/node_modules/react-native/*"]
     },
     "typeRoots": [
       "./apps/smoke/node_modules/@types",
