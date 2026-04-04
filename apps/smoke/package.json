@@ -1,5 +1,5 @@
 {
-  "name": "@notifee/tests-react-native-new",
+  "name": "react-native-notify-kit-smoke",
   "version": "0.0.1",
   "private": true,
   "scripts": {
