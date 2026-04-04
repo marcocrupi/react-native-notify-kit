@@ -126,7 +126,7 @@ Release configuration is defined via semantic-release (`.releaserc`) and path-fi
 
 MUST use **Conventional Commits** format (enforced by semantic-release):
 
-```
+```text
 <type>(<scope>): <subject>
 ```
 

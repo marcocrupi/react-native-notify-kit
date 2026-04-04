@@ -85,17 +85,17 @@ The upstream Notifee documentation remains the best reference for the public API
 
 The APIs for Android allow for creating rich, styled and highly interactive notifications. Below you'll find guides that cover the supported Android features.
 
-| Topic                                                                                               |                                                                                                                                   |
-| --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| [Appearance](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/appearance)                   | Change the appearance of a notification; icons, colors, visibility etc.                                                           |
-| [Behaviour](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/behaviour)                     | Customize how a notification behaves when it is delivered to a device; sound, vibration, lights etc.                              |
-| [Channels & Groups](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/channels)              | Organize your notifications into channels & groups to allow users to control how notifications are handled on their device        |
-| [Foreground Service](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/foreground-service)   | Long running background tasks can take advantage of an Android Foreground Service to display an on-going, prominent notification. |
-| [Grouping & Sorting](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/grouping-and-sorting) | Group and sort related notifications in a single notification pane.                                                               |
-| [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/interaction)                 | Allow users to interact with your application directly from the notification, with actions.                                       |
-| [Progress Indicators](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/progress-indicators) | Show users a progress indicator of an on-going background task, and learn how to keep it updated.                                 |
-| [Styles](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/styles)                           | Style notifications to show richer content, such as expandable images/text, or message conversations.                             |
-| [Timers](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/timers)                           | Display counting timers on your notification, useful for on-going tasks such as a phone call, or event time remaining.            |
+| Topic | |
+| --- | --- |
+| [Appearance](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/appearance) | Change the appearance of a notification; icons, colors, visibility etc. |
+| [Behaviour](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/behaviour) | Customize how a notification behaves when it is delivered to a device; sound, vibration, lights etc. |
+| [Channels & Groups](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/channels) | Organize your notifications into channels & groups to allow users to control how notifications are handled on their device. |
+| [Foreground Service](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/foreground-service) | Long running background tasks can take advantage of an Android Foreground Service to display an on-going, prominent notification. |
+| [Grouping & Sorting](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/grouping-and-sorting) | Group and sort related notifications in a single notification pane. |
+| [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/interaction) | Allow users to interact with your application directly from the notification, with actions. |
+| [Progress Indicators](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/progress-indicators) | Show users a progress indicator of an on-going background task, and learn how to keep it updated. |
+| [Styles](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/styles) | Style notifications to show richer content, such as expandable images/text, or message conversations. |
+| [Timers](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/timers) | Display counting timers on your notification, useful for on-going tasks such as a phone call, or event time remaining. |
 
 ### iOS
 
