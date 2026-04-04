@@ -18,7 +18,7 @@
       "@semantic-release/changelog",
       {
         "changelogFile": "docs/react-native/release-notes.mdx",
-        "changelogTitle": "---\ntitle: Releases\ndescription: Notifee API releases\n---"
+        "changelogTitle": "---\ntitle: Releases\ndescription: react-native-notify-kit releases\n---"
       }
     ],
     [
