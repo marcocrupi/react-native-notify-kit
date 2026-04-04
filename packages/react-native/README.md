@@ -11,6 +11,14 @@ Maintained fork of [Notifee](https://github.com/invertase/notifee) — New Archi
 - iOS: deployment target 15.1+
 - Node.js >= 22
 
+### Compatibility
+
+| React Native | Status                                |
+| ------------ | ------------------------------------- |
+| 0.84         | Tested (Android + iOS)                |
+| 0.73 - 0.83  | Supported (New Architecture required) |
+| < 0.73       | Not supported                         |
+
 ## Installation
 
 ```bash
