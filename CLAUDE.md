@@ -1,6 +1,6 @@
 # Notifee - React Native Notification Library
 
-Fork of [invertase/notifee](https://github.com/marcocrupi/react-native-notify-kit). Feature-rich local notification library for React Native (Android + iOS).
+Fork of [invertase/notifee](https://github.com/invertase/notifee), published as `react-native-notify-kit` on npm. Feature-rich local notification library for React Native (Android + iOS). Device testing completed on both Android and iOS (local notifications + FCM push, foreground and background).
 
 ## Critical Rules
 
@@ -56,7 +56,7 @@ yarn validate:all               # ESLint + TypeScript + TypeDoc
 yarn format:all                 # Format everything
 yarn format:core:android        # Java (google-java-format)
 yarn format:core:ios            # Objective-C (clang-format --style=Google)
-yarn format:rn:android          # RN bridge Java
+yarn format:rn:android          # RN bridge (Kotlin, no-op if no Java files)
 yarn format:rn:ios              # RN bridge Objective-C
 ```
 

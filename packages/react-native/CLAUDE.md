@@ -1,6 +1,6 @@
 # react-native-notify-kit Package
 
-Main NPM package published as `react-native-notify-kit` (v9.1.8).
+Main NPM package published as `react-native-notify-kit` (v9.1.8). Device testing completed on both Android and iOS (local notifications, FCM push foreground/background, channels, triggers, badges, permissions).
 
 ## Source Organization
 
