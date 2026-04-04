@@ -34,11 +34,11 @@ You may obtain a copy of the Creative Commons Attribution 3.0 License at
 
 
 
-Notifee CORE License
---------------------
+Notifee Core
+------------
 
-The Notifee "core" submodule on Android/iOS (e.g. `android/libs/notifee_core_release.aar`) is not Open Source
-but is distributed in minified & obfuscated form. A purchased license is required to use Notifee Core in
-release builds and is subject to the Notifee License terms which can be found at:
+The Notifee "core" submodule on Android/iOS was originally distributed by
+Invertase Limited in minified & obfuscated form under a proprietary license.
 
-   https://notifee.app/license-terms
+In this fork (react-native-notify-kit), the core source code is distributed
+under the Apache License, Version 2.0, as part of the open-source project.
