@@ -250,6 +250,69 @@ function App() {
       });
     });
 
+  const displayDelayedNoPressAction = () =>
+    run('displayDelayedNoPressAction', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.createTriggerNotification(
+        {
+          title: 'Test #1128 (no pressAction)',
+          body: 'Tap me - no pressAction set',
+          data: { screen: 'settings', testId: 'no-press-action' },
+          android: { channelId: 'default' },
+        },
+        { type: TriggerType.TIMESTAMP, timestamp: Date.now() + 10000 },
+      );
+    });
+
+  const displayWithPressAction = () =>
+    run('displayWithPressAction', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.displayNotification({
+        title: 'Test #1128 (with pressAction)',
+        body: 'Tap me to check cold start data',
+        data: { screen: 'profile', userId: '42' },
+        android: {
+          channelId: 'default',
+          pressAction: { id: 'default', launchActivity: 'default' },
+        },
+      });
+    });
+
+  const displayDelayedWithPressAction = () =>
+    run('displayDelayedWithPressAction', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.createTriggerNotification(
+        {
+          title: 'Test #1128 delayed (with pressAction)',
+          body: 'Tap me after killing app',
+          data: { screen: 'profile', userId: '42' },
+          android: {
+            channelId: 'default',
+            pressAction: { id: 'default', launchActivity: 'default' },
+          },
+        },
+        { type: TriggerType.TIMESTAMP, timestamp: Date.now() + 10000 },
+      );
+    });
+
   const sections: Section[] = [
     {
       title: 'Permissions',
@@ -295,6 +358,9 @@ function App() {
       buttons: [
         { label: 'Display with Data', onPress: displayWithData },
         { label: 'Display without pressAction', onPress: displayWithoutPressAction },
+        { label: 'Display Delayed (no pressAction)', onPress: displayDelayedNoPressAction },
+        { label: 'Display with pressAction', onPress: displayWithPressAction },
+        { label: 'Display Delayed (with pressAction)', onPress: displayDelayedWithPressAction },
       ],
     },
   ];
