@@ -87,6 +87,8 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `SCHEDULE_EXACT_ALARM` denial silently drops scheduled alarms (no fallback) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | 9.1.12 |
 | `getNotificationSettings()` returns `DENIED` instead of `NOT_DETERMINED` on Android 13+ before permission requested | Android | [#1237](https://github.com/invertase/notifee/issues/1237) | 9.1.12 |
 | Default `AlarmType.SET_EXACT` doesn't work in Doze mode; `AlarmType.SET` uses `RTC` instead of `RTC_WAKEUP` | Android | [#961](https://github.com/invertase/notifee/issues/961) | 9.1.12 |
+| Foreground service crashes with ANR after ~3 min on Android 14+ (`shortService` timeout, missing `onTimeout()`) | Android | [#703](https://github.com/invertase/notifee/issues/703) | Unreleased |
+| Manifest merger failure when overriding `foregroundServiceType` on `ForegroundService` | Android | [#1108](https://github.com/invertase/notifee/issues/1108) | Unreleased |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
@@ -96,6 +98,33 @@ This fork fixes the following bugs that were never resolved in the original Noti
 > to inexact alarms when the permission is not granted.
 
 As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
+## Foreground Service Setup (Android 14+)
+
+Android 14 (API 34) requires all foreground services to declare an explicit `foregroundServiceType`. If you use `asForegroundService: true` in your notifications, add the following to your app's `AndroidManifest.xml`:
+
+1. **Add the required permissions:**
+
+   ```xml
+   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+   <!-- Replace SHORT_SERVICE with the type matching your use case -->
+   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
+   ```
+
+2. **Declare the service type on Notifee's ForegroundService:**
+
+   ```xml
+   <application ...>
+     <service
+       android:name="app.notifee.core.ForegroundService"
+       android:exported="false"
+       android:foregroundServiceType="shortService" />
+   </application>
+   ```
+
+Available types: `camera`, `connectedDevice`, `dataSync`, `health`, `location`, `mediaPlayback`, `mediaProjection`, `microphone`, `phoneCall`, `remoteMessaging`, `shortService`, `specialUse`, `systemExempted`. Choose the type that matches your use case — using the wrong type may cause Google Play policy violations.
+
+> **Note:** `shortService` has a 3-minute timeout on Android 14+. If your foreground service needs to run longer, use a different type. The library's `onTimeout()` handler will gracefully stop the service if the timeout fires.
 
 ### Trigger Notification Reliability
 

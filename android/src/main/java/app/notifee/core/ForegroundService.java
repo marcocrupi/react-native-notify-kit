@@ -21,6 +21,7 @@ import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -38,9 +39,13 @@ public class ForegroundService extends Service {
   public static final String STOP_FOREGROUND_SERVICE_ACTION =
       "app.notifee.core.ForegroundService.STOP";
 
+  private static final Object sLock = new Object();
+
   public static String mCurrentNotificationId = null;
 
   public static int mCurrentForegroundServiceType = -1;
+
+  private static Bundle mCurrentNotificationBundle = null;
 
   static void start(int hashCode, Notification notification, Bundle notificationBundle) {
     Intent intent = new Intent(ContextHolder.getApplicationContext(), ForegroundService.class);
@@ -78,8 +83,11 @@ public class ForegroundService extends Service {
     // Check if action is to stop the foreground service
     if (intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction())) {
       stopSelf();
-      mCurrentNotificationId = null;
-      mCurrentForegroundServiceType = -1;
+      synchronized (sLock) {
+        mCurrentNotificationId = null;
+        mCurrentForegroundServiceType = -1;
+        mCurrentNotificationBundle = null;
+      }
       return Service.START_STICKY_COMPATIBILITY;
     }
 
@@ -91,11 +99,33 @@ public class ForegroundService extends Service {
       Notification notification = extras.getParcelable("notification");
       Bundle bundle = extras.getBundle("notificationBundle");
 
-      if (notification != null & bundle != null) {
+      if (notification != null && bundle != null) {
         NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
 
         if (mCurrentNotificationId == null) {
           mCurrentNotificationId = notificationModel.getId();
+          mCurrentNotificationBundle = bundle;
+
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            int fgsType = notificationModel.getAndroid().getForegroundServiceType();
+            if (fgsType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+              Logger.e(
+                  TAG,
+                  "No foregroundServiceType declared for app.notifee.core.ForegroundService in"
+                      + " your AndroidManifest.xml. Android 14+ requires an explicit"
+                      + " foregroundServiceType. Add <service"
+                      + " android:name=\"app.notifee.core.ForegroundService\""
+                      + " android:foregroundServiceType=\"yourType\" /> to your app manifest."
+                      + " Aborting foreground service start.");
+              stopSelf();
+              synchronized (sLock) {
+                mCurrentNotificationId = null;
+                mCurrentForegroundServiceType = -1;
+                mCurrentNotificationBundle = null;
+              }
+              return START_NOT_STICKY;
+            }
+          }
 
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
@@ -108,9 +138,12 @@ public class ForegroundService extends Service {
           // On headless task complete
           final MethodCallResult<Void> methodCallResult =
               (e, aVoid) -> {
-                stopForeground(true);
-                mCurrentNotificationId = null;
-                mCurrentForegroundServiceType = -1;
+                stopForegroundCompat();
+                synchronized (sLock) {
+                  mCurrentNotificationId = null;
+                  mCurrentForegroundServiceType = -1;
+                  mCurrentNotificationBundle = null;
+                }
               };
 
           ForegroundServiceEvent foregroundServiceEvent =
@@ -148,5 +181,64 @@ public class ForegroundService extends Service {
   @Override
   public IBinder onBind(Intent intent) {
     return null;
+  }
+
+  /**
+   * Called by the system on API 34 (Android 14) when a foreground service of type {@code
+   * shortService} exceeds its timeout. Stops the service gracefully to prevent ANR.
+   */
+  @Override
+  public void onTimeout(int startId) {
+    handleTimeout(startId, -1);
+  }
+
+  /**
+   * Called by the system on API 35+ (Android 15+) when a foreground service exceeds its
+   * type-specific timeout. Supersedes the single-parameter variant on these API levels.
+   */
+  @Override
+  public void onTimeout(int startId, int fgsType) {
+    handleTimeout(startId, fgsType);
+  }
+
+  @SuppressWarnings("deprecation")
+  private void stopForegroundCompat() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      stopForeground(STOP_FOREGROUND_REMOVE);
+    } else {
+      stopForeground(true);
+    }
+  }
+
+  private void handleTimeout(int startId, int fgsType) {
+    Logger.e(
+        TAG,
+        "Foreground service timed out (startId="
+            + startId
+            + ", type="
+            + fgsType
+            + "). Stopping service.");
+
+    Bundle notifBundle;
+    synchronized (sLock) {
+      notifBundle = mCurrentNotificationBundle;
+    }
+
+    stopForegroundCompat();
+    stopSelf(startId);
+
+    synchronized (sLock) {
+      mCurrentNotificationId = null;
+      mCurrentForegroundServiceType = -1;
+      mCurrentNotificationBundle = null;
+    }
+
+    if (notifBundle != null) {
+      NotificationModel model = NotificationModel.fromBundle(notifBundle);
+      Bundle extras = new Bundle();
+      extras.putInt("startId", startId);
+      extras.putInt("fgsType", fgsType);
+      EventBus.post(new NotificationEvent(NotificationEvent.TYPE_FG_TIMEOUT, model, extras));
+    }
   }
 }

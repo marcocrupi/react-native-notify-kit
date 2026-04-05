@@ -31,11 +31,13 @@ yarn test:core:android              # ./gradlew testDebugUnit
 
 ## Configuration
 
-- **compileSdk**: 34
-- **minSdk**: 20
+- **compileSdk**: 35
+- **minSdk**: 24
 - **targetSdk**: 33
-- **Java compatibility**: 1.8 (source + target)
-- **JVM**: 8, 11, 17, or 21 required
+- **Java compatibility**: 17 (source + target)
+- **JVM**: 17 or 21 required
+- **AGP**: 8.7.0
+- **Gradle**: 8.9
 
 ## Key Dependencies
 

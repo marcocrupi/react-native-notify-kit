@@ -39,6 +39,8 @@ public class NotificationEvent {
 
   @KeepForSdk public static final int TYPE_FG_ALREADY_EXIST = 8;
 
+  @KeepForSdk public static final int TYPE_FG_TIMEOUT = 9;
+
   private final int type;
   private final Bundle extras;
   private final NotificationModel notification;

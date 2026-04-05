@@ -6,7 +6,7 @@ buildscript {
     mavenCentral()
   }
   dependencies {
-    classpath 'com.android.tools.build:gradle:7.0.3'
+    classpath 'com.android.tools.build:gradle:8.7.0'
   }
 }
 
@@ -38,13 +38,14 @@ ext {
 }
 
 android {
-  compileSdkVersion 34
+  namespace 'app.notifee.core'
+  compileSdk 35
   testOptions {
     unitTests.returnDefaultValues = true
   }
   defaultConfig {
-    minSdkVersion 20
-    targetSdkVersion 33
+    minSdk 24
+    targetSdk 33
     versionCode 1
     versionName "1.0"
 
@@ -70,14 +71,13 @@ android {
       minifyEnabled true
       debuggable false
       jniDebuggable false
-      zipAlignEnabled true
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
   }
 
   compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
   }
 
   testOptions.unitTests.all {
