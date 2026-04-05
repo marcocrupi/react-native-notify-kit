@@ -202,7 +202,7 @@ public class ForegroundService extends Service {
    * Called by the system on API 35+ (Android 15+) when a foreground service exceeds its
    * type-specific timeout. Supersedes the single-parameter variant on these API levels.
    */
-  @RequiresApi(35)
+  @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
   @Override
   public void onTimeout(int startId, int fgsType) {
     handleTimeout(startId, fgsType);
