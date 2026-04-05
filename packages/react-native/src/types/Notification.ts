@@ -473,7 +473,9 @@ export enum AuthorizationStatus {
    * The app user has not yet chosen whether to allow the application to create notifications. Usually
    * this status is returned prior to the first call of `requestPermission`.
    *
-   * @platform ios
+   * On iOS, this is based on the native `UNAuthorizationStatusNotDetermined`.
+   * On Android 13+ (API 33+), this is returned when the `POST_NOTIFICATIONS` permission has not yet
+   * been requested via `requestPermission()`.
    */
   NOT_DETERMINED = -1,
 
@@ -497,7 +499,9 @@ export enum AuthorizationStatus {
 export interface NotificationSettings {
   /**
    * Overall notification authorization status for the application.
-   * On Android, `authorizationStatus` will return only either `AuthorizationStatus.DENIED` or `AuthorizationStatus.AUTHORIZED`.
+   * On Android 13+ (API 33+), `authorizationStatus` returns `AuthorizationStatus.NOT_DETERMINED` before
+   * `requestPermission()` is called, `AuthorizationStatus.DENIED` if the user denied the permission,
+   * or `AuthorizationStatus.AUTHORIZED` if granted. On Android < 13, returns `AUTHORIZED` or `DENIED`.
    */
   authorizationStatus: AuthorizationStatus;
   /**

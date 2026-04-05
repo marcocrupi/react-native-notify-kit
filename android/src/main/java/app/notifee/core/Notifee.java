@@ -491,9 +491,12 @@ public class Notifee {
 
     Bundle notificationSettingsBundle = new Bundle();
     if (areNotificationsEnabled) {
-      notificationSettingsBundle.putInt("authorizationStatus", 1);
+      notificationSettingsBundle.putInt("authorizationStatus", 1); // AUTHORIZED
+    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        && !Preferences.getSharedInstance().getBooleanValue("permission_requested", false)) {
+      notificationSettingsBundle.putInt("authorizationStatus", -1); // NOT_DETERMINED
     } else {
-      notificationSettingsBundle.putInt("authorizationStatus", 0);
+      notificationSettingsBundle.putInt("authorizationStatus", 0); // DENIED
     }
 
     boolean canScheduleExactAlarms = AlarmUtils.canScheduleExactAlarms();
@@ -520,6 +523,7 @@ public class Notifee {
   public boolean onRequestPermissionsResult(
       int requestCode, String[] permissions, int[] grantResults) {
     if (requestCode == REQUEST_CODE_NOTIFICATION_PERMISSION) {
+      Preferences.getSharedInstance().setBooleanValue("permission_requested", true);
       if (requestPermissionCallResult != null) {
         getNotificationSettings(requestPermissionCallResult);
         return true;

@@ -469,8 +469,10 @@ export interface Module {
 
   /**
    * Get the current notification settings for this application on the current device.
-   * On Android, `authorizationStatus` will return only either `AuthorizationStatus.DENIED` or `AuthorizationStatus.AUTHORIZED`
-   * and all of the properties on the `IOSNotificationSettings` interface response return as `AUTHORIZED`.
+   * On Android 13+ (API 33+), `authorizationStatus` returns `AuthorizationStatus.NOT_DETERMINED` before
+   * `requestPermission()` is called, `AuthorizationStatus.DENIED` if denied, or `AuthorizationStatus.AUTHORIZED`
+   * if granted. On Android < 13, returns only `DENIED` or `AUTHORIZED`.
+   * All properties on the `IOSNotificationSettings` interface response return as `AUTHORIZED` on Android.
    */
   getNotificationSettings(): Promise<NotificationSettings>;
 
