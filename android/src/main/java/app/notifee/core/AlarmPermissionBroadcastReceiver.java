@@ -12,8 +12,14 @@ public class AlarmPermissionBroadcastReceiver extends BroadcastReceiver {
   public void onReceive(Context context, Intent intent) {
 
     if (intent.getAction().equals(ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED)) {
+      PendingResult pendingResult = goAsync();
       Log.i("AlarmPermissionReceiver", "Received alarm permission state changed event");
-      new NotifeeAlarmManager().rescheduleNotifications();
+
+      if (ContextHolder.getApplicationContext() == null) {
+        ContextHolder.setApplicationContext(context.getApplicationContext());
+      }
+
+      new NotifeeAlarmManager().rescheduleNotifications(pendingResult);
     }
   }
 }

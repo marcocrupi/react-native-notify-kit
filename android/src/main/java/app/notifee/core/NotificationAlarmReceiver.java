@@ -23,10 +23,20 @@ import android.content.Intent;
 
 /*
  * This is invoked by the Alarm Manager when it is time to display a scheduled notification.
+ *
+ * goAsync() is used to extend the receiver's lifetime (~30s instead of ~10s),
+ * preventing Android from killing the process before the async notification
+ * display chain completes. This is critical on Android 14+ when the app is killed.
  */
 public class NotificationAlarmReceiver extends BroadcastReceiver {
   @Override
   public void onReceive(Context context, Intent intent) {
-    new NotifeeAlarmManager().displayScheduledNotification(intent.getExtras());
+    PendingResult pendingResult = goAsync();
+
+    if (ContextHolder.getApplicationContext() == null) {
+      ContextHolder.setApplicationContext(context.getApplicationContext());
+    }
+
+    NotifeeAlarmManager.displayScheduledNotification(intent.getExtras(), pendingResult);
   }
 }

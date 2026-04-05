@@ -21,10 +21,12 @@ import static app.notifee.core.ContextHolder.getApplicationContext;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.annotation.Nullable;
 import androidx.core.app.AlarmManagerCompat;
 import app.notifee.core.database.WorkDataEntity;
 import app.notifee.core.database.WorkDataRepository;
@@ -50,13 +52,20 @@ class NotifeeAlarmManager {
   private static final ListeningExecutorService alarmManagerListeningExecutor =
       MoreExecutors.listeningDecorator(alarmManagerExecutor);
 
-  static void displayScheduledNotification(Bundle alarmManagerNotification) {
+  static void displayScheduledNotification(
+      Bundle alarmManagerNotification, @Nullable BroadcastReceiver.PendingResult pendingResult) {
     if (alarmManagerNotification == null) {
+      if (pendingResult != null) {
+        pendingResult.finish();
+      }
       return;
     }
     String id = alarmManagerNotification.getString(NOTIFICATION_ID_INTENT_KEY);
 
     if (id == null) {
+      if (pendingResult != null) {
+        pendingResult.finish();
+      }
       return;
     }
 
@@ -119,8 +128,14 @@ class NotifeeAlarmManager {
                 alarmManagerExecutor)
             .addOnCompleteListener(
                 (e, result) -> {
-                  if (e != null) {
-                    Logger.e(TAG, "Failed to display notification", e);
+                  try {
+                    if (e != null) {
+                      Logger.e(TAG, "Failed to display notification", e);
+                    }
+                  } finally {
+                    if (pendingResult != null) {
+                      pendingResult.finish();
+                    }
                   }
                 },
                 alarmManagerExecutor);
@@ -149,6 +164,12 @@ class NotifeeAlarmManager {
 
     PendingIntent pendingIntent = getAlarmManagerIntentForNotification(notificationModel.getId());
 
+    if (pendingIntent == null) {
+      Logger.w(
+          TAG, "Failed to create PendingIntent for notification: " + notificationModel.getId());
+      return;
+    }
+
     AlarmManager alarmManager = AlarmUtils.getAlarmManager();
 
     TimestampTriggerModel.AlarmType alarmType = timestampTrigger.getAlarmType();
@@ -164,9 +185,11 @@ class NotifeeAlarmManager {
                   TimestampTriggerModel.AlarmType.SET_ALARM_CLOCK)
               .contains(alarmType);
       if (isExactAlarm && !alarmManager.canScheduleExactAlarms()) {
-        System.err.println(
-            "Missing SCHEDULE_EXACT_ALARM permission. Trigger not scheduled. See:"
-                + " https://notifee.app/react-native/docs/triggers#android-12-limitations");
+        Logger.w(
+            TAG, "SCHEDULE_EXACT_ALARM permission not granted. Falling back to inexact alarm.");
+        timestampTrigger.setNextTimestamp();
+        AlarmManagerCompat.setAndAllowWhileIdle(
+            alarmManager, AlarmManager.RTC_WAKEUP, timestampTrigger.getTimestamp(), pendingIntent);
         return;
       }
     }
@@ -174,43 +197,62 @@ class NotifeeAlarmManager {
     // Ensure timestamp is always in the future when scheduling the alarm
     timestampTrigger.setNextTimestamp();
 
-    switch (alarmType) {
-      case SET:
-        alarmManager.set(AlarmManager.RTC, timestampTrigger.getTimestamp(), pendingIntent);
-        break;
-      case SET_AND_ALLOW_WHILE_IDLE:
+    try {
+      switch (alarmType) {
+        case SET:
+          alarmManager.set(AlarmManager.RTC, timestampTrigger.getTimestamp(), pendingIntent);
+          break;
+        case SET_AND_ALLOW_WHILE_IDLE:
+          AlarmManagerCompat.setAndAllowWhileIdle(
+              alarmManager,
+              AlarmManager.RTC_WAKEUP,
+              timestampTrigger.getTimestamp(),
+              pendingIntent);
+          break;
+        case SET_EXACT:
+          AlarmManagerCompat.setExact(
+              alarmManager,
+              AlarmManager.RTC_WAKEUP,
+              timestampTrigger.getTimestamp(),
+              pendingIntent);
+          break;
+        case SET_EXACT_AND_ALLOW_WHILE_IDLE:
+          AlarmManagerCompat.setExactAndAllowWhileIdle(
+              alarmManager,
+              AlarmManager.RTC_WAKEUP,
+              timestampTrigger.getTimestamp(),
+              pendingIntent);
+          break;
+        case SET_ALARM_CLOCK:
+          int mutabilityFlag = PendingIntent.FLAG_UPDATE_CURRENT;
+          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            mutabilityFlag = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
+          }
+
+          Context context = getApplicationContext();
+          Intent launchActivityIntent =
+              context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+
+          PendingIntent pendingLaunchIntent =
+              PendingIntent.getActivity(
+                  context,
+                  notificationModel.getId().hashCode(),
+                  launchActivityIntent,
+                  mutabilityFlag);
+          AlarmManagerCompat.setAlarmClock(
+              alarmManager, timestampTrigger.getTimestamp(), pendingLaunchIntent, pendingIntent);
+          break;
+      }
+    } catch (SecurityException e) {
+      Logger.w(
+          TAG,
+          "SecurityException scheduling exact alarm, falling back to inexact: " + e.getMessage());
+      try {
         AlarmManagerCompat.setAndAllowWhileIdle(
             alarmManager, AlarmManager.RTC_WAKEUP, timestampTrigger.getTimestamp(), pendingIntent);
-        break;
-      case SET_EXACT:
-        AlarmManagerCompat.setExact(
-            alarmManager, AlarmManager.RTC_WAKEUP, timestampTrigger.getTimestamp(), pendingIntent);
-        break;
-      case SET_EXACT_AND_ALLOW_WHILE_IDLE:
-        AlarmManagerCompat.setExactAndAllowWhileIdle(
-            alarmManager, AlarmManager.RTC_WAKEUP, timestampTrigger.getTimestamp(), pendingIntent);
-        break;
-      case SET_ALARM_CLOCK:
-        // probably a good default behavior for setAlarmClock's
-
-        int mutabilityFlag = PendingIntent.FLAG_UPDATE_CURRENT;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-          mutabilityFlag = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-        }
-
-        Context context = getApplicationContext();
-        Intent launchActivityIntent =
-            context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-
-        PendingIntent pendingLaunchIntent =
-            PendingIntent.getActivity(
-                context,
-                notificationModel.getId().hashCode(),
-                launchActivityIntent,
-                mutabilityFlag);
-        AlarmManagerCompat.setAlarmClock(
-            alarmManager, timestampTrigger.getTimestamp(), pendingLaunchIntent, pendingIntent);
-        break;
+      } catch (SecurityException e2) {
+        Logger.e(TAG, "Failed to schedule even inexact alarm", e2);
+      }
     }
   }
 
@@ -273,21 +315,30 @@ class NotifeeAlarmManager {
     }
   }
 
-  void rescheduleNotifications() {
+  void rescheduleNotifications(@Nullable BroadcastReceiver.PendingResult pendingResult) {
     Logger.d(TAG, "Reschedule Notifications on reboot");
     Futures.addCallback(
         getScheduledNotifications(),
         new FutureCallback<List<WorkDataEntity>>() {
           @Override
           public void onSuccess(List<WorkDataEntity> workDataEntities) {
-            for (WorkDataEntity workDataEntity : workDataEntities) {
-              rescheduleNotification(workDataEntity);
+            try {
+              for (WorkDataEntity workDataEntity : workDataEntities) {
+                rescheduleNotification(workDataEntity);
+              }
+            } finally {
+              if (pendingResult != null) {
+                pendingResult.finish();
+              }
             }
           }
 
           @Override
           public void onFailure(Throwable t) {
-            // silently fail
+            Logger.e(TAG, "Failed to reschedule notifications", new Exception(t));
+            if (pendingResult != null) {
+              pendingResult.finish();
+            }
           }
         },
         alarmManagerListeningExecutor);

@@ -29,10 +29,11 @@ import android.util.Log;
 public class RebootBroadcastReceiver extends BroadcastReceiver {
   @Override
   public void onReceive(Context context, Intent intent) {
+    PendingResult pendingResult = goAsync();
     Log.i("RebootReceiver", "Received reboot event");
     if (ContextHolder.getApplicationContext() == null) {
       ContextHolder.setApplicationContext(context.getApplicationContext());
     }
-    new NotifeeAlarmManager().rescheduleNotifications();
+    new NotifeeAlarmManager().rescheduleNotifications(pendingResult);
   }
 }

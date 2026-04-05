@@ -15,9 +15,12 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   console.log(
     '[BackgroundEvent]',
     type,
-    'id:', detail.notification?.id,
-    'title:', detail.notification?.title,
-    'data:', JSON.stringify(detail.notification?.data),
+    'id:',
+    detail.notification?.id,
+    'title:',
+    detail.notification?.title,
+    'data:',
+    JSON.stringify(detail.notification?.data),
   );
 });
 
