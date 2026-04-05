@@ -30,6 +30,23 @@ function App() {
     setLogs(prev => [{ id, time, msg }, ...prev]);
   }, []);
 
+  // Check initial notification (cold start test for #1128)
+  useEffect(() => {
+    notifee.getInitialNotification().then(initialNotification => {
+      if (initialNotification) {
+        log(`getInitialNotification: ${JSON.stringify(initialNotification)}`);
+        Alert.alert(
+          'Notifee getInitialNotification',
+          `ID: ${initialNotification.notification.id}\n` +
+            `Title: ${initialNotification.notification.title}\n` +
+            `Data: ${JSON.stringify(initialNotification.notification.data)}`,
+        );
+      } else {
+        log('getInitialNotification: null');
+      }
+    });
+  }, [log]);
+
   // Create default Android channel at startup
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -71,7 +88,18 @@ function App() {
   useEffect(() => {
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       const typeName = EventType[type] || String(type);
-      log(`ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'}`);
+      log(
+        `ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'} ` +
+          `title=${detail.notification?.title ?? '?'} ` +
+          `data=${JSON.stringify(detail.notification?.data)}`,
+      );
+      if (type === EventType.PRESS) {
+        Alert.alert(
+          'Notifee PRESS (foreground)',
+          `Title: ${detail.notification?.title}\n` +
+            `Data: ${JSON.stringify(detail.notification?.data)}`,
+        );
+      }
     });
     return unsubscribe;
   }, [log]);
@@ -188,6 +216,40 @@ function App() {
 
   const setBadge = () => run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
 
+  const displayWithData = () =>
+    run('displayWithData', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.displayNotification({
+        title: 'Test #1128',
+        body: 'Tap me to check data',
+        data: { screen: 'profile', userId: '42' },
+        android: { channelId: 'default' },
+      });
+    });
+
+  const displayWithoutPressAction = () =>
+    run('displayWithoutPressAction', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.displayNotification({
+        title: 'Test #1128 (no pressAction)',
+        body: 'Tap me - no pressAction set',
+        data: { screen: 'settings', testId: 'no-press-action' },
+        android: { channelId: 'default' },
+      });
+    });
+
   const sections: Section[] = [
     {
       title: 'Permissions',
@@ -226,6 +288,13 @@ function App() {
       buttons: [
         { label: 'getBadgeCount (iOS)', onPress: getBadge },
         { label: 'setBadgeCount(5) (iOS)', onPress: setBadge },
+      ],
+    },
+    {
+      title: 'Bug #1128 Tests',
+      buttons: [
+        { label: 'Display with Data', onPress: displayWithData },
+        { label: 'Display without pressAction', onPress: displayWithoutPressAction },
       ],
     },
   ];

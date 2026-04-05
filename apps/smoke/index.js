@@ -12,7 +12,13 @@ import { name as appName } from './app.json';
 // Handle notification events when the app is in the background or killed.
 // Must be registered before AppRegistry.registerComponent().
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  console.log('[BackgroundEvent]', type, detail.notification?.id);
+  console.log(
+    '[BackgroundEvent]',
+    type,
+    'id:', detail.notification?.id,
+    'title:', detail.notification?.title,
+    'data:', JSON.stringify(detail.notification?.data),
+  );
 });
 
 // Register a foreground service runner for notifications displayed with
