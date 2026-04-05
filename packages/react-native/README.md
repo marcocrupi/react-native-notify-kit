@@ -204,6 +204,17 @@ transformIgnorePatterns: [
 ],
 ```
 
+## What's Different from Notifee
+
+This fork fixes 9 upstream bugs and adds several improvements:
+
+- **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, ensuring delivery even when the app is killed
+- **iOS remote notification fix** — new `setNotificationConfig()` API to prevent Notifee from intercepting Firebase Messaging tap handlers ([#912](https://github.com/invertase/notifee/issues/912))
+- **Android alarm fixes** — `goAsync()` in BroadcastReceivers, exact alarm fallback, Doze mode compatibility ([#1100](https://github.com/invertase/notifee/issues/1100), [#961](https://github.com/invertase/notifee/issues/961))
+- **Cold start fixes** — `getInitialNotification()` works correctly on both platforms ([#1128](https://github.com/invertase/notifee/issues/1128))
+
+See the full [CHANGELOG](https://github.com/marcocrupi/notifee/blob/main/CHANGELOG.md) and [README](https://github.com/marcocrupi/notifee#bugs-fixed-from-upstream-notifee) for details.
+
 ## Documentation
 
 The upstream Notifee documentation remains a valid reference for the API:

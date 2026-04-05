@@ -67,6 +67,9 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Minimum React Native 0.73**, development target **0.84**
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
+- **9 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
+- **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 
 ## Bugs Fixed from Upstream Notifee
 
@@ -113,6 +116,47 @@ await notifee.createTriggerNotification(notification, {
   alarmManager: false, // Uses WorkManager instead
 });
 ```
+
+### Android: `pressAction` required for tap handling
+
+On Android, notifications require a `pressAction` to open the app when tapped:
+
+```typescript
+await notifee.displayNotification({
+  title: 'Hello',
+  body: 'Tap to open',
+  android: {
+    channelId: 'default',
+    pressAction: { id: 'default', launchActivity: 'default' },
+  },
+});
+```
+
+Without `pressAction`, the notification will display but tapping it will do nothing.
+This is Android platform behavior, not a bug. iOS opens the app by default on tap.
+
+## New APIs
+
+### `setNotificationConfig` (iOS)
+
+Controls whether Notifee intercepts remote (push) notification tap events on iOS.
+When using React Native Firebase Messaging alongside Notifee, call this at app startup
+to let Firebase handle remote notification taps:
+
+```typescript
+import notifee from 'react-native-notify-kit';
+
+await notifee.setNotificationConfig({
+  ios: { handleRemoteNotifications: false },
+});
+```
+
+With `handleRemoteNotifications: false`:
+
+- Remote notifications (FCM) → handled by Firebase Messaging (`onNotificationOpenedApp`, `getInitialNotification`)
+- Local Notifee notifications → still handled by Notifee (unchanged)
+
+Default is `true` (backward compatible — Notifee handles everything, same as original Notifee behavior).
 
 ## Documentation
 
