@@ -77,16 +77,16 @@ This fork fixes the following bugs that were never resolved in the original Noti
 
 | Bug | Platform | Upstream Issue | Fixed in |
 | --- | -------- | -------------- | -------- |
-| Notifee intercepts iOS remote notification tap handlers, breaking RNFB `onNotificationOpenedApp` / `getInitialNotification` | iOS | [#912](https://github.com/invertase/notifee/issues/912) | Unreleased |
-| `completionHandler` not called on notification dismiss | iOS | Pre-existing | Unreleased |
-| `completionHandler` not called in `willPresentNotification` fallback | iOS | Pre-existing | Unreleased |
-| `getInitialNotification()` returns `null` on cold start (deprecated `UIApplicationLaunchOptionsLocalNotificationKey` check) | iOS | [#1128](https://github.com/invertase/notifee/issues/1128) | Unreleased |
-| `getInitialNotification()` returns `null` without `pressAction` configured | Android | [#1128](https://github.com/invertase/notifee/issues/1128) | Unreleased |
-| Foreground press events silently dropped when React instance not ready | Android | [#1279](https://github.com/invertase/notifee/issues/1279) | Unreleased |
-| Trigger notifications not firing on Android 14-15 when app is killed (missing `goAsync()` in `BroadcastReceiver`) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | Unreleased |
-| `SCHEDULE_EXACT_ALARM` denial silently drops scheduled alarms (no fallback) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | Unreleased |
-| `getNotificationSettings()` returns `DENIED` instead of `NOT_DETERMINED` on Android 13+ before permission requested | Android | [#1237](https://github.com/invertase/notifee/issues/1237) | Unreleased |
-| Default `AlarmType.SET_EXACT` doesn't work in Doze mode; `AlarmType.SET` uses `RTC` instead of `RTC_WAKEUP` | Android | [#961](https://github.com/invertase/notifee/issues/961) | Unreleased |
+| Notifee intercepts iOS remote notification tap handlers, breaking RNFB `onNotificationOpenedApp` / `getInitialNotification` | iOS | [#912](https://github.com/invertase/notifee/issues/912) | 9.1.12 |
+| `completionHandler` not called on notification dismiss | iOS | Pre-existing | 9.1.12 |
+| `completionHandler` not called in `willPresentNotification` fallback | iOS | Pre-existing | 9.1.12 |
+| `getInitialNotification()` returns `null` on cold start (deprecated `UIApplicationLaunchOptionsLocalNotificationKey` check) | iOS | [#1128](https://github.com/invertase/notifee/issues/1128) | 9.1.12 |
+| `getInitialNotification()` returns `null` without `pressAction` configured | Android | [#1128](https://github.com/invertase/notifee/issues/1128) | 9.1.12 |
+| Foreground press events silently dropped when React instance not ready | Android | [#1279](https://github.com/invertase/notifee/issues/1279) | 9.1.12 |
+| Trigger notifications not firing on Android 14-15 when app is killed (missing `goAsync()` in `BroadcastReceiver`) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | 9.1.12 |
+| `SCHEDULE_EXACT_ALARM` denial silently drops scheduled alarms (no fallback) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | 9.1.12 |
+| `getNotificationSettings()` returns `DENIED` instead of `NOT_DETERMINED` on Android 13+ before permission requested | Android | [#1237](https://github.com/invertase/notifee/issues/1237) | 9.1.12 |
+| Default `AlarmType.SET_EXACT` doesn't work in Doze mode; `AlarmType.SET` uses `RTC` instead of `RTC_WAKEUP` | Android | [#961](https://github.com/invertase/notifee/issues/961) | 9.1.12 |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
