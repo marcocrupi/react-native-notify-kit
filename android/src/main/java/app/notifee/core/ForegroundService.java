@@ -102,73 +102,75 @@ public class ForegroundService extends Service {
       if (notification != null && bundle != null) {
         NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
 
-        if (mCurrentNotificationId == null) {
-          mCurrentNotificationId = notificationModel.getId();
-          mCurrentNotificationBundle = bundle;
+        synchronized (sLock) {
+          if (mCurrentNotificationId == null) {
+            mCurrentNotificationId = notificationModel.getId();
+            mCurrentNotificationBundle = bundle;
 
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            int fgsType = notificationModel.getAndroid().getForegroundServiceType();
-            if (fgsType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
-              Logger.e(
-                  TAG,
-                  "No foregroundServiceType declared for app.notifee.core.ForegroundService in"
-                      + " your AndroidManifest.xml. Android 14+ requires an explicit"
-                      + " foregroundServiceType. Add <service"
-                      + " android:name=\"app.notifee.core.ForegroundService\""
-                      + " android:foregroundServiceType=\"yourType\" /> to your app manifest."
-                      + " Aborting foreground service start.");
-              stopSelf();
-              synchronized (sLock) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+              int fgsType = notificationModel.getAndroid().getForegroundServiceType();
+              if (fgsType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+                Logger.e(
+                    TAG,
+                    "No foregroundServiceType declared for app.notifee.core.ForegroundService in"
+                        + " your AndroidManifest.xml. Android 14+ requires an explicit"
+                        + " foregroundServiceType. Add <service"
+                        + " android:name=\"app.notifee.core.ForegroundService\""
+                        + " android:foregroundServiceType=\"yourType\" /> to your app manifest."
+                        + " Aborting foreground service start.");
+                stopSelf();
                 mCurrentNotificationId = null;
                 mCurrentForegroundServiceType = -1;
                 mCurrentNotificationBundle = null;
+                return START_NOT_STICKY;
               }
-              return START_NOT_STICKY;
             }
-          }
 
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
-            startForeground(hashCode, notification, foregroundServiceType);
-            mCurrentForegroundServiceType = foregroundServiceType;
-          } else {
-            startForeground(hashCode, notification);
-          }
-
-          // On headless task complete
-          final MethodCallResult<Void> methodCallResult =
-              (e, aVoid) -> {
-                stopForegroundCompat();
-                synchronized (sLock) {
-                  mCurrentNotificationId = null;
-                  mCurrentForegroundServiceType = -1;
-                  mCurrentNotificationBundle = null;
-                }
-              };
-
-          ForegroundServiceEvent foregroundServiceEvent =
-              new ForegroundServiceEvent(notificationModel, methodCallResult);
-
-          EventBus.post(foregroundServiceEvent);
-        } else {
-          if (mCurrentNotificationId.equals(notificationModel.getId())) {
-            boolean shouldPostNotificationAgain = true;
-            // find if we need to start the service again if the type was changed
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
               int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
-              if (foregroundServiceType != mCurrentForegroundServiceType) {
-                startForeground(hashCode, notification, foregroundServiceType);
-                mCurrentForegroundServiceType = foregroundServiceType;
-                shouldPostNotificationAgain = false;
-              }
+              startForeground(hashCode, notification, foregroundServiceType);
+              mCurrentForegroundServiceType = foregroundServiceType;
+            } else {
+              startForeground(hashCode, notification);
             }
-            if (shouldPostNotificationAgain) {
-              NotificationManagerCompat.from(ContextHolder.getApplicationContext())
-                  .notify(hashCode, notification);
-            }
+
+            // On headless task complete
+            final MethodCallResult<Void> methodCallResult =
+                (e, aVoid) -> {
+                  stopForegroundCompat();
+                  synchronized (sLock) {
+                    mCurrentNotificationId = null;
+                    mCurrentForegroundServiceType = -1;
+                    mCurrentNotificationBundle = null;
+                  }
+                };
+
+            ForegroundServiceEvent foregroundServiceEvent =
+                new ForegroundServiceEvent(notificationModel, methodCallResult);
+
+            EventBus.post(foregroundServiceEvent);
           } else {
-            EventBus.post(
-                new NotificationEvent(NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel));
+            if (mCurrentNotificationId.equals(notificationModel.getId())) {
+              boolean shouldPostNotificationAgain = true;
+              // find if we need to start the service again if the type was changed
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                int foregroundServiceType =
+                    notificationModel.getAndroid().getForegroundServiceType();
+                if (foregroundServiceType != mCurrentForegroundServiceType) {
+                  startForeground(hashCode, notification, foregroundServiceType);
+                  mCurrentForegroundServiceType = foregroundServiceType;
+                  shouldPostNotificationAgain = false;
+                }
+              }
+              if (shouldPostNotificationAgain) {
+                NotificationManagerCompat.from(ContextHolder.getApplicationContext())
+                    .notify(hashCode, notification);
+              }
+            } else {
+              EventBus.post(
+                  new NotificationEvent(
+                      NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel));
+            }
           }
         }
       }
@@ -222,16 +224,13 @@ public class ForegroundService extends Service {
     Bundle notifBundle;
     synchronized (sLock) {
       notifBundle = mCurrentNotificationBundle;
-    }
-
-    stopForegroundCompat();
-    stopSelf(startId);
-
-    synchronized (sLock) {
       mCurrentNotificationId = null;
       mCurrentForegroundServiceType = -1;
       mCurrentNotificationBundle = null;
     }
+
+    stopForegroundCompat();
+    stopSelf(startId);
 
     if (notifBundle != null) {
       NotificationModel model = NotificationModel.fromBundle(notifBundle);

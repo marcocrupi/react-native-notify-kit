@@ -84,6 +84,14 @@ public class NotificationEvent {
       if (input != null) {
         eventDetailMap.put("input", input);
       }
+
+      if (extras.containsKey("startId")) {
+        eventDetailMap.put("startId", extras.getInt("startId"));
+      }
+
+      if (extras.containsKey("fgsType")) {
+        eventDetailMap.put("fgsType", extras.getInt("fgsType"));
+      }
     }
 
     eventMap.put("detail", eventDetailMap);

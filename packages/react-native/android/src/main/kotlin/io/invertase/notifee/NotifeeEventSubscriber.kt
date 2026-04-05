@@ -45,6 +45,12 @@ class NotifeeEventSubscriber : EventListener {
             extras.getString(KEY_DETAIL_INPUT)?.let { input ->
                 eventDetailMap.putString(KEY_DETAIL_INPUT, input)
             }
+            if (extras.containsKey("startId")) {
+                eventDetailMap.putInt("startId", extras.getInt("startId"))
+            }
+            if (extras.containsKey("fgsType")) {
+                eventDetailMap.putInt("fgsType", extras.getInt("fgsType"))
+            }
         }
 
         eventMap.putMap(KEY_DETAIL, eventDetailMap)
