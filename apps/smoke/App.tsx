@@ -5,6 +5,7 @@ import notifee, {
   TriggerType,
   EventType,
   AndroidImportance,
+  AndroidForegroundServiceType,
   AlarmType,
 } from 'react-native-notify-kit';
 import {
@@ -340,6 +341,48 @@ function App() {
       );
     });
 
+  const startForegroundService = () =>
+    run('startForegroundService', async () => {
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+        importance: AndroidImportance.HIGH,
+      });
+      return notifee.displayNotification({
+        title: 'Foreground Service',
+        body: 'Running as shortService (3 min timeout)',
+        android: {
+          channelId: 'default',
+          ongoing: true,
+          asForegroundService: true,
+          foregroundServiceTypes: [
+            AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE,
+          ],
+        },
+      });
+    });
+
+  const stopForegroundService = () =>
+    run('stopForegroundService', () => notifee.stopForegroundService());
+
+  const startFgsNoType = () =>
+    run('startFgsNoType', async () => {
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+        importance: AndroidImportance.HIGH,
+      });
+      return notifee.displayNotification({
+        title: 'FGS (no type)',
+        body: 'Should abort immediately on API 34+',
+        android: {
+          channelId: 'default',
+          ongoing: true,
+          asForegroundService: true,
+        },
+      });
+    });
+
   const sections: Section[] = [
     {
       title: 'Permissions',
@@ -359,6 +402,14 @@ function App() {
     {
       title: 'Channels',
       buttons: [{ label: 'createChannel (Android)', onPress: createChannel }],
+    },
+    {
+      title: 'Foreground Service',
+      buttons: [
+        { label: 'Start Foreground Service', onPress: startForegroundService },
+        { label: 'Stop Foreground Service', onPress: stopForegroundService },
+        { label: 'Start FGS (no type)', onPress: startFgsNoType },
+      ],
     },
     {
       title: 'Notifications',
