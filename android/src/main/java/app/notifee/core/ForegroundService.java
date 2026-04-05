@@ -26,6 +26,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationManagerCompat;
 import app.notifee.core.event.ForegroundServiceEvent;
 import app.notifee.core.event.NotificationEvent;
@@ -102,6 +103,8 @@ public class ForegroundService extends Service {
       if (notification != null && bundle != null) {
         NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
 
+        Object pendingEvent = null;
+
         synchronized (sLock) {
           if (mCurrentNotificationId == null) {
             mCurrentNotificationId = notificationModel.getId();
@@ -145,10 +148,7 @@ public class ForegroundService extends Service {
                   }
                 };
 
-            ForegroundServiceEvent foregroundServiceEvent =
-                new ForegroundServiceEvent(notificationModel, methodCallResult);
-
-            EventBus.post(foregroundServiceEvent);
+            pendingEvent = new ForegroundServiceEvent(notificationModel, methodCallResult);
           } else {
             if (mCurrentNotificationId.equals(notificationModel.getId())) {
               boolean shouldPostNotificationAgain = true;
@@ -167,11 +167,14 @@ public class ForegroundService extends Service {
                     .notify(hashCode, notification);
               }
             } else {
-              EventBus.post(
-                  new NotificationEvent(
-                      NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel));
+              pendingEvent =
+                  new NotificationEvent(NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel);
             }
           }
+        }
+
+        if (pendingEvent != null) {
+          EventBus.post(pendingEvent);
         }
       }
     }
@@ -189,6 +192,7 @@ public class ForegroundService extends Service {
    * Called by the system on API 34 (Android 14) when a foreground service of type {@code
    * shortService} exceeds its timeout. Stops the service gracefully to prevent ANR.
    */
+  @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
   @Override
   public void onTimeout(int startId) {
     handleTimeout(startId, -1);
@@ -198,6 +202,7 @@ public class ForegroundService extends Service {
    * Called by the system on API 35+ (Android 15+) when a foreground service exceeds its
    * type-specific timeout. Supersedes the single-parameter variant on these API levels.
    */
+  @RequiresApi(35)
   @Override
   public void onTimeout(int startId, int fgsType) {
     handleTimeout(startId, fgsType);
