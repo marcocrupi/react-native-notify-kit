@@ -42,6 +42,7 @@ public class InitProvider extends ContentProvider {
     super.attachInfo(context, info);
   }
 
+  @KeepForSdk
   @CallSuper
   @Override
   public boolean onCreate() {

@@ -87,5 +87,9 @@
 # A resource is loaded with a relative path so the package of this class must be preserved.
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 
+# InitProvider is subclassed by the RN bridge module (NotifeeInitProvider).
+# R8 must not finalize its methods, otherwise the bridge cannot override onCreate().
+-keep class app.notifee.core.InitProvider { *; }
+
 # -----
 -repackageclasses 'n.o.t.i.f.e.e'
