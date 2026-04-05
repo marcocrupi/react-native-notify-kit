@@ -33,7 +33,7 @@ yarn test:core:android              # ./gradlew testDebugUnit
 
 - **compileSdk**: 35
 - **minSdk**: 24
-- **targetSdk**: 33
+- **targetSdk**: 35
 - **Java compatibility**: 17 (source + target)
 - **JVM**: 17 or 21 required
 - **AGP**: 8.7.0
