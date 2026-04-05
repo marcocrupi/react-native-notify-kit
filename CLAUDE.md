@@ -137,3 +137,43 @@ Examples:
 - `fix(android): prevent headless task double-invocation`
 - `feat: add web notification support`
 - `docs: update installation guidance`
+
+## Documentation conventions
+
+### On every bug fix
+
+1. Add an entry under `### Fixed` in `CHANGELOG.md` (under the `[Unreleased]` section):
+   - Format: `- **Platform**: Description of the fix (upstream: [invertase/notifee#NNN](url))` if it fixes an upstream issue, or just `- **Platform**: Description` for new bugs
+2. Add a row to the "Bugs Fixed from Upstream Notifee" table in `README.md` if it fixes an upstream Notifee issue
+3. Commit message format: `fix(platform): short description (#issue-number)`
+
+### On every new feature
+
+1. Add an entry under `### Added` in `CHANGELOG.md` (under the `[Unreleased]` section):
+   - Format: `- **Platform**: Description of the feature`
+2. If the feature adds a new public API method, add JSDoc documentation to the TypeScript interface in `Module.ts`
+3. Update `README.md` if the feature is user-facing (new API, new config option, new behavior)
+4. Commit message format: `feat(platform): short description`
+
+### On breaking changes
+
+1. Add an entry under `### Changed` or `### Removed` in `CHANGELOG.md`
+2. Add a `BREAKING CHANGE:` footer in the commit message body
+3. Update `README.md` Quick Start or relevant sections
+
+### On npm publish
+
+1. Rename `[Unreleased]` in `CHANGELOG.md` to `[version] - YYYY-MM-DD`
+2. Add a new empty `[Unreleased]` section above it
+3. Replace `Unreleased` in the README "Bugs Fixed" table's "Fixed in" column with the version number
+4. Create a GitHub Release on the tag, copying the changelog entries as release notes
+
+### Commit message format
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+- `fix(ios):`, `fix(android):`, `fix(js):` for bug fixes
+- `feat(ios):`, `feat(android):`, `feat(js):` for new features
+- `docs:` for documentation-only changes
+- `chore:` for tooling, CI, dependencies
+- Platform is `ios`, `android`, `js`, or omitted if cross-platform
