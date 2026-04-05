@@ -104,6 +104,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreEventType) {
 
 + (void)decrementBadgeCount:(NSInteger)decrementBy withBlock:(notifeeMethodVoidBlock)block;
 
++ (void)setNotificationConfig:(NSDictionary *)config withBlock:(notifeeMethodVoidBlock)block;
+
 + (nullable instancetype)notifeeUIApplication;
 
 + (UNMutableNotificationContent *)buildNotificationContent:(NSDictionary *)notification

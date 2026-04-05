@@ -66,6 +66,7 @@ export interface Spec extends TurboModule {
   getBadgeCount(): Promise<number>;
   incrementBadgeCount(incrementBy: number): Promise<void>;
   decrementBadgeCount(decrementBy: number): Promise<void>;
+  setNotificationConfig(config: Object): Promise<void>;
 }
 
 export default TurboModuleRegistry.getEnforcing<Spec>('NotifeeApiModule');

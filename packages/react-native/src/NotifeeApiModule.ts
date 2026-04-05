@@ -41,7 +41,11 @@ import validateNotification from './validators/validateNotification';
 import validateTrigger from './validators/validateTrigger';
 import validateAndroidChannel from './validators/validateAndroidChannel';
 import validateAndroidChannelGroup from './validators/validateAndroidChannelGroup';
-import { IOSNotificationCategory, IOSNotificationPermissions } from './types/NotificationIOS';
+import {
+  IOSNotificationCategory,
+  IOSNotificationConfig,
+  IOSNotificationPermissions,
+} from './types/NotificationIOS';
 import validateIOSCategory from './validators/validateIOSCategory';
 import validateIOSPermissions from './validators/validateIOSPermissions';
 
@@ -641,6 +645,14 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
     }
 
     return this.native.getNotificationCategories() as Promise<IOSNotificationCategory[]>;
+  };
+
+  public setNotificationConfig = (config: { ios?: IOSNotificationConfig }): Promise<void> => {
+    if (!isIOS) {
+      return Promise.resolve();
+    }
+
+    return this.native.setNotificationConfig(config);
   };
 
   public getNotificationSettings = (): Promise<NotificationSettings> => {

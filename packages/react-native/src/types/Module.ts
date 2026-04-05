@@ -10,7 +10,11 @@ import {
   NativeAndroidChannel,
   NativeAndroidChannelGroup,
 } from './NotificationAndroid';
-import { IOSNotificationCategory, IOSNotificationPermissions } from './NotificationIOS';
+import {
+  IOSNotificationCategory,
+  IOSNotificationConfig,
+  IOSNotificationPermissions,
+} from './NotificationIOS';
 import { PowerManagerInfo } from './PowerManagerInfo';
 import { DisplayedNotification, NotificationSettings, TriggerNotification } from '..';
 
@@ -512,6 +516,32 @@ export interface Module {
    * @platform ios
    */
   decrementBadgeCount(decrementBy?: number): Promise<void>;
+
+  /**
+   * API used to configure iOS notification handling behavior.
+   *
+   * Use this to control whether Notifee should handle remote (push) notifications
+   * on iOS. When `handleRemoteNotifications` is set to `false`, remote notifications
+   * (e.g. from Firebase Cloud Messaging) will be forwarded to the original
+   * notification delegate instead of being processed by Notifee.
+   *
+   * This allows libraries like React Native Firebase Messaging to receive tap events
+   * via `onNotificationOpenedApp()` and `getInitialNotification()`.
+   *
+   * Defaults to `true` (Notifee handles all notifications) for backward compatibility.
+   *
+   * ```js
+   * import notifee from 'react-native-notify-kit';
+   *
+   * // Disable Notifee handling of remote notifications
+   * await notifee.setNotificationConfig({
+   *   ios: { handleRemoteNotifications: false },
+   * });
+   * ```
+   *
+   * @platform ios
+   */
+  setNotificationConfig(config: { ios?: IOSNotificationConfig }): Promise<void>;
 
   /**
    * API used to open the Android System settings for the application.

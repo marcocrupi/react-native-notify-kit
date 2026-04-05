@@ -389,4 +389,8 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
     override fun decrementBadgeCount(decrementBy: Double, promise: Promise) {
         promise.resolve(null)
     }
+
+    override fun setNotificationConfig(config: ReadableMap, promise: Promise) {
+        promise.resolve(null)
+    }
 }

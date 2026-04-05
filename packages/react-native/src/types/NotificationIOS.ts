@@ -681,3 +681,23 @@ export interface IOSAttachmentThumbnailClippingRect {
  * @platform ios
  */
 export type IOSNotificationInterruptionLevel = 'active' | 'critical' | 'passive' | 'timeSensitive';
+
+/**
+ * Interface for configuring iOS notification handling behavior.
+ *
+ * @platform ios
+ */
+export interface IOSNotificationConfig {
+  /**
+   * Whether Notifee should handle remote (push) notifications on iOS.
+   *
+   * When set to `false`, remote notifications (e.g. from Firebase Cloud Messaging)
+   * will be forwarded to the original notification delegate instead of being
+   * processed by Notifee. This allows libraries like React Native Firebase
+   * Messaging to receive tap events via `onNotificationOpenedApp()` and
+   * `getInitialNotification()`.
+   *
+   * Defaults to `true` for backward compatibility.
+   */
+  handleRemoteNotifications?: boolean;
+}

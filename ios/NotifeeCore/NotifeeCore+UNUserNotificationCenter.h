@@ -25,6 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, nullable, weak) id<UNUserNotificationCenterDelegate> originalDelegate;
 
+@property(nonatomic, assign) BOOL shouldHandleRemoteNotifications;
+
 @property(strong, nullable) NSDictionary *initialNotification;
 @property bool initialNotificationGathered;
 @property(nullable) notifeeMethodNSDictionaryBlock initialNotificationBlock;

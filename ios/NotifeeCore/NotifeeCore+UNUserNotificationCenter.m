@@ -36,6 +36,7 @@ struct {
     sharedInstance.initialNotification = nil;
     sharedInstance.initialNotificationGathered = false;
     sharedInstance.initialNotificationBlock = nil;
+    sharedInstance.shouldHandleRemoteNotifications = YES;
   });
   return sharedInstance;
 }
@@ -165,6 +166,8 @@ struct {
     [_originalDelegate userNotificationCenter:center
                       willPresentNotification:notification
                         withCompletionHandler:completionHandler];
+  } else {
+    completionHandler(UNNotificationPresentationOptionNone);
   }
 }
 
@@ -182,10 +185,24 @@ struct {
 
   // handle notification outside of notifee
   if (notifeeNotification == nil) {
+    if (!self.shouldHandleRemoteNotifications) {
+      // Flag OFF: always forward to original delegate, never parse as Notifee
+      if (_originalDelegate != nil &&
+          originalUNCDelegateRespondsTo.didReceiveNotificationResponse) {
+        [_originalDelegate userNotificationCenter:center
+                   didReceiveNotificationResponse:response
+                            withCompletionHandler:completionHandler];
+      } else {
+        completionHandler();
+      }
+      return;
+    }
+    // Flag ON (default): existing behavior
     if (_originalDelegate != nil && originalUNCDelegateRespondsTo.didReceiveNotificationResponse) {
       [_originalDelegate userNotificationCenter:center
                  didReceiveNotificationResponse:response
                           withCompletionHandler:completionHandler];
+      return;
     } else {
       notifeeNotification =
           [NotifeeCoreUtil parseUNNotificationRequest:response.notification.request];
@@ -201,6 +218,7 @@ struct {
           @"notification" : notifeeNotification,
         }
       }];
+      completionHandler();
       return;
     }
 

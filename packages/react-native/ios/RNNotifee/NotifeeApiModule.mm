@@ -283,6 +283,14 @@ RCT_EXPORT_MODULE();
   }];
 }
 
+- (void)setNotificationConfig:(NSDictionary *)config
+                      resolve:(RCTPromiseResolveBlock)resolve
+                       reject:(RCTPromiseRejectBlock)reject {
+  [NotifeeCore setNotificationConfig:config withBlock:^(NSError *_Nullable error) {
+    [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
+  }];
+}
+
 #pragma mark - Android-only stubs (required by NativeNotifeeModuleSpec)
 
 - (void)createChannel:(NSDictionary *)channelMap

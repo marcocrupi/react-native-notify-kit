@@ -828,6 +828,14 @@
   block(nil);
 }
 
++ (void)setNotificationConfig:(NSDictionary *)config withBlock:(notifeeMethodVoidBlock)block {
+  if (config[@"ios"] != nil && config[@"ios"][@"handleRemoteNotifications"] != nil) {
+    [NotifeeCoreUNUserNotificationCenter instance].shouldHandleRemoteNotifications =
+        [config[@"ios"][@"handleRemoteNotifications"] boolValue];
+  }
+  block(nil);
+}
+
 + (nullable instancetype)notifeeUIApplication {
   return (NotifeeCore *)[NotifeeCoreUtil notifeeUIApplication];
 };

@@ -1,8 +1,18 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { ScrollView, Text, Pressable, Platform, StyleSheet, View } from 'react-native';
+import { ScrollView, Text, Pressable, Platform, StyleSheet, View, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import notifee, { TriggerType, EventType, AndroidImportance } from 'react-native-notify-kit';
-import { getMessaging, getToken, onMessage } from '@react-native-firebase/messaging/lib/modular';
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  onNotificationOpenedApp,
+  getInitialNotification,
+} from '@react-native-firebase/messaging/lib/modular';
+
+// Uncomment the line below to test cold start with remote handling OFF.
+// Must be called before iOS delivers the initial notification.
+// notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } });
 
 type LogEntry = { id: number; time: string; msg: string };
 type Section = {
@@ -67,6 +77,29 @@ function App() {
     return unsubscribe;
   }, [log]);
 
+  // RNFB: detect notification tap when app is in background (not killed)
+  useEffect(() => {
+    const messaging = getMessaging();
+    const unsubscribe = onNotificationOpenedApp(messaging, remoteMessage => {
+      const data = JSON.stringify(remoteMessage.data ?? {});
+      log(`[RNFB] onNotificationOpenedApp: ${data}`);
+      Alert.alert('RNFB onNotificationOpenedApp', data);
+    });
+    return unsubscribe;
+  }, [log]);
+
+  // RNFB: detect notification tap when app was killed (cold start)
+  useEffect(() => {
+    const messaging = getMessaging();
+    getInitialNotification(messaging).then(remoteMessage => {
+      if (remoteMessage) {
+        const data = JSON.stringify(remoteMessage.data ?? {});
+        log(`[RNFB] getInitialNotification: ${data}`);
+        Alert.alert('RNFB getInitialNotification', data);
+      }
+    });
+  }, [log]);
+
   const run = useCallback(
     async (label: string, fn: () => Promise<unknown>) => {
       try {
@@ -114,8 +147,19 @@ function App() {
       const messaging = getMessaging();
       const token = await getToken(messaging);
       console.log('FCM Token:', token);
+      Alert.alert('FCM Token', token);
       return token;
     });
+
+  const setRemoteOff = () =>
+    run('setNotificationConfig(OFF)', () =>
+      notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } }),
+    );
+
+  const setRemoteOn = () =>
+    run('setNotificationConfig(ON)', () =>
+      notifee.setNotificationConfig({ ios: { handleRemoteNotifications: true } }),
+    );
 
   const getSettings = () => run('getNotificationSettings', () => notifee.getNotificationSettings());
 
@@ -153,6 +197,13 @@ function App() {
     {
       title: 'Firebase',
       buttons: [{ label: 'getFCMToken', onPress: getFCMToken }],
+    },
+    {
+      title: 'Remote Notification Config (iOS)',
+      buttons: [
+        { label: 'RNFB Mode (Remote OFF)', onPress: setRemoteOff },
+        { label: 'Notifee Mode (Remote ON)', onPress: setRemoteOn },
+      ],
     },
     {
       title: 'Channels',
