@@ -83,8 +83,16 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | Trigger notifications not firing on Android 14-15 when app is killed (missing `goAsync()` in `BroadcastReceiver`) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | Unreleased |
 | `SCHEDULE_EXACT_ALARM` denial silently drops scheduled alarms (no fallback) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | Unreleased |
 | `getNotificationSettings()` returns `DENIED` instead of `NOT_DETERMINED` on Android 13+ before permission requested | Android | [#1237](https://github.com/invertase/notifee/issues/1237) | Unreleased |
+| Default `AlarmType.SET_EXACT` doesn't work in Doze mode; `AlarmType.SET` uses `RTC` instead of `RTC_WAKEUP` | Android | [#961](https://github.com/invertase/notifee/issues/961) | Unreleased |
 
-> As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
+> **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
+> Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
+> `AndroidManifest.xml`. This permission is auto-granted and not revocable, but Google Play
+> restricts its use to apps whose core function requires exact timing.
+> For all other apps, the library uses `SCHEDULE_EXACT_ALARM` with automatic fallback
+> to inexact alarms when the permission is not granted.
+
+As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ## Documentation
 

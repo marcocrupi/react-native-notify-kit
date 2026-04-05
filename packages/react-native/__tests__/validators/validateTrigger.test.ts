@@ -164,7 +164,7 @@ describe('Validate Trigger', () => {
           // expect($.).toEqual(date.getTime());
           expect($.repeatFrequency).toEqual(2);
           expect($.timestamp).toEqual(date.getTime());
-          expect($.alarmManager).toEqual({ type: AlarmType.SET_EXACT });
+          expect($.alarmManager).toEqual({ type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE });
         });
 
         test('parses deprecated property to an object with proper alarm type set', () => {

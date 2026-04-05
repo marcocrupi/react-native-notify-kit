@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Android**: Changed default AlarmType from `SET_EXACT` to `SET_EXACT_AND_ALLOW_WHILE_IDLE` for better Doze mode compatibility (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
+
 ### Fixed
 
 - **Android**: Fixed `getNotificationSettings()` returning `AuthorizationStatus.DENIED` instead of `AuthorizationStatus.NOT_DETERMINED` on Android 13+ (API 33+) before the user has responded to the `POST_NOTIFICATIONS` permission dialog — now uses `SharedPreferences` to track whether `requestPermission()` has been called (upstream: [invertase/notifee#1237](https://github.com/invertase/notifee/issues/1237))
@@ -22,3 +26,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **iOS**: Fixed `completionHandler` not being called on notification dismiss path in `didReceiveNotificationResponse:`, preventing potential handler leaks
 - **iOS**: Fixed `completionHandler` not being called in `willPresentNotification:` fallback path when no original delegate is available
 - **iOS**: Added missing `return` after forwarding to `_originalDelegate` in `didReceiveNotificationResponse:` default path, preventing potential fall-through to `parseUNNotificationRequest`
+- **Android**: Fixed `AlarmType.SET` using `RTC` instead of `RTC_WAKEUP`, which prevented the device from waking to show the notification

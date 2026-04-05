@@ -200,7 +200,7 @@ class NotifeeAlarmManager {
     try {
       switch (alarmType) {
         case SET:
-          alarmManager.set(AlarmManager.RTC, timestampTrigger.getTimestamp(), pendingIntent);
+          alarmManager.set(AlarmManager.RTC_WAKEUP, timestampTrigger.getTimestamp(), pendingIntent);
           break;
         case SET_AND_ALLOW_WHILE_IDLE:
           AlarmManagerCompat.setAndAllowWhileIdle(

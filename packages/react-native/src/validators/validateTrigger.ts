@@ -97,7 +97,7 @@ function validateTimestampAlarmManager(
   alarmManager?: TimestampTriggerAlarmManager,
 ): TimestampTriggerAlarmManager {
   const out: TimestampTriggerAlarmManager = {
-    type: AlarmType.SET_EXACT,
+    type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE,
   };
   if (!alarmManager) {
     return out;
