@@ -68,6 +68,18 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
 
+## Bugs Fixed from Upstream Notifee
+
+This fork fixes the following bugs that were never resolved in the original Notifee repository:
+
+| Bug | Platform | Upstream Issue | Fixed in |
+| --- | -------- | -------------- | -------- |
+| Notifee intercepts iOS remote notification tap handlers, breaking RNFB `onNotificationOpenedApp` / `getInitialNotification` | iOS | [#912](https://github.com/invertase/notifee/issues/912) | Unreleased |
+| `completionHandler` not called on notification dismiss | iOS | Pre-existing | Unreleased |
+| `completionHandler` not called in `willPresentNotification` fallback | iOS | Pre-existing | Unreleased |
+
+> As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
+
 ## Documentation
 
 The upstream Notifee documentation remains the best reference for the public API and platform guides used by this fork.

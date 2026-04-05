@@ -10,8 +10,7 @@ import {
   getInitialNotification,
 } from '@react-native-firebase/messaging/lib/modular';
 
-// Uncomment the line below to test cold start with remote handling OFF.
-// Must be called before iOS delivers the initial notification.
+// Uncomment to test cold start with remote notification handling disabled (fix #912)
 // notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } });
 
 type LogEntry = { id: number; time: string; msg: string };
