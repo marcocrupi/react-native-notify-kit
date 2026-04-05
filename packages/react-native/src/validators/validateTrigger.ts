@@ -81,6 +81,7 @@ function validateTimestampTrigger(trigger: TimestampTrigger): TimestampTrigger {
       if (trigger.alarmManager) {
         out.alarmManager = validateTimestampAlarmManager();
       }
+      // alarmManager: false → respect opt-out, use WorkManager
     } else {
       try {
         out.alarmManager = validateTimestampAlarmManager(trigger.alarmManager);
@@ -88,6 +89,9 @@ function validateTimestampTrigger(trigger: TimestampTrigger): TimestampTrigger {
         throw new Error(`'trigger.alarmManager' ${e.message}.`);
       }
     }
+  } else {
+    // Default to AlarmManager for reliable delivery when app is killed
+    out.alarmManager = validateTimestampAlarmManager();
   }
 
   return out;

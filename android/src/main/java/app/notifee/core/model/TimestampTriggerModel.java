@@ -84,7 +84,7 @@ public class TimestampTriggerModel {
       if (typeObj != null) {
         type = ObjectUtils.getInt(typeObj);
       } else {
-        type = 2;
+        type = 3;
       }
 
       // this is for the deprecated `alarmManager.allowWhileIdle` option

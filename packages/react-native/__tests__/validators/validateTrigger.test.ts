@@ -79,6 +79,19 @@ describe('Validate Trigger', () => {
         expect($.repeatFrequency).toEqual(-1);
       });
 
+      test('defaults to AlarmManager when alarmManager is not specified', () => {
+        const date = new Date(Date.now());
+        date.setSeconds(date.getSeconds() + 10);
+        const trigger: TimestampTrigger = {
+          type: TriggerType.TIMESTAMP,
+          timestamp: date.getTime(),
+        };
+
+        const $ = validateTrigger(trigger) as TimestampTrigger;
+
+        expect($.alarmManager).toEqual({ type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE });
+      });
+
       test('throws error if repeatFrequency is invalid', () => {
         const date = new Date(Date.now());
         date.setSeconds(date.getSeconds() + 10);

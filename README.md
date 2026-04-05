@@ -94,6 +94,26 @@ This fork fixes the following bugs that were never resolved in the original Noti
 
 As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
+### Trigger Notification Reliability
+
+This fork defaults to AlarmManager for trigger notifications on Android, instead of WorkManager.
+This ensures scheduled notifications are delivered reliably even when the app is killed.
+
+The original Notifee used WorkManager by default, which is battery-friendly but unreliable
+for time-sensitive notifications — Android may defer or drop WorkManager tasks based on
+battery optimization, Doze mode, and OEM power management.
+
+If you need battery-friendly scheduling where exact timing is not critical (e.g., daily digest
+notifications), you can opt out:
+
+```typescript
+await notifee.createTriggerNotification(notification, {
+  type: TriggerType.TIMESTAMP,
+  timestamp: Date.now() + 60000,
+  alarmManager: false, // Uses WorkManager instead
+});
+```
+
 ## Documentation
 
 The upstream Notifee documentation remains the best reference for the public API and platform guides used by this fork.

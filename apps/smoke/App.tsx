@@ -1,7 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { ScrollView, Text, Pressable, Platform, StyleSheet, View, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import notifee, { TriggerType, EventType, AndroidImportance } from 'react-native-notify-kit';
+import notifee, {
+  TriggerType,
+  EventType,
+  AndroidImportance,
+  AlarmType,
+} from 'react-native-notify-kit';
 import {
   getMessaging,
   getToken,
@@ -280,7 +285,11 @@ function App() {
           data: { screen: 'settings', testId: 'no-press-action' },
           android: { channelId: 'default' },
         },
-        { type: TriggerType.TIMESTAMP, timestamp: Date.now() + 10000 },
+        {
+          type: TriggerType.TIMESTAMP,
+          timestamp: Date.now() + 10000,
+          alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+        },
       );
     });
 
@@ -323,7 +332,11 @@ function App() {
             pressAction: { id: 'default', launchActivity: 'default' },
           },
         },
-        { type: TriggerType.TIMESTAMP, timestamp: Date.now() + 10000 },
+        {
+          type: TriggerType.TIMESTAMP,
+          timestamp: Date.now() + 10000,
+          alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+        },
       );
     });
 
