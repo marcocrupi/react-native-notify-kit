@@ -67,7 +67,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Minimum React Native 0.73**, development target **0.84**
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
-- **9 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **11 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 
