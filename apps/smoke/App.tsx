@@ -188,7 +188,21 @@ function App() {
       notifee.setNotificationConfig({ ios: { handleRemoteNotifications: true } }),
     );
 
-  const getSettings = () => run('getNotificationSettings', () => notifee.getNotificationSettings());
+  const getSettings = async () => {
+    try {
+      const settings = await notifee.getNotificationSettings();
+      console.log('[Notifee] getNotificationSettings:', JSON.stringify(settings));
+      log(`getNotificationSettings: ${JSON.stringify(settings)}`);
+      Alert.alert(
+        'Notification Settings',
+        `authorizationStatus: ${settings.authorizationStatus}\n` +
+          `(-1 = NOT_DETERMINED, 0 = DENIED, 1 = AUTHORIZED)`,
+      );
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      log(`getNotificationSettings: ERROR ${message}`);
+    }
+  };
 
   const getDisplayed = () =>
     run('getDisplayedNotifications', () => notifee.getDisplayedNotifications());
