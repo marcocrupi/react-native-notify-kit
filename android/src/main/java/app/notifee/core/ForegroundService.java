@@ -20,7 +20,10 @@ package app.notifee.core;
 import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.Service;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.Bundle;
@@ -49,30 +52,64 @@ public class ForegroundService extends Service {
   private static Bundle mCurrentNotificationBundle = null;
 
   static void start(int hashCode, Notification notification, Bundle notificationBundle) {
-    Intent intent = new Intent(ContextHolder.getApplicationContext(), ForegroundService.class);
+    Context context = ContextHolder.getApplicationContext();
+    if (context == null) {
+      Logger.e(TAG, "Application context is null; cannot start ForegroundService.");
+      return;
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+      try {
+        ComponentName component = new ComponentName(context, ForegroundService.class);
+        ServiceInfo info =
+            context.getPackageManager().getServiceInfo(component, PackageManager.GET_META_DATA);
+        if (info.getForegroundServiceType() == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
+          Logger.e(
+              TAG,
+              "No foregroundServiceType declared for app.notifee.core.ForegroundService in"
+                  + " your AndroidManifest.xml. Android 14+ requires an explicit"
+                  + " foregroundServiceType. Add <service"
+                  + " android:name=\"app.notifee.core.ForegroundService\""
+                  + " android:foregroundServiceType=\"yourType\" /> to your app manifest."
+                  + " Aborting foreground service start.");
+          return;
+        }
+      } catch (PackageManager.NameNotFoundException e) {
+        Logger.e(TAG, "ForegroundService not found in manifest", e);
+        return;
+      }
+    }
+
+    Intent intent = new Intent(context, ForegroundService.class);
     intent.setAction(START_FOREGROUND_SERVICE_ACTION);
     intent.putExtra("hashCode", hashCode);
     intent.putExtra("notification", notification);
     intent.putExtra("notificationBundle", notificationBundle);
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      ContextHolder.getApplicationContext().startForegroundService(intent);
+      context.startForegroundService(intent);
     } else {
       // TODO test this on older device
-      ContextHolder.getApplicationContext().startService(intent);
+      context.startService(intent);
     }
   }
 
   static void stop() {
-    Intent intent = new Intent(ContextHolder.getApplicationContext(), ForegroundService.class);
+    Context context = ContextHolder.getApplicationContext();
+    if (context == null) {
+      Logger.e(TAG, "Application context is null; cannot stop ForegroundService.");
+      return;
+    }
+
+    Intent intent = new Intent(context, ForegroundService.class);
     intent.setAction(STOP_FOREGROUND_SERVICE_ACTION);
 
     try {
       // Call start service first with stop action
-      ContextHolder.getApplicationContext().startService(intent);
+      context.startService(intent);
     } catch (IllegalStateException illegalStateException) {
       // try to stop with stopService command
-      ContextHolder.getApplicationContext().stopService(intent);
+      context.stopService(intent);
     } catch (Exception exception) {
       Logger.e(TAG, "Unable to stop foreground service", exception);
     }
@@ -110,27 +147,21 @@ public class ForegroundService extends Service {
             mCurrentNotificationId = notificationModel.getId();
             mCurrentNotificationBundle = bundle;
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-              int fgsType = notificationModel.getAndroid().getForegroundServiceType();
-              if (fgsType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+              int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
+              if (foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+                foregroundServiceType = resolveManifestServiceType();
+              }
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                  && foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
                 Logger.e(
                     TAG,
-                    "No foregroundServiceType declared for app.notifee.core.ForegroundService in"
-                        + " your AndroidManifest.xml. Android 14+ requires an explicit"
-                        + " foregroundServiceType. Add <service"
-                        + " android:name=\"app.notifee.core.ForegroundService\""
-                        + " android:foregroundServiceType=\"yourType\" /> to your app manifest."
-                        + " Aborting foreground service start.");
-                stopSelf();
+                    "Resolved foreground service type is NONE on API 34+; aborting"
+                        + " startForeground to avoid InvalidForegroundServiceTypeException.");
                 mCurrentNotificationId = null;
-                mCurrentForegroundServiceType = -1;
                 mCurrentNotificationBundle = null;
                 return START_NOT_STICKY;
               }
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-              int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
               startForeground(hashCode, notification, foregroundServiceType);
               mCurrentForegroundServiceType = foregroundServiceType;
             } else {
@@ -156,7 +187,16 @@ public class ForegroundService extends Service {
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 int foregroundServiceType =
                     notificationModel.getAndroid().getForegroundServiceType();
-                if (foregroundServiceType != mCurrentForegroundServiceType) {
+                if (foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+                  foregroundServiceType = resolveManifestServiceType();
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                    && foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
+                  Logger.e(
+                      TAG,
+                      "Resolved foreground service type is NONE on API 34+; skipping type"
+                          + " change.");
+                } else if (foregroundServiceType != mCurrentForegroundServiceType) {
                   startForeground(hashCode, notification, foregroundServiceType);
                   mCurrentForegroundServiceType = foregroundServiceType;
                   shouldPostNotificationAgain = false;
@@ -206,6 +246,32 @@ public class ForegroundService extends Service {
   @Override
   public void onTimeout(int startId, int fgsType) {
     handleTimeout(startId, fgsType);
+  }
+
+  @RequiresApi(Build.VERSION_CODES.Q)
+  private static int resolveManifestServiceType() {
+    try {
+      Context context = ContextHolder.getApplicationContext();
+      if (context == null) {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+            ? ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
+            : ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST;
+      }
+      ComponentName component = new ComponentName(context, ForegroundService.class);
+      ServiceInfo info =
+          context.getPackageManager().getServiceInfo(component, PackageManager.GET_META_DATA);
+      int type = info.getForegroundServiceType();
+      if (type != ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
+        return type;
+      }
+    } catch (PackageManager.NameNotFoundException e) {
+      Logger.e(TAG, "ForegroundService not found in manifest", e);
+    }
+    // On API 34+ returning MANIFEST (-1) would crash in startForeground(), so return NONE.
+    // On API 29-33 MANIFEST is accepted by the framework and resolves at runtime.
+    return Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+        ? ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
+        : ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST;
   }
 
   @SuppressWarnings("deprecation")
