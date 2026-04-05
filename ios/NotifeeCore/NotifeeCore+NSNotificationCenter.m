@@ -60,6 +60,10 @@
 - (void)application_onDidFinishLaunchingNotification:(nonnull NSNotification *)notification {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  // UIApplicationLaunchOptionsLocalNotificationKey is deprecated since iOS 10.
+  // On modern iOS, initial notification is delivered via didReceiveNotificationResponse:
+  // which sets _initialNotification and _notificationOpenedAppID directly.
+  // This legacy path only works for UILocalNotification (pre-iOS 10).
   UILocalNotification *launchNotification =
       (UILocalNotification *)notification.userInfo[UIApplicationLaunchOptionsLocalNotificationKey];
   [[NotifeeCoreUNUserNotificationCenter instance]

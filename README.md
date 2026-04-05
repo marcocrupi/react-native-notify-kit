@@ -77,6 +77,9 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | Notifee intercepts iOS remote notification tap handlers, breaking RNFB `onNotificationOpenedApp` / `getInitialNotification` | iOS | [#912](https://github.com/invertase/notifee/issues/912) | Unreleased |
 | `completionHandler` not called on notification dismiss | iOS | Pre-existing | Unreleased |
 | `completionHandler` not called in `willPresentNotification` fallback | iOS | Pre-existing | Unreleased |
+| `getInitialNotification()` returns `null` on cold start (deprecated `UIApplicationLaunchOptionsLocalNotificationKey` check) | iOS | [#1128](https://github.com/invertase/notifee/issues/1128) | Unreleased |
+| `getInitialNotification()` returns `null` without `pressAction` configured | Android | [#1128](https://github.com/invertase/notifee/issues/1128) | Unreleased |
+| Foreground press events silently dropped when React instance not ready | Android | [#1279](https://github.com/invertase/notifee/issues/1279) | Unreleased |
 
 > As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
 

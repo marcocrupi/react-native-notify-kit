@@ -21,6 +21,29 @@ object NotifeeReactUtils {
 
     val headlessTaskManager = HeadlessTask()
 
+    private const val MAX_PENDING_EVENTS = 10
+    private val pendingEvents = mutableListOf<Pair<String, com.facebook.react.bridge.WritableMap>>()
+
+    fun flushPendingEvents() {
+        val eventsToSend: List<Pair<String, com.facebook.react.bridge.WritableMap>>
+        synchronized(pendingEvents) {
+            eventsToSend = pendingEvents.toList()
+            pendingEvents.clear()
+        }
+        for ((name, map) in eventsToSend) {
+            try {
+                val reactContext = HeadlessTask.getReactContext(EventSubscriber.getContext())
+                if (reactContext != null && reactContext.hasActiveReactInstance()) {
+                    reactContext
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                        .emit(name, map)
+                }
+            } catch (e: Exception) {
+                Log.e("SEND_EVENT", "flush failed", e)
+            }
+        }
+    }
+
     fun promiseResolver(promise: Promise, e: Exception?, bundle: Bundle?) {
         if (e != null) {
             promise.reject(e)
@@ -83,8 +106,16 @@ object NotifeeReactUtils {
 
     fun sendEvent(eventName: String, eventMap: com.facebook.react.bridge.WritableMap) {
         try {
-            val reactContext = HeadlessTask.getReactContext(EventSubscriber.getContext()) ?: return
-            if (!reactContext.hasActiveReactInstance()) return
+            val reactContext = HeadlessTask.getReactContext(EventSubscriber.getContext())
+            if (reactContext == null || !reactContext.hasActiveReactInstance()) {
+                synchronized(pendingEvents) {
+                    if (pendingEvents.size >= MAX_PENDING_EVENTS) {
+                        pendingEvents.removeAt(0)
+                    }
+                    pendingEvents.add(Pair(eventName, eventMap))
+                }
+                return
+            }
 
             reactContext
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)

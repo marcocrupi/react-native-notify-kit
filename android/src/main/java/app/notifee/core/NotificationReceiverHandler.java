@@ -126,14 +126,15 @@ public class NotificationReceiverHandler {
 
     EventBus.post(new NotificationEvent(TYPE_PRESS, notificationModel, extras));
 
+    InitialNotificationEvent initialNotificationEvent =
+        new InitialNotificationEvent(notificationModel, extras);
+    EventBus.postSticky(initialNotificationEvent);
+
     if (pressActionBundle == null) {
       return;
     }
 
     String mainComponent = pressActionBundle.getMainComponent();
-    InitialNotificationEvent initialNotificationEvent =
-        new InitialNotificationEvent(notificationModel, extras);
-    EventBus.postSticky(initialNotificationEvent);
 
     // Send sticky event to save the mainComponent
     if (mainComponent != null) {

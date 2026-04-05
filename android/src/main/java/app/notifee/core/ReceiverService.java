@@ -143,6 +143,10 @@ public class ReceiverService extends Service {
 
     EventBus.post(new NotificationEvent(TYPE_PRESS, notificationModel, extras));
 
+    InitialNotificationEvent initialNotificationEvent =
+        new InitialNotificationEvent(notificationModel, extras);
+    EventBus.postSticky(initialNotificationEvent);
+
     if (pressActionBundle == null) {
       return;
     }
@@ -151,8 +155,6 @@ public class ReceiverService extends Service {
     String mainComponent = pressActionBundle.getMainComponent();
 
     if (launchActivity != null || mainComponent != null) {
-      InitialNotificationEvent initialNotificationEvent =
-          new InitialNotificationEvent(notificationModel, extras);
       launchPendingIntentActivity(
           initialNotificationEvent,
           launchActivity,

@@ -75,8 +75,7 @@ struct {
 - (nullable NSDictionary *)getInitialNotification {
   if (_initialNotificationGathered && _initialNotificationBlock != nil) {
     // copying initial notification
-    if (_initialNotification != nil &&
-        [_initialNoticationID isEqualToString:_notificationOpenedAppID]) {
+    if (_initialNotification != nil && _notificationOpenedAppID != nil) {
       NSDictionary *initialNotificationCopy = [_initialNotification copy];
       _initialNotification = nil;
       _initialNotificationBlock(nil, initialNotificationCopy);
@@ -259,7 +258,7 @@ struct {
 
     // post PRESS/ACTION_PRESS event
     // Set is initial notification to true
-    if (_notificationOpenedAppID != nil &&
+    if (_notificationOpenedAppID != nil && _initialNoticationID != nil &&
         [_initialNoticationID isEqualToString:_notificationOpenedAppID]) {
       eventDetail[@"initialNotification"] = @1;
     }

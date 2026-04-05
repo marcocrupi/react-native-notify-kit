@@ -323,6 +323,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
 
     override fun addListener(eventName: String) {
         // Keep: Required for RN built in Event Emitter Calls.
+        NotifeeReactUtils.flushPendingEvents()
     }
 
     override fun removeListeners(count: Double) {
