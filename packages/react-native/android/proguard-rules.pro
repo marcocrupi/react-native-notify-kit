@@ -17,7 +17,7 @@
 
 # Keep the classes/members we need for client functionality.
 -keep @interface androidx.annotation.Keep { *; }
--keep @androidx.annotation.Keep class * { <init>(...); }
+-keep @androidx.annotation.Keep class * { *; }
 -keepclasseswithmembers class * {
   @androidx.annotation.Keep <fields>;
 }
@@ -27,7 +27,7 @@
 
 # Keep the classes/members we need for client functionality.
 -keep @interface app.notifee.core.KeepForSdk { *; }
--keep @app.notifee.core.KeepForSdk class * { <init>(...); }
+-keep @app.notifee.core.KeepForSdk class * { *; }
 -keepclasseswithmembers class * {
   @app.notifee.core.KeepForSdk <fields>;
 }
