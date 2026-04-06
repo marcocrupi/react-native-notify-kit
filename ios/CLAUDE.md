@@ -55,7 +55,7 @@ Podfile flags (set in consuming app's Podfile):
 
 ## Configuration
 
-- **Deployment Target**: iOS 10.0+
+- **Deployment Target**: iOS 15.1+
 - **Language**: Objective-C
 - **Distribution**: Source files via CocoaPods (static framework)
 
