@@ -199,17 +199,13 @@ public class NotificationAndroidModel {
   @SuppressWarnings("deprecation")
   public Integer getDefaults(Boolean hasCustomSound) {
     String TAG = "NotificationManager";
-    Integer defaults = null;
+    Integer defaults = 0;
 
     if (mNotificationAndroidBundle.containsKey("defaults")) {
       ArrayList<Integer> defaultsArray = mNotificationAndroidBundle.getIntegerArrayList("defaults");
 
       for (Integer integer : Objects.requireNonNull(defaultsArray)) {
-        if (defaults == null) {
-          defaults = integer;
-        } else {
-          defaults |= integer;
-        }
+        defaults |= integer;
       }
     } else {
       defaults = Notification.DEFAULT_ALL;

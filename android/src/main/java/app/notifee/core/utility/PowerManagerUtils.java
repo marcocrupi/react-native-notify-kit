@@ -113,11 +113,11 @@ public class PowerManagerUtils {
                   | PowerManager.ACQUIRE_CAUSES_WAKEUP
                   | PowerManager.ON_AFTER_RELEASE,
               "Notifee:lock");
-      wl.acquire();
+      wl.acquire(3000L);
 
       PowerManager.WakeLock wl_cpu =
           pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Notifee:cpuLock");
-      wl_cpu.acquire();
+      wl_cpu.acquire(3000L);
     }
   }
 
