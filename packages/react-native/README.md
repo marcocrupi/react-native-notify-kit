@@ -1,6 +1,6 @@
 # react-native-notify-kit
 
-A feature-rich local notification library for React Native (Android & iOS).
+Maintained Notifee-compatible fork — a feature-rich React Native notification library (Android & iOS).
 
 <!-- markdownlint-disable MD033 -->
 <p align="center">
