@@ -1,6 +1,6 @@
 {
   "name": "react-native-notify-kit",
-  "version": "9.1.13",
+  "version": "9.1.14",
   "author": "Marco Crupi",
   "description": "React Native Notify Kit - a feature rich notifications library for React Native.",
   "main": "dist/index.js",
