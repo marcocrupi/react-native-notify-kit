@@ -2,7 +2,7 @@
   "name": "react-native-notify-kit",
   "version": "9.1.14",
   "author": "Marco Crupi",
-  "description": "React Native Notify Kit - a feature rich notifications library for React Native.",
+  "description": "Maintained Notifee-compatible fork for React Native — advanced local notifications for Android & iOS.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
