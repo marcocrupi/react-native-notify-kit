@@ -18,7 +18,7 @@ This repository preserves the original Notifee APIs and native core while contin
 
 ## Why this fork
 
-The original [Notifee](https://github.com/invertase/notifee) has not released an update since December 2024 (v9.1.8) — over 16 months of silence with no bug fixes, no New Architecture support, and no response to critical issues. In [issue #1254](https://github.com/invertase/notifee/issues/1254), the Invertase maintainer explicitly recommended migrating to `expo-notifications`.
+The original [Notifee](https://github.com/invertase/notifee) has not received updates since December 2024 (v9.1.8), with no bug fixes, no New Architecture support, and several critical issues left unresolved. In [issue #1254](https://github.com/invertase/notifee/issues/1254), the Invertase maintainer recommended migrating to `expo-notifications`.
 
 However, `expo-notifications` does not cover several advanced capabilities that many production apps rely on:
 
@@ -409,6 +409,10 @@ Below you'll find guides that cover the supported iOS features.
 | [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/interaction) | Handle user interaction with your notifications. |
 | [Permissions](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/permissions) | Request permission from your application users to display notifications. |
 | [Remote Notification Support](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/remote-notification-support) | Handle and display remote notifications with Notification Service Extension. |
+
+## Trademark Notice
+
+"Notifee" is a trademark of Invertase. This project is not affiliated with, endorsed by, or sponsored by Invertase. The name "Notifee" is used solely to describe the origin and compatibility of this fork, as permitted under nominative fair use.
 
 ## License
 
