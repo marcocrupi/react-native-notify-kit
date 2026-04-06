@@ -407,6 +407,47 @@ describe('Validate Android Notification', () => {
       );
     });
 
+    test('defaults ongoing to true when asForegroundService is true and ongoing is not set', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.ongoing).toBe(true);
+    });
+
+    test('respects ongoing: false when asForegroundService is true', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        ongoing: false,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.ongoing).toBe(false);
+    });
+
+    test('respects ongoing: true when asForegroundService is true', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        ongoing: true,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.ongoing).toBe(true);
+    });
+
+    test('defaults ongoing to false when asForegroundService is not set', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.ongoing).toBe(false);
+    });
+
     test('throws an error when onlyAlertOnce is invalid', () => {
       const channelGroup: NotificationAndroid = {
         channelId: 'channelId',

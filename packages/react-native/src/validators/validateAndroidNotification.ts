@@ -730,5 +730,14 @@ export default function validateAndroidNotification(
     out.sound = android.sound;
   }
 
+  /**
+   * Auto-set ongoing for foreground service notifications.
+   * On Android 13+, foreground service notifications are dismissible by default.
+   * Setting ongoing: true restores pre-Android 13 behavior.
+   */
+  if (out.asForegroundService && !objectHasProperty(android, 'ongoing')) {
+    out.ongoing = true;
+  }
+
   return out;
 }
