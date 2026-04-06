@@ -85,6 +85,7 @@ public class IntentUtils {
     Context ctx = getApplicationContext();
     if (ctx == null) {
       Logger.w(TAG, "Unable to get application context when calling startActivityOnUiThread()");
+      return;
     }
 
     activity.runOnUiThread(

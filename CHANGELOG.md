@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: Fixed WakeLock leak in `PowerManagerUtils.lightUpScreenIfNeeded` — `acquire()` without timeout or `release()` prevented the device from sleeping; now uses `acquire(3000L)`
 - **Android**: Fixed potential NPE in `NotificationAndroidModel.getDefaults` when the `defaults` array is present but empty — auto-unboxing null `Integer` caused a crash
-- **Android**: Added `-keeppackagenames app.notifee.core` to ProGuard rules to prevent `-repackageclasses` from relocating `InitProvider`, which could cause `ClassNotFoundException` at runtime
+- **Android**: Added `-keeppackagenames app.notifee.core.**` to ProGuard rules to prevent `-repackageclasses` from relocating `InitProvider` and sub-package classes, which could cause `ClassNotFoundException` at runtime
+- **Android**: Fixed missing `return` after null context check in `IntentUtils.startActivityOnUiThread` — the lambda was still posted to the UI thread, causing NPE
 
 ## [9.1.14] - 2026-04-06
 

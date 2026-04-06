@@ -73,7 +73,7 @@
 # InitProvider is subclassed by the RN bridge module (NotifeeInitProvider).
 # R8 must not finalize its methods, otherwise the bridge cannot override onCreate().
 -keep class app.notifee.core.InitProvider { *; }
--keeppackagenames app.notifee.core
+-keeppackagenames app.notifee.core.**
 
 # -----
 -repackageclasses 'n.o.t.i.f.e.e'
