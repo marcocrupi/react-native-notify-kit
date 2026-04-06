@@ -735,7 +735,7 @@ export default function validateAndroidNotification(
    * On Android 13+, foreground service notifications are dismissible by default.
    * Setting ongoing: true restores pre-Android 13 behavior.
    */
-  if (out.asForegroundService && !objectHasProperty(android, 'ongoing')) {
+  if (out.asForegroundService && android && !objectHasProperty(android, 'ongoing')) {
     out.ongoing = true;
   }
 

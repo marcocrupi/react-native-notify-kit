@@ -448,6 +448,16 @@ describe('Validate Android Notification', () => {
       expect(result.ongoing).toBe(false);
     });
 
+    test('defaults ongoing to false when asForegroundService is explicitly false', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: false,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.ongoing).toBe(false);
+    });
+
     test('throws an error when onlyAlertOnce is invalid', () => {
       const channelGroup: NotificationAndroid = {
         channelId: 'channelId',

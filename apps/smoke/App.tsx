@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { ScrollView, Text, Pressable, Platform, StyleSheet, View, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import notifee, {
@@ -19,21 +19,14 @@ import {
 // Uncomment to test cold start with remote notification handling disabled (fix #912)
 // notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } });
 
-type LogEntry = { id: number; time: string; msg: string };
 type Section = {
   title: string;
   buttons: Array<{ label: string; onPress: () => void }>;
 };
 
 function App() {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const logIdRef = useRef(0);
-
   const log = useCallback((msg: string) => {
     console.log(`[Notifee] ${msg}`);
-    const time = new Date().toLocaleTimeString();
-    const id = ++logIdRef.current;
-    setLogs(prev => [{ id, time, msg }, ...prev]);
   }, []);
 
   // Check initial notification (cold start test for #1128)
@@ -383,6 +376,26 @@ function App() {
       });
     });
 
+  const startFgsNoOngoing = () =>
+    run('startFgsNoOngoing', async () => {
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+        importance: AndroidImportance.HIGH,
+      });
+      return notifee.displayNotification({
+        title: 'FGS (no ongoing)',
+        body: 'ongoing not set — should auto-default to true',
+        android: {
+          channelId: 'default',
+          asForegroundService: true,
+          foregroundServiceTypes: [
+            AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE,
+          ],
+        },
+      });
+    });
+
   const sections: Section[] = [
     {
       title: 'Permissions',
@@ -409,6 +422,7 @@ function App() {
         { label: 'Start Foreground Service', onPress: startForegroundService },
         { label: 'Stop Foreground Service', onPress: stopForegroundService },
         { label: 'Start FGS (no type)', onPress: startFgsNoType },
+        { label: 'Start FGS (no ongoing)', onPress: startFgsNoOngoing },
       ],
     },
     {
@@ -466,19 +480,6 @@ function App() {
             </View>
           ))}
         </ScrollView>
-        <View style={styles.logHeader}>
-          <Text style={styles.logTitle}>Log</Text>
-          <Pressable onPress={() => setLogs([])} style={styles.clearButton}>
-            <Text style={styles.clearButtonText}>Clear</Text>
-          </Pressable>
-        </View>
-        <ScrollView style={styles.logContainer}>
-          {logs.map(entry => (
-            <Text key={entry.id} style={styles.logEntry}>
-              [{entry.time}] {entry.msg}
-            </Text>
-          ))}
-        </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -487,7 +488,7 @@ function App() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
   title: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
-  sectionsContainer: { flexShrink: 1, marginBottom: 12 },
+  sectionsContainer: { flex: 1 },
   section: { marginBottom: 12 },
   sectionTitle: {
     fontSize: 14,
@@ -509,32 +510,6 @@ const styles = StyleSheet.create({
   },
   buttonPressed: { opacity: 0.7 },
   buttonText: { color: '#fff', fontSize: 13 },
-  logHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  logTitle: { fontSize: 16, fontWeight: '600' },
-  clearButton: {
-    backgroundColor: '#ff3b30',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  clearButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  logContainer: {
-    flex: 1,
-    backgroundColor: '#1e1e1e',
-    borderRadius: 8,
-    padding: 8,
-  },
-  logEntry: {
-    color: '#0f0',
-    fontSize: 12,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginBottom: 2,
-  },
 });
 
 export default App;
