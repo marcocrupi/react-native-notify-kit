@@ -1,23 +1,47 @@
 # react-native-notify-kit
 
-A feature-rich local and push notification library for React Native (Android & iOS).
+A feature-rich local notification library for React Native (Android & iOS).
 
-Maintained fork of [Notifee](https://github.com/invertase/notifee) — New Architecture only (TurboModules).
+<!-- markdownlint-disable MD033 -->
+<p align="center">
+  <a href="https://www.npmjs.com/package/react-native-notify-kit"><img src="https://img.shields.io/npm/v/react-native-notify-kit.svg" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/React%20Native-%3E%3D0.73-blue.svg" alt="React Native">
+</p>
 
-## Requirements
+<hr/>
 
-- React Native >= 0.73 (New Architecture required)
-- Android: minSdk 24, compileSdk 35
-- iOS: deployment target 15.1+
-- Node.js >= 22
+An actively maintained fork of Notifee for React Native notifications, continued and improved by Marco Crupi.
 
-### Compatibility
+This repository preserves the original Notifee APIs and native core while continuing development for modern React Native releases.
 
-| React Native | Status                                |
-| ------------ | ------------------------------------- |
-| 0.84         | Tested (Android + iOS)                |
-| 0.73 - 0.83  | Supported (New Architecture required) |
-| < 0.73       | Not supported                         |
+## Why this fork
+
+The original [Notifee](https://github.com/invertase/notifee) has not released an update since December 2024 (v9.1.8) — over 16 months of silence with no bug fixes, no New Architecture support, and no response to critical issues. In [issue #1254](https://github.com/invertase/notifee/issues/1254), the Invertase maintainer explicitly recommended migrating to `expo-notifications`.
+
+However, `expo-notifications` does not cover several advanced capabilities that many production apps rely on:
+
+- **Android foreground services** (ongoing notifications for background tasks)
+- **Rich notification styles** (BigPicture, Messaging, Inbox)
+- **Progress bar notifications**
+- **Full-screen intent notifications** (alarm/call screens)
+- **Ongoing / persistent notifications**
+
+This fork fills the gap: it preserves all of Notifee's advanced features, migrates the bridge to React Native's **New Architecture** (TurboModules), and actively fixes the critical bugs left unresolved upstream — see the [bug fix table](#bugs-fixed-from-upstream-notifee) below.
+
+## Project Status
+
+<a href="https://github.com/marcocrupi/react-native-notify-kit/commits"><img src="https://img.shields.io/github/last-commit/marcocrupi/react-native-notify-kit.svg" alt="Last commit"></a>
+
+- Maintained fork of Notifee — actively developed and published as `react-native-notify-kit`
+- New Architecture only (TurboModules)
+- Minimum supported React Native: `0.73`
+- Development target: React Native `0.84`
+- License: `Apache-2.0`
+- Full changelog: [CHANGELOG.md](CHANGELOG.md)
+
+The native core (NotifeeCore) is preserved intact and the public API is **100% compatible** with the original `@notifee/react-native` — migration is a safe, drop-in replacement.
 
 ## Installation
 
@@ -27,47 +51,60 @@ yarn add react-native-notify-kit
 npm install react-native-notify-kit
 ```
 
-### iOS
+For iOS, run `cd ios && pod install` after installing.
 
-```bash
-cd ios && pod install
-```
+## Migration from @notifee/react-native
 
-### Android
+If you're coming from the original Notifee package, migrating takes just a few steps:
 
-No additional steps — the library is auto-linked via React Native CLI.
+1. **Swap the package:**
+
+   ```bash
+   yarn remove @notifee/react-native
+   yarn add react-native-notify-kit
+   ```
+
+2. **Update imports** — find and replace across your codebase:
+
+   ```diff
+   - import notifee from '@notifee/react-native';
+   + import notifee from 'react-native-notify-kit';
+   ```
+
+   The default export is still called `notifee`, so your application code stays the same — only the import path changes.
+
+3. **Reinstall pods** (iOS):
+
+   ```bash
+   cd ios && pod install
+   ```
+
+No native code changes are required. The public API is fully compatible with `@notifee/react-native`.
 
 ## Quick Start
-
-### 1. Request permission (required on Android 13+ and iOS)
-
-```ts
-import notifee from 'react-native-notify-kit';
-
-const settings = await notifee.requestPermission();
-```
-
-### 2. Create a channel (Android only, required for Android 8+)
 
 ```ts
 import notifee, { AndroidImportance } from 'react-native-notify-kit';
 
+// 1. Request permission (required on Android 13+ and iOS)
+await notifee.requestPermission();
+
+// 2. Create a channel (Android only, required for Android 8+)
 await notifee.createChannel({
   id: 'default',
   name: 'Default Channel',
   importance: AndroidImportance.HIGH,
 });
-```
 
-### 3. Display a notification
-
-```ts
+// 3. Display a notification
 await notifee.displayNotification({
   title: 'Hello',
   body: 'This is a local notification',
   android: { channelId: 'default' },
 });
 ```
+
+> **Note:** The default export name `notifee` is kept intentionally for backward compatibility. If you're migrating from `@notifee/react-native`, a simple find-and-replace of the import path is all you need.
 
 ### 4. Handle events
 
@@ -208,13 +245,19 @@ transformIgnorePatterns: [
 
 This fork is a complete migration to React Native's **New Architecture**:
 
-- **TurboModules only** — no legacy Bridge support
+- **TurboModules only** — no legacy Bridge support (`NativeModules` replaced with `TurboModuleRegistry`)
 - **Android bridge rewritten in Kotlin** (original was Java)
-- **11 upstream bugs fixed** — see table below
-- **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager
-- **New API: `setNotificationConfig()`** — opt-out flag for iOS remote notification handling
+- **iOS bridge uses Objective-C++** with `NativeNotifeeModuleSpecJSI` TurboModule conformance
+- **Minimum React Native 0.73**, development target **0.84**
+- **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
+- **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
+- **11 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
+- **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 
 ## Bugs Fixed from Upstream Notifee
+
+This fork fixes the following bugs that were never resolved in the original Notifee repository:
 
 | Bug | Platform | Upstream Issue | Fixed in |
 | --- | -------- | -------------- | -------- |
@@ -238,7 +281,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 > For all other apps, the library uses `SCHEDULE_EXACT_ALARM` with automatic fallback
 > to inexact alarms when the permission is not granted.
 
-See [CHANGELOG](https://github.com/marcocrupi/notifee/blob/main/CHANGELOG.md) for full details.
+As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
 ## Foreground Service Setup (Android 14+)
 
@@ -267,7 +310,7 @@ Available types: `camera`, `connectedDevice`, `dataSync`, `health`, `location`, 
 
 > **Note:** `shortService` has a 3-minute timeout on Android 14+. If your foreground service needs to run longer, use a different type. The library's `onTimeout()` handler will gracefully stop the service if the timeout fires.
 
-## Trigger Notification Reliability
+### Trigger Notification Reliability
 
 This fork defaults to AlarmManager for trigger notifications on Android, instead of WorkManager.
 This ensures scheduled notifications are delivered reliably even when the app is killed.
@@ -286,6 +329,24 @@ await notifee.createTriggerNotification(notification, {
   alarmManager: false, // Uses WorkManager instead
 });
 ```
+
+### Android: `pressAction` required for tap handling
+
+On Android, notifications require a `pressAction` to open the app when tapped:
+
+```typescript
+await notifee.displayNotification({
+  title: 'Hello',
+  body: 'Tap to open',
+  android: {
+    channelId: 'default',
+    pressAction: { id: 'default', launchActivity: 'default' },
+  },
+});
+```
+
+Without `pressAction`, the notification will display but tapping it will do nothing.
+This is Android platform behavior, not a bug. iOS opens the app by default on tap.
 
 ## New APIs
 
@@ -310,35 +371,49 @@ With `handleRemoteNotifications: false`:
 
 Default is `true` (backward compatible — Notifee handles everything, same as original Notifee behavior).
 
-### Android: `pressAction` required for tap handling
-
-On Android, notifications require a `pressAction` to open the app when tapped:
-
-```typescript
-await notifee.displayNotification({
-  title: 'Hello',
-  body: 'Tap to open',
-  android: {
-    channelId: 'default',
-    pressAction: { id: 'default', launchActivity: 'default' },
-  },
-});
-```
-
-Without `pressAction`, the notification will display but tapping it will do nothing.
-This is Android platform behavior, not a bug. iOS opens the app by default on tap.
-
 ## Documentation
 
-The upstream Notifee documentation remains a valid reference for the API:
+The upstream Notifee documentation remains the best reference for the public API and platform guides used by this fork.
 
 - [Overview](https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview)
-- [API Reference](https://docs.page/marcocrupi/react-native-notify-kit/react-native/reference)
-- [Android Guides](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/channels)
-- [iOS Guides](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/permissions)
+- [Reference](https://docs.page/marcocrupi/react-native-notify-kit/react-native/reference)
+
+### Android
+
+The APIs for Android allow for creating rich, styled and highly interactive notifications. Below you'll find guides that cover the supported Android features.
+
+| Topic | |
+| --- | --- |
+| [Appearance](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/appearance) | Change the appearance of a notification; icons, colors, visibility etc. |
+| [Behaviour](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/behaviour) | Customize how a notification behaves when it is delivered to a device; sound, vibration, lights etc. |
+| [Channels & Groups](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/channels) | Organize your notifications into channels & groups to allow users to control how notifications are handled on their device. |
+| [Foreground Service](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/foreground-service) | Long running background tasks can take advantage of an Android Foreground Service to display an on-going, prominent notification. |
+| [Grouping & Sorting](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/grouping-and-sorting) | Group and sort related notifications in a single notification pane. |
+| [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/interaction) | Allow users to interact with your application directly from the notification, with actions. |
+| [Progress Indicators](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/progress-indicators) | Show users a progress indicator of an on-going background task, and learn how to keep it updated. |
+| [Styles](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/styles) | Style notifications to show richer content, such as expandable images/text, or message conversations. |
+| [Timers](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/timers) | Display counting timers on your notification, useful for on-going tasks such as a phone call, or event time remaining. |
+
+### iOS
+
+Below you'll find guides that cover the supported iOS features.
+
+| Topic | |
+| --- | --- |
+| [Appearance](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/appearance) | Change how the notification is displayed to your users. |
+| [Badges](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/badges) | Manage the app icon badge count on iOS devices. |
+| [Behaviour](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/behaviour) | Control how notifications behave when they are displayed on a device; sound, critical alerts, etc. |
+| [Categories](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/categories) | Create & assign categories to notifications. |
+| [Interaction](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/interaction) | Handle user interaction with your notifications. |
+| [Permissions](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/permissions) | Request permission from your application users to display notifications. |
+| [Remote Notification Support](https://docs.page/marcocrupi/react-native-notify-kit/react-native/ios/remote-notification-support) | Handle and display remote notifications with Notification Service Extension. |
 
 ## License
 
-Apache-2.0 — see [LICENSE](/LICENSE).
+- See [LICENSE](/LICENSE). This fork remains licensed under Apache-2.0.
 
-Originally built by [Invertase](https://invertase.io). This fork is independently maintained by Marco Crupi.
+---
+
+<p align="center">
+  Originally built by Invertase. This fork is independently maintained by Marco Crupi.
+</p>

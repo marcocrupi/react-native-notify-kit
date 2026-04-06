@@ -47,6 +47,8 @@ The native core (NotifeeCore) is preserved intact and the public API is **100% c
 
 ```bash
 yarn add react-native-notify-kit
+# or
+npm install react-native-notify-kit
 ```
 
 For iOS, run `cd ios && pod install` after installing.
@@ -104,7 +106,140 @@ await notifee.displayNotification({
 
 > **Note:** The default export name `notifee` is kept intentionally for backward compatibility. If you're migrating from `@notifee/react-native`, a simple find-and-replace of the import path is all you need.
 
-For push notifications, Firebase/APNs setup, Notification Service Extension, and more, see the [package README](packages/react-native/README.md).
+### 4. Handle events
+
+In your `index.js` (before `AppRegistry.registerComponent`):
+
+```ts
+import notifee from 'react-native-notify-kit';
+
+// Background/killed state events
+notifee.onBackgroundEvent(async ({ type, detail }) => {
+  console.log('Background event:', type, detail.notification?.id);
+});
+```
+
+In your React component:
+
+```ts
+import { useEffect } from 'react';
+import notifee, { EventType } from 'react-native-notify-kit';
+
+useEffect(() => {
+  return notifee.onForegroundEvent(({ type, detail }) => {
+    if (type === EventType.PRESS) {
+      console.log('Notification pressed:', detail.notification?.id);
+    }
+  });
+}, []);
+```
+
+## Push Notifications (Firebase)
+
+This library handles notification **display and management**. For receiving push notifications, pair it with [`@react-native-firebase/messaging`](https://rnfirebase.io/messaging/usage):
+
+### Android setup
+
+1. Add Firebase dependencies to your app:
+
+   ```bash
+   yarn add @react-native-firebase/app @react-native-firebase/messaging
+   ```
+
+2. Add the google-services plugin to `android/build.gradle`:
+
+   ```gradle
+   classpath("com.google.gms:google-services:4.4.2")
+   ```
+
+3. Apply the plugin in `android/app/build.gradle`:
+
+   ```gradle
+   apply plugin: "com.google.gms.google-services"
+   ```
+
+4. Download `google-services.json` from [Firebase Console](https://console.firebase.google.com/) and place it in `android/app/`.
+
+5. Add `POST_NOTIFICATIONS` permission to `AndroidManifest.xml` (required for Android 13+):
+
+   ```xml
+   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+   ```
+
+### iOS setup
+
+1. Download `GoogleService-Info.plist` from Firebase Console and add it to your Xcode project.
+
+2. Enable **Push Notifications** capability in Xcode:
+   - Select your target > **Signing & Capabilities** > **+ Capability** > **Push Notifications**
+
+3. Enable **Background Modes** > **Remote notifications**:
+   - Select your target > **Signing & Capabilities** > **+ Capability** > **Background Modes** > check **Remote notifications**
+
+4. Configure APNs certificates or keys in Firebase Console > Project Settings > Cloud Messaging.
+
+### Display a push notification
+
+```ts
+import messaging from '@react-native-firebase/messaging';
+import notifee from 'react-native-notify-kit';
+
+messaging().onMessage(async remoteMessage => {
+  await notifee.displayNotification({
+    title: remoteMessage.notification?.title,
+    body: remoteMessage.notification?.body,
+    android: { channelId: 'default' },
+  });
+});
+```
+
+## iOS Notification Service Extension
+
+To modify push notification content before display (e.g., attach images), create a Notification Service Extension:
+
+1. In Xcode: **File > New > Target > Notification Service Extension**
+2. Add to your Podfile:
+
+   ```ruby
+   target 'YourNSETarget' do
+     pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'
+   end
+   ```
+
+3. Use `NotifeeExtensionHelper` in your `NotificationService.m`:
+
+   ```objc
+   #import "NotifeeExtensionHelper.h"
+
+   - (void)didReceiveNotificationRequest:(UNNotificationRequest *)request
+                      withContentHandler:(void (^)(UNNotificationContent *))contentHandler {
+       self.contentHandler = contentHandler;
+       self.bestAttemptContent = [request.content mutableCopy];
+       [NotifeeExtensionHelper populateNotificationContent:request
+                                               withContent:self.bestAttemptContent
+                                        withContentHandler:contentHandler];
+   }
+   ```
+
+4. Run `cd ios && pod install`
+
+## Jest Testing
+
+Mock the native module in your Jest setup file:
+
+```js
+// jest.setup.js
+jest.mock('react-native-notify-kit', () => require('react-native-notify-kit/jest-mock'));
+```
+
+Add to your Jest config:
+
+```js
+setupFiles: ['<rootDir>/jest.setup.js'],
+transformIgnorePatterns: [
+  'node_modules/(?!(jest-)?react-native|@react-native|react-native-notify-kit)'
+],
+```
 
 ## What's Different from Notifee
 
