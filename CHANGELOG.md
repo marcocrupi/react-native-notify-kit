@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.1.17] - 2026-04-06
+
+### Changed
+
+- Softened tone in "Why this fork" README section
+- Added Trademark Notice section to README
+
+## [9.1.16] - 2026-04-06
+
+### Changed
+
+- Synced npm README with changelog formatting updates
+
 ## [9.1.15] - 2026-04-06
 
 ### Changed
