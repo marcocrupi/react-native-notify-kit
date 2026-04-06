@@ -95,12 +95,15 @@ public class ChannelModel {
     return NotificationCompat.VISIBILITY_PRIVATE;
   }
 
+  // Bundle.getParcelableArrayList returns ArrayList<?>, so the (Integer) cast is inherently
+  // unchecked but correct for our serialization format.
+  @SuppressWarnings("unchecked")
   public long[] getVibrationPattern() {
     if (!mChannelBundle.containsKey("vibrationPattern")) {
       return new long[0];
     }
 
-    ArrayList vibrationPattern =
+    ArrayList<?> vibrationPattern =
         Objects.requireNonNull(mChannelBundle.getParcelableArrayList("vibrationPattern"));
 
     long[] vibrateArray = new long[vibrationPattern.size()];

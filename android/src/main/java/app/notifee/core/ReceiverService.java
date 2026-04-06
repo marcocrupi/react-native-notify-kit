@@ -171,7 +171,10 @@ public class ReceiverService extends Service {
     }
   }
 
-  /** Handle action intents */
+  // ACTION_CLOSE_SYSTEM_DIALOGS is deprecated since API 31, but is still needed on API < 31
+  // to close the notification drawer after an action press. Already guarded with Build.VERSION
+  // check.
+  @SuppressWarnings("deprecation")
   private void onActionPressIntent(Intent intent) {
     Bundle notification = intent.getBundleExtra("notification");
     Bundle pressAction = intent.getBundleExtra("pressAction");

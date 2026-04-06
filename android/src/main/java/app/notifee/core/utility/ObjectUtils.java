@@ -31,7 +31,7 @@ import java.util.Objects;
 
 public class ObjectUtils {
 
-  public static @Nullable Class getClassForName(String className) {
+  public static @Nullable Class<?> getClassForName(String className) {
     try {
       return Class.forName(className);
     } catch (ClassNotFoundException e) {
@@ -39,7 +39,7 @@ public class ObjectUtils {
     }
   }
 
-  public static @Nullable Object getClassInstanceFromDefaultConstructor(@Nullable Class clazz) {
+  public static @Nullable Object getClassInstanceFromDefaultConstructor(@Nullable Class<?> clazz) {
     Object classInstance = null;
     if (clazz == null) return null;
     try {
@@ -54,7 +54,7 @@ public class ObjectUtils {
     return classInstance;
   }
 
-  public static Map<String, Object> getClassProperties(Class clazz) {
+  public static Map<String, Object> getClassProperties(Class<?> clazz) {
     Map<String, Object> properties = new HashMap<>();
     try {
       for (Field field : clazz.getDeclaredFields()) {
@@ -119,7 +119,7 @@ public class ObjectUtils {
       } else if (value instanceof Bundle) {
         map.put(key, bundleToMap((Bundle) value));
       } else if (value instanceof List) {
-        map.put(key, listToMap((List) value));
+        map.put(key, listToMap((List<?>) value));
       } else {
         map.put(key, value);
       }
@@ -127,8 +127,8 @@ public class ObjectUtils {
     return map;
   }
 
-  public static ArrayList arrayToMap(Object array) throws IllegalArgumentException {
-    ArrayList catalystArray = new ArrayList();
+  public static ArrayList<Object> arrayToMap(Object array) throws IllegalArgumentException {
+    ArrayList<Object> catalystArray = new ArrayList<>();
     if (array instanceof String[]) {
       for (String v : (String[]) array) {
         catalystArray.add(v);
@@ -159,8 +159,8 @@ public class ObjectUtils {
     return catalystArray;
   }
 
-  public static ArrayList listToMap(List list) throws IllegalArgumentException {
-    ArrayList catalystArray = new ArrayList();
+  public static ArrayList<Object> listToMap(List<?> list) throws IllegalArgumentException {
+    ArrayList<Object> catalystArray = new ArrayList<>();
     for (Object obj : list) {
       if (obj == null) {
         catalystArray.add(null);
@@ -169,7 +169,7 @@ public class ObjectUtils {
       } else if (obj instanceof Bundle) {
         catalystArray.add(ObjectUtils.bundleToMap((Bundle) obj));
       } else if (obj instanceof List) {
-        catalystArray.add(listToMap((List) obj));
+        catalystArray.add(listToMap((List<?>) obj));
       } else if (obj instanceof String) {
         catalystArray.add((String) obj);
       } else if (obj instanceof Integer) {

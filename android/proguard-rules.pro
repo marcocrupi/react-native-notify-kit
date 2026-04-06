@@ -13,8 +13,8 @@
 -keepattributes *Annotation*
 
 # Keep the classes/members we need for client functionality.
--keep @interface androidx.annotation.Keep
--keep @androidx.annotation.Keep class *
+-keep @interface androidx.annotation.Keep { *; }
+-keep @androidx.annotation.Keep class * { <init>(...); }
 -keepclasseswithmembers class * {
   @androidx.annotation.Keep <fields>;
 }
@@ -23,8 +23,8 @@
 }
 
 # Keep the classes/members we need for client functionality.
--keep @interface app.notifee.core.KeepForSdk
--keep @app.notifee.core.KeepForSdk class *
+-keep @interface app.notifee.core.KeepForSdk { *; }
+-keep @app.notifee.core.KeepForSdk class * { <init>(...); }
 -keepclasseswithmembers class * {
   @app.notifee.core.KeepForSdk <fields>;
 }
@@ -59,15 +59,6 @@
     public <init>(android.content.Context,androidx.work.WorkerParameters);
 }
 
-# JWT
--keep class io.jsonwebtoken.** { *; }
--keepnames class io.jsonwebtoken.* { *; }
--keepnames interface io.jsonwebtoken.* { *; }
-
--keep class org.bouncycastle.** { *; }
--keepnames class org.bouncycastle.** { *; }
--dontwarn org.bouncycastle.**
-
 # EventBus
 -keepclassmembers class * {
     @org.greenrobot.eventbus.Subscribe <methods>;
@@ -78,14 +69,6 @@
 -keepclassmembers class * extends org.greenrobot.eventbus.util.ThrowableFailureEvent {
     <init>(java.lang.Throwable);
 }
-
-# OkHttp3
--dontwarn okio.**
--dontwarn okhttp3.**
--dontwarn javax.annotation.**
--dontwarn org.conscrypt.**
-# A resource is loaded with a relative path so the package of this class must be preserved.
--keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 
 # InitProvider is subclassed by the RN bridge module (NotifeeInitProvider).
 # R8 must not finalize its methods, otherwise the bridge cannot override onCreate().

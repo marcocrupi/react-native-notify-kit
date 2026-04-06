@@ -98,6 +98,10 @@ public class PowerManagerUtils {
    *
    * @param context
    */
+  // FULL_WAKE_LOCK and ON_AFTER_RELEASE are deprecated since API 17, but there is no
+  // non-deprecated wake lock flag that can light up the screen from a Service/BroadcastReceiver
+  // context. WindowManager.FLAG_KEEP_SCREEN_ON requires an Activity.
+  @SuppressWarnings("deprecation")
   public static void lightUpScreenIfNeeded(Context context) {
     PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
     Boolean isInteractive = pm.isInteractive();

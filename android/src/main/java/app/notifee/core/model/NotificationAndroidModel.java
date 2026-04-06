@@ -194,6 +194,9 @@ public class NotificationAndroidModel {
    *     resolved
    * @return Integer
    */
+  // Notification.DEFAULT_* constants are deprecated since API 26 in favor of NotificationChannel,
+  // but are still needed for pre-channel backward compatibility (minSdk 24).
+  @SuppressWarnings("deprecation")
   public Integer getDefaults(Boolean hasCustomSound) {
     String TAG = "NotificationManager";
     Integer defaults = null;
@@ -312,6 +315,9 @@ public class NotificationAndroidModel {
    *
    * @return ArrayList<Integer>
    */
+  // Bundle.getParcelableArrayList returns ArrayList<?>, so element casts to String/Integer
+  // are inherently unchecked but correct for our serialization format.
+  @SuppressWarnings("unchecked")
   public @Nullable ArrayList<Integer> getLights() {
     if (mNotificationAndroidBundle.containsKey("lights")) {
       try {
@@ -443,6 +449,9 @@ public class NotificationAndroidModel {
    *
    * @return int
    */
+  // NotificationCompat.PRIORITY_* constants are deprecated since API 26 in favor of
+  // NotificationChannel importance, but are still needed for pre-channel backward compatibility.
+  @SuppressWarnings("deprecation")
   public int getPriority() {
     if (!mNotificationAndroidBundle.containsKey("importance")) {
       return NotificationCompat.PRIORITY_DEFAULT;
@@ -609,6 +618,9 @@ public class NotificationAndroidModel {
    *
    * @return long[]
    */
+  // Bundle.getParcelableArrayList returns ArrayList<?>, so the (Integer) cast is inherently
+  // unchecked but correct for our serialization format.
+  @SuppressWarnings("unchecked")
   public long[] getVibrationPattern() {
     if (!mNotificationAndroidBundle.containsKey("vibrationPattern")) {
       return new long[0];

@@ -90,6 +90,10 @@ class NotificationManager {
   private static final int NOTIFICATION_TYPE_DISPLAYED = 1;
   private static final int NOTIFICATION_TYPE_TRIGGER = 2;
 
+  // NotificationCompat.Builder methods (setSound, setDefaults, setPriority, setVibrate, setLights)
+  // are deprecated since API 26 in favor of NotificationChannel, but are still required for
+  // backward compatibility on API 24-25 via NotificationCompat.
+  @SuppressWarnings("deprecation")
   private static ListenableFuture<NotificationCompat.Builder> notificationBundleToBuilder(
       NotificationModel notificationModel) {
     final NotificationAndroidModel androidModel = notificationModel.getAndroid();
