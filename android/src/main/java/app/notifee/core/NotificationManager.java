@@ -311,7 +311,8 @@ class NotificationManager {
                             androidModel.getFullScreenAction();
 
                         String launchActivity = fullScreenActionBundle.getLaunchActivity();
-                        Class launchActivityClass = IntentUtils.getLaunchActivity(launchActivity);
+                        Class<?> launchActivityClass =
+                            IntentUtils.getLaunchActivity(launchActivity);
                         if (launchActivityClass == null) {
                           Logger.e(
                               TAG,
