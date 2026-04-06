@@ -20,6 +20,7 @@ package app.notifee.core.model;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import app.notifee.core.utility.ObjectUtils;
+import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
 
 public class TimestampTriggerModel {
@@ -35,9 +36,7 @@ public class TimestampTriggerModel {
   public static final String DAILY = "DAILY";
   public static final String WEEKLY = "WEEKLY";
 
-  private static final int MINUTES_IN_MS = 60 * 1000;
-  private static final long HOUR_IN_MS = 60 * MINUTES_IN_MS;
-  private static final long DAY_IN_MS = 24 * HOUR_IN_MS;
+  private static final long HOUR_IN_MS = 60L * 60 * 1000;
 
   private static final String TAG = "TimeTriggerModel";
 
@@ -128,16 +127,10 @@ public class TimestampTriggerModel {
   }
 
   public long getDelay() {
-    long delay = 0;
-
-    if (mTimeTriggerBundle.containsKey("timestamp")) {
-      long timestamp = ObjectUtils.getLong(mTimeTriggerBundle.get("timestamp"));
-      if (timestamp > 0) {
-        delay = Math.round((timestamp - System.currentTimeMillis()) / 1000);
-      }
+    if (mTimestamp != null && mTimestamp > 0) {
+      return Math.round((mTimestamp - System.currentTimeMillis()) / 1000.0);
     }
-
-    return delay;
+    return 0;
   }
 
   public void setNextTimestamp() {
@@ -147,26 +140,32 @@ public class TimestampTriggerModel {
     }
 
     long timestamp = getTimestamp();
-    long interval = 0;
 
-    switch (mRepeatFrequency) {
-      case TimestampTriggerModel.WEEKLY:
-        interval = 7 * DAY_IN_MS;
-        break;
-      case TimestampTriggerModel.DAILY:
-        interval = DAY_IN_MS;
-        break;
-      case TimestampTriggerModel.HOURLY:
-        interval = HOUR_IN_MS;
-        break;
+    if (HOURLY.equals(mRepeatFrequency)) {
+      // Hourly: fixed ms is correct — no wall-clock preservation needed
+      while (timestamp < System.currentTimeMillis()) {
+        timestamp += HOUR_IN_MS;
+      }
+      this.mTimestamp = timestamp;
+    } else {
+      // Daily/Weekly: use Calendar.add() to preserve local wall-clock time across DST boundaries.
+      // Adding fixed ms (86,400,000) breaks when a calendar day is 23 or 25 hours during DST.
+      Calendar cal = Calendar.getInstance();
+      cal.setTimeInMillis(timestamp);
+
+      int field;
+      if (WEEKLY.equals(mRepeatFrequency)) {
+        field = Calendar.WEEK_OF_YEAR;
+      } else {
+        field = Calendar.DAY_OF_MONTH;
+      }
+
+      while (cal.getTimeInMillis() < System.currentTimeMillis()) {
+        cal.add(field, 1);
+      }
+
+      this.mTimestamp = cal.getTimeInMillis();
     }
-
-    // prevent alarm manager notification firing straight away
-    while (timestamp < System.currentTimeMillis()) {
-      timestamp += interval;
-    }
-
-    this.mTimestamp = timestamp;
   }
 
   public enum AlarmType {
@@ -198,6 +197,10 @@ public class TimestampTriggerModel {
   }
 
   public Bundle toBundle() {
-    return (Bundle) mTimeTriggerBundle.clone();
+    Bundle bundle = (Bundle) mTimeTriggerBundle.clone();
+    if (mTimestamp != null) {
+      bundle.putLong("timestamp", mTimestamp);
+    }
+    return bundle;
   }
 }

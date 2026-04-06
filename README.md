@@ -274,6 +274,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | Foreground service crashes with ANR after ~3 min on Android 14+ (`shortService` timeout, missing `onTimeout()`) | Android | [#703](https://github.com/invertase/notifee/issues/703) | 9.1.13 |
 | Manifest merger failure when overriding `foregroundServiceType` on `ForegroundService` | Android | [#1108](https://github.com/invertase/notifee/issues/1108) | 9.1.13 |
 | Foreground service notifications dismissible on Android 13+ even with `ongoing: true` (library doesn't auto-set `ongoing` for foreground services) | Android | [#1248](https://github.com/invertase/notifee/issues/1248) | Unreleased |
+| DST (daylight saving time) shifts repeating scheduled notifications by ±1 hour | Android | [#875](https://github.com/invertase/notifee/issues/875) | Unreleased |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's

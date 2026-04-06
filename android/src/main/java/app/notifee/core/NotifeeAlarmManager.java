@@ -104,17 +104,15 @@ class NotifeeAlarmManager {
                                 && ObjectUtils.getInt(triggerBundle.get("repeatFrequency")) != -1) {
                               TimestampTriggerModel trigger =
                                   TimestampTriggerModel.fromBundle(triggerBundle);
-                              // Ensure trigger is in the future and the latest timestamp is updated
-                              // in
-                              // the database
-                              trigger.setNextTimestamp();
+                              // scheduleTimestampTriggerNotification() calls setNextTimestamp()
+                              // internally, so we must NOT call it here to avoid double-advancing
                               scheduleTimestampTriggerNotification(notificationModel, trigger);
                               WorkDataRepository.getInstance(getApplicationContext())
                                   .update(
                                       new WorkDataEntity(
                                           id,
                                           workDataEntity.getNotification(),
-                                          ObjectUtils.bundleToBytes(triggerBundle),
+                                          ObjectUtils.bundleToBytes(trigger.toBundle()),
                                           true));
                             } else {
                               // not repeating, delete database entry if work is a one-time request
@@ -308,6 +306,14 @@ class NotifeeAlarmManager {
         }
 
         scheduleTimestampTriggerNotification(notificationModel, trigger);
+        // Persist updated timestamp so next reboot starts from the correct anchor
+        WorkDataRepository.getInstance(getApplicationContext())
+            .update(
+                new WorkDataEntity(
+                    workDataEntity.getId(),
+                    workDataEntity.getNotification(),
+                    ObjectUtils.bundleToBytes(trigger.toBundle()),
+                    workDataEntity.getWithAlarmManager()));
         break;
       case 1:
         // TODO: support interval triggers with alarm manager
