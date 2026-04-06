@@ -118,6 +118,14 @@ public class ReceiverService extends Service {
     }
 
     NotificationModel notificationModel = NotificationModel.fromBundle(notification);
+
+    // On Android 14+, users can dismiss foreground service notifications even with ongoing: true.
+    // If the dismissed notification belongs to the active foreground service, re-post it
+    // so the user remains aware of the running service.
+    if (ForegroundService.repostIfActive(notificationModel.getId())) {
+      return;
+    }
+
     EventBus.post(new NotificationEvent(TYPE_DISMISSED, notificationModel));
   }
 

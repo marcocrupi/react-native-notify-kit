@@ -50,6 +50,31 @@ public class ForegroundService extends Service {
   public static int mCurrentForegroundServiceType = -1;
 
   private static Bundle mCurrentNotificationBundle = null;
+  private static Notification mCurrentNotification = null;
+  private static int mCurrentHashCode = 0;
+
+  /**
+   * Re-posts the foreground service notification if the given notification ID matches the active
+   * foreground service. On Android 14+, users can dismiss ongoing foreground service notifications
+   * for most service types; this method restores the notification so the user remains aware of the
+   * running service.
+   *
+   * @return true if the notification was re-posted, false otherwise
+   */
+  @SuppressLint("MissingPermission")
+  static boolean repostIfActive(String notificationId) {
+    synchronized (sLock) {
+      if (mCurrentNotificationId == null
+          || !mCurrentNotificationId.equals(notificationId)
+          || mCurrentNotification == null) {
+        return false;
+      }
+      Logger.w(TAG, "Re-posting foreground service notification dismissed by user");
+      NotificationManagerCompat.from(ContextHolder.getApplicationContext())
+          .notify(mCurrentHashCode, mCurrentNotification);
+      return true;
+    }
+  }
 
   static void start(int hashCode, Notification notification, Bundle notificationBundle) {
     Context context = ContextHolder.getApplicationContext();
@@ -125,6 +150,8 @@ public class ForegroundService extends Service {
         mCurrentNotificationId = null;
         mCurrentForegroundServiceType = -1;
         mCurrentNotificationBundle = null;
+        mCurrentNotification = null;
+        mCurrentHashCode = 0;
       }
       return Service.START_STICKY_COMPATIBILITY;
     }
@@ -146,6 +173,8 @@ public class ForegroundService extends Service {
           if (mCurrentNotificationId == null) {
             mCurrentNotificationId = notificationModel.getId();
             mCurrentNotificationBundle = bundle;
+            mCurrentNotification = notification;
+            mCurrentHashCode = hashCode;
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
               int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
@@ -176,6 +205,8 @@ public class ForegroundService extends Service {
                     mCurrentNotificationId = null;
                     mCurrentForegroundServiceType = -1;
                     mCurrentNotificationBundle = null;
+                    mCurrentNotification = null;
+                    mCurrentHashCode = 0;
                   }
                 };
 
@@ -298,6 +329,8 @@ public class ForegroundService extends Service {
       mCurrentNotificationId = null;
       mCurrentForegroundServiceType = -1;
       mCurrentNotificationBundle = null;
+      mCurrentNotification = null;
+      mCurrentHashCode = 0;
     }
 
     stopForegroundCompat();
