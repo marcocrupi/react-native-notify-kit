@@ -1,121 +1,125 @@
-# Contributing
+# Contributing to react-native-notify-kit
 
-## Prerequisites
+Welcome! This is a community-maintained fork of [Notifee](https://github.com/invertase/notifee), officially recommended by Invertase as the drop-in replacement for `@notifee/react-native`. Contributions are welcome — but this is a single-maintainer project with no SLA, so please be patient with reviews.
 
-- Java 17 (bundled with Android Studio 2024+)
-- Node.js >= 22
+## Before you contribute
+
+- **Bugs** — open an issue using the [Bug Report template](https://github.com/marcocrupi/react-native-notify-kit/issues/new?template=bug_report.yml) first. Do not send PRs for bugs that haven't been triaged.
+- **Features** — open a [Feature Request](https://github.com/marcocrupi/react-native-notify-kit/issues/new?template=feature_request.yml) first to discuss scope. Unsolicited feature PRs may be closed.
+- **Questions** — use [Discussions Q&A](https://github.com/marcocrupi/react-native-notify-kit/discussions/categories/q-a), not issues.
+- **Security** — use [private vulnerability reporting](https://github.com/marcocrupi/react-native-notify-kit/security/advisories/new), never public issues.
+
+## Where changes go: bridge vs core
+
+This fork actively develops `react-native-notify-kit` with both bug fixes and new features. Most changes — fixes, new APIs, behavior improvements — live in the React Native bridge layer (`packages/react-native/`), because that's where the public API surface and the platform-specific glue code sit.
+
+**Rationale:** keeping NotifeeCore (the native engine in `android/` and `ios/`) minimally changed preserves API compatibility with the original `@notifee/react-native` and makes the fork easier to audit against upstream history.
+
+**However**, since the upstream Notifee repository was archived by Invertase in April 2026, NotifeeCore will no longer receive updates from upstream. Modifications to the core are therefore **fully allowed** when the bridge layer isn't the right place — for example:
+
+- Bug fixes in core notification logic
+- New features that require native engine changes (new notification styles, new Android/iOS platform APIs, new trigger types)
+- Security fixes
+- Support for new Android/iOS platform requirements
+
+PRs that modify NotifeeCore should:
+
+- Explain in the PR description why the change belongs in the core rather than the bridge
+- Be as focused as possible — one logical change per PR
+- Include manual device verification (platform, OS version, device model)
+- Update the relevant section of the CHANGELOG
+
+## Project structure
+
+- **`packages/react-native/`** — TypeScript bridge, validators, types (the npm-published package)
+- **`android/`** — NotifeeCore Android (Java)
+- **`ios/`** — NotifeeCore iOS (Objective-C)
+- **`apps/smoke/`** — React Native 0.84 smoke test app for manual testing
+- Monorepo managed with **Yarn 4 + Lerna**
+
+## Development setup
+
+### Prerequisites
+
+- Node >= 22
 - Yarn 4.6.0 (corepack-managed)
-- Xcode 16+ (for iOS development)
-- Android Studio (for Android development)
+- Java 17
+- Xcode 15+ (iOS)
+- Android SDK with API 35
 
-## Step 1: Clone the repository
-
-```bash
-git clone https://github.com/marcocrupi/react-native-notify-kit.git
-cd react-native-notify-kit/
-```
-
-## Step 2: Install dependencies
+### Install and build
 
 ```bash
-yarn
+yarn install
+yarn build:all          # Build everything (native core + TypeScript)
 ```
 
-During this step, the `prepare` script runs `build:core:ios`, which copies the current NotifeeCore iOS source files into `packages/react-native/ios/`. If you modify iOS core code, re-run that step or temporarily set `$NotifeeCoreFromSources=true` in the consuming app's Podfile to use live sources.
+### Run tests
 
-The same applies to Android core code: run `yarn build:core:android` to generate a new AAR file, then rebuild the app.
+```bash
+yarn test:all           # Jest + Android JUnit
+```
 
-## Step 3: Start TypeScript compiler in watch mode
+### Smoke app
+
+```bash
+yarn smoke:start        # Start Metro bundler
+yarn smoke:android      # Run on Android device/emulator
+yarn smoke:ios          # Run on iOS simulator
+```
+
+### Watch mode for TypeScript development
 
 ```bash
 yarn build:rn:watch
 ```
 
-## Step 4: Run the smoke app
+For local linking into a consumer app, use [yalc](https://github.com/wclr/yalc).
 
-The smoke app at `apps/smoke/` (React Native 0.84, New Architecture) is used for manual testing:
+## Testing requirements
 
-```bash
-yarn smoke:start      # Start Metro bundler
-yarn smoke:android    # Run on Android device/emulator
-yarn smoke:ios        # Run on iOS simulator
-```
+- All PRs must pass `yarn test:all`
+- New bridge functionality requires accompanying Jest tests in `packages/react-native/__tests__/`
+- For native bridge changes, manual verification on a real device is strongly preferred — note the platform and device tested in the PR description
 
-## Testing
+## Commit conventions
 
-### Unit tests
-
-```bash
-yarn tests_rn:test              # Run Jest tests once
-yarn tests_rn:test-watch        # Run Jest tests in watch mode
-yarn tests_rn:test-coverage     # Run Jest tests with coverage
-```
-
-### Android JUnit tests
-
-```bash
-yarn test:core:android          # Run ./gradlew testDebugUnit
-```
-
-### Linting & type checking
-
-```bash
-yarn validate:all:js            # ESLint
-yarn validate:all:ts            # TypeScript type check
-yarn validate:all               # ESLint + TypeScript + TypeDoc
-```
-
-## Commit Conventions
-
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) (enforced by semantic-release):
+Use [Conventional Commits](https://www.conventionalcommits.org/) format:
 
 ```text
 <type>(<scope>): <subject>
 ```
 
-**Types:** `fix`, `feat`, `docs`, `style`, `refactor`, `test`, `chore`, `build`
+**Types:** `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `build`, `ci`
 
-**Scopes (optional):** `android`, `ios`, `expo`
+**Scope** is optional but encouraged for platform-specific changes: `android`, `ios`
+
+**Rules:** imperative mood, lowercase, no trailing period.
 
 **Examples:**
 
-- `fix(android): prevent headless task double-invocation`
-- `feat: add web notification support`
-- `docs: update installation guidance`
+- `fix(android): handle null context in NotificationAlarmReceiver`
+- `feat(ios): add setNotificationConfig opt-out flag`
+- `docs: update migration guide`
 
-## Code Style
+## Pull request workflow
 
-- **TypeScript/JavaScript**: Prettier (single quotes, trailing commas, 100 char width, 2-space indent)
-- **Kotlin**: Android Studio default formatting
-- **Objective-C**: clang-format Google style (`yarn format:rn:ios`)
+1. Fork the repo and create a branch from `dev` (not `main`)
+2. Branch naming: `fix/<short-description>` or `feat/<short-description>`
+3. Keep PRs focused — one logical change per PR
+4. Update `CHANGELOG.md` under the `[Unreleased]` section with a brief entry
+5. Run `yarn format:all && yarn validate:all` before pushing
+6. PRs must pass CI checks (lint, type check, Jest, JUnit)
+7. Be patient — review may take days or weeks depending on maintainer availability
 
-## Publishing
+## Code style
 
-### Automated Process
+- **TypeScript/JavaScript** — ESLint 9 flat config + Prettier 3 (single quotes, trailing commas, 100 char width, 2-space indent). Run `yarn format:all` and `yarn validate:all` before submitting.
+- **Kotlin** (Android bridge) — standard Kotlin conventions, no specific linter enforced.
+- **Objective-C++** (iOS bridge) — Google style via clang-format. Run `yarn format:rn:ios`.
 
-Release configuration is defined in `.releaserc` using semantic-release. This fork does not currently include a dedicated GitHub Actions publish workflow.
+## License
 
-To enable fully automated publishing, add a workflow in `.github/workflows/` that runs `semantic-release` from the `main` branch with the required GitHub and npm credentials.
+This project is licensed under [Apache-2.0](LICENSE), inherited from upstream Notifee. By contributing, you agree that your contributions are licensed under Apache-2.0.
 
-### Manual Process
-
-1. Navigate to the React Native package: `cd packages/react-native`
-2. Update release notes in `docs/react-native/release-notes.mdx`
-3. Bump version: `npm version {major/minor/patch} --legacy-peer-deps`
-4. Publish to npm: `npm publish` (generates a new core AAR; requires npm login with publish permissions for `react-native-notify-kit`)
-5. Commit changes (after npm publish so new AAR files are committed)
-6. Tag the repo: `react-native-notify-kit@x.y.z`
-7. Push: `git push --tags`
-8. Create a GitHub release:
-
-   ```bash
-   export TAGNAME=$(git tag --list | sort -r | head -1)
-   gh release create ${TAGNAME} --title "${TAGNAME}" --notes "[Release Notes](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/react-native/release-notes.mdx)"
-   ```
-
-### Verify
-
-1. [GitHub releases](https://github.com/marcocrupi/react-native-notify-kit/releases)
-2. [npm versions](https://www.npmjs.com/package/react-native-notify-kit?activeTab=versions)
-3. [Changelog](https://docs.page/marcocrupi/react-native-notify-kit/react-native/release-notes)
-4. [Tags](https://github.com/marcocrupi/react-native-notify-kit/tags)
+No CLA or DCO sign-off is currently required.
