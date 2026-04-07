@@ -24,6 +24,7 @@ export default tseslint.config(
       'sendPushNotification.js',
       '**/version.ts',
       '**/version.js',
+      'apps/smoke/**',
     ],
   },
 
@@ -39,7 +40,7 @@ export default tseslint.config(
   // Project-specific overrides
   {
     settings: {
-      react: { version: 'detect' },
+      react: { version: '19' },
     },
     rules: {
       '@typescript-eslint/no-use-before-define': 'off',
