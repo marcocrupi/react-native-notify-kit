@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **iOS**: `willPresentNotification:` fallback no longer silently drops foreground notifications when no original `UNUserNotificationCenterDelegate` was captured. The fallback path (taken when the incoming notification is not Notifee-owned and `_originalDelegate == nil`) previously called `completionHandler(UNNotificationPresentationOptionNone)`, which told iOS to display nothing — no banner, no sound, no badge, no Notification Center entry. It now returns the platform default presentation options (banner, sound, list, badge on iOS 14+; alert, sound, badge on earlier), matching what iOS would do if Notifee had not installed a delegate at all. This affects apps using `react-native-notify-kit` without a library that also sets a `UNUserNotificationCenter` delegate — for example, apps without `@react-native-firebase/messaging`, or apps using a different push provider (OneSignal, AWS SNS, etc.). Apps using RN Firebase are unaffected: Firebase's delegate is captured as `_originalDelegate` at `+load` time and the forwarding branch is taken instead of the fallback. Note: this is **not** a duplicate of the v9.1.12 fix — v9.1.12 addressed a separate bug where the `completionHandler` was not called at all in that branch (causing handler leaks). v9.1.12 added the call with a value of `None`, which fixed the leak but left notifications silently dropped. This release changes the value passed to `completionHandler`, not whether it is called.
+
 ## [9.1.19] - 2026-04-07
 
 ### Fixed

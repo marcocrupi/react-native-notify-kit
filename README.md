@@ -265,6 +265,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `completionHandler` not called on notification dismiss | iOS | Pre-existing | 9.1.12 |
 | `completionHandler` not called in `willPresentNotification` fallback | iOS | Pre-existing | 9.1.12 |
 | `getInitialNotification()` returns `null` on cold start (deprecated `UIApplicationLaunchOptionsLocalNotificationKey` check) | iOS | [#1128](https://github.com/invertase/notifee/issues/1128) | 9.1.12 |
+| `willPresentNotification:` fallback silently drops foreground notifications when no original delegate is captured (returns `None` instead of platform defaults) | iOS | Pre-existing (introduced by partial fix in v9.1.12) | [next version] |
 | `getInitialNotification()` returns `null` without `pressAction` configured | Android | [#1128](https://github.com/invertase/notifee/issues/1128) | 9.1.12 |
 | Foreground press events silently dropped when React instance not ready | Android | [#1279](https://github.com/invertase/notifee/issues/1279) | 9.1.12 |
 | Trigger notifications not firing on Android 14-15 when app is killed (missing `goAsync()` in `BroadcastReceiver`) | Android | [#1100](https://github.com/invertase/notifee/issues/1100) | 9.1.12 |

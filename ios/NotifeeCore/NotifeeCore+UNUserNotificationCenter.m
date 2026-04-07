@@ -166,7 +166,24 @@ struct {
                       willPresentNotification:notification
                         withCompletionHandler:completionHandler];
   } else {
-    completionHandler(UNNotificationPresentationOptionNone);
+    // No original delegate captured and the notification is not Notifee-owned.
+    // Returning UNNotificationPresentationOptionNone would silently drop the
+    // notification (no banner, no sound, no badge, no Notification Center entry),
+    // making remote pushes invisible to users in apps that don't install a
+    // competing UNUserNotificationCenterDelegate (e.g. apps without
+    // @react-native-firebase/messaging). Fall back to the platform default
+    // presentation options instead so the system shows the notification as it
+    // would if Notifee had not installed a delegate at all.
+    if (@available(iOS 14.0, *)) {
+      completionHandler(UNNotificationPresentationOptionBanner |
+                        UNNotificationPresentationOptionSound |
+                        UNNotificationPresentationOptionList |
+                        UNNotificationPresentationOptionBadge);
+    } else {
+      completionHandler(UNNotificationPresentationOptionAlert |
+                        UNNotificationPresentationOptionSound |
+                        UNNotificationPresentationOptionBadge);
+    }
   }
 }
 
