@@ -18,7 +18,7 @@ This repository preserves the original Notifee APIs and native core while contin
 
 ## Why this fork
 
-The original [Notifee](https://github.com/invertase/notifee) has not received updates since December 2024 (v9.1.8), with no bug fixes, no New Architecture support, and several critical issues left unresolved. In [issue #1254](https://github.com/invertase/notifee/issues/1254), the Invertase maintainer recommended migrating to `expo-notifications`.
+The original [Notifee](https://github.com/invertase/notifee) repository was **officially archived** by Invertase on April 7, 2026 (last release: v9.1.8, December 2024). The archived README recommends this fork (`react-native-notify-kit`) as a community-maintained drop-in replacement, alongside `expo-notifications`. Previously, in [issue #1254](https://github.com/invertase/notifee/issues/1254), the Invertase maintainer had already suggested migrating to `expo-notifications`.
 
 However, `expo-notifications` does not cover several advanced capabilities that many production apps rely on:
 
@@ -34,6 +34,7 @@ This fork fills the gap: it preserves all of Notifee's advanced features, migrat
 
 <a href="https://github.com/marcocrupi/react-native-notify-kit/commits"><img src="https://img.shields.io/github/last-commit/marcocrupi/react-native-notify-kit.svg" alt="Last commit"></a>
 
+- Officially recommended by Invertase as the community-maintained fork (April 2026)
 - Maintained fork of Notifee — actively developed and published as `react-native-notify-kit`
 - New Architecture only (TurboModules)
 - Minimum supported React Native: `0.73`
