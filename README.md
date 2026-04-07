@@ -287,6 +287,24 @@ This fork fixes the following bugs that were never resolved in the original Noti
 
 As bugs are fixed, this table is updated. See [CHANGELOG.md](CHANGELOG.md) for full details.
 
+## Behavior changes from upstream
+
+In addition to bug fixes, the fork makes a few opinionated default changes vs `@notifee/react-native` to improve reliability and reduce footguns. These are intentional behavioral differences that you should be aware of when migrating:
+
+- **Trigger notifications use AlarmManager by default** instead of WorkManager (since 9.1.12). WorkManager is battery-friendly but unreliable for time-sensitive notifications — Android may defer or drop WorkManager tasks based on Doze mode and OEM power management. Opt out per-trigger with `alarmManager: false` in the trigger config if you need battery-friendly scheduling where exact timing is not critical.
+
+- **`AlarmType` defaults to `SET_EXACT_AND_ALLOW_WHILE_IDLE`** (since 9.1.12) instead of upstream's `SET_EXACT`, for better Doze mode compatibility.
+
+- **`ongoing` defaults to `true` when `asForegroundService: true`** (since 9.1.14), preventing foreground service notifications from being dismissed by the user on Android 13+. This matches pre-Android 13 platform behavior. Override by setting `ongoing: false` explicitly.
+
+- **Foreground service notifications dismissed on Android 14+ are auto re-posted** (since 9.1.14) while the service is still running. Android 14 ignores `FLAG_ONGOING_EVENT` for most foreground service types (except `mediaPlayback`, `phoneCall`, and enterprise DPC); the library detects the dismissal and immediately re-displays the notification.
+
+- **`pressAction.launchActivity` defaults to `'default'` at the native layer when `pressAction.id === 'default'`** (since 9.1.19). The TypeScript validator already applied this default since upstream PR #141 (Sept 2020), but native code paths bypassing the validator (e.g., trigger notifications restored from the Room database after reboot, headless tasks) could miss it. The fork closes the gap at the native layer as defense-in-depth — eliminates an entire class of "tap doesn't open app" bugs in Android task management edge cases.
+
+- **Library no longer hardcodes `foregroundServiceType` in its manifest** (since 9.1.13 — **BREAKING vs upstream**). Apps using `asForegroundService: true` on Android 14+ must declare their own `foregroundServiceType` on `app.notifee.core.ForegroundService` in their app manifest. See [Foreground Service Setup](#foreground-service-setup-android-14) below for migration instructions. Upstream hardcoded `shortService`, which caused a manifest merger failure ([#1108](https://github.com/invertase/notifee/issues/1108)) and a 3-minute timeout ANR crash ([#703](https://github.com/invertase/notifee/issues/703)).
+
+These changes are documented in the [CHANGELOG](CHANGELOG.md) under the release that introduced them. If you rely on any of the upstream defaults, you can either pin to the specific behavior via the opt-out flags listed above, or open an issue to discuss.
+
 ## Foreground Service Setup (Android 14+)
 
 Android 14 (API 34) requires all foreground services to declare an explicit `foregroundServiceType`. If you use `asForegroundService: true` in your notifications, add the following to your app's `AndroidManifest.xml`:
