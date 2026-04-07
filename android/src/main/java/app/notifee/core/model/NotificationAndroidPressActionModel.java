@@ -48,7 +48,11 @@ public class NotificationAndroidPressActionModel {
   }
 
   public @Nullable String getLaunchActivity() {
-    return mNotificationAndroidPressActionBundle.getString("launchActivity");
+    String launchActivity = mNotificationAndroidPressActionBundle.getString("launchActivity");
+    if (launchActivity == null && "default".equals(getId())) {
+      return "default";
+    }
+    return launchActivity;
   }
 
   public int getLaunchActivityFlags() {
