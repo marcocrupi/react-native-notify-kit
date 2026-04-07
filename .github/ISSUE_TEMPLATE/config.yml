@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "💬 Questions and discussions"
+    url: https://github.com/marcocrupi/react-native-notify-kit/discussions/categories/q-a
+    about: For "how do I..." questions, please use GitHub Discussions Q&A instead of opening an issue.
+  - name: "📚 Documentation"
+    url: https://github.com/marcocrupi/react-native-notify-kit#readme
+    about: Check the README for installation, migration guide, and the bug fix table before reporting.
+  - name: "🔒 Report a security vulnerability"
+    url: https://github.com/marcocrupi/react-native-notify-kit/security/advisories/new
+    about: Please report security issues privately, not via public issues.

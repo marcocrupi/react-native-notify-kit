@@ -1,0 +1,109 @@
+name: Bug Report
+description: Report a bug in react-native-notify-kit
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before you report
+
+        - **Search [existing issues](https://github.com/marcocrupi/react-native-notify-kit/issues)** — your bug may already be reported or fixed.
+        - **Check the [Bugs Fixed from Upstream Notifee](https://github.com/marcocrupi/react-native-notify-kit#bugs-fixed-from-upstream-notifee) table** — your bug may already be fixed in this fork.
+        - **Make sure you're on the latest version** of `react-native-notify-kit` before reporting.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I have searched existing issues and this bug has not been reported
+          required: true
+        - label: I have checked the "Bugs Fixed from Upstream Notifee" table in the README
+          required: true
+        - label: I am using the latest version of react-native-notify-kit
+          required: true
+
+  - type: input
+    id: lib-version
+    attributes:
+      label: react-native-notify-kit version
+      placeholder: "e.g. 9.1.21"
+    validations:
+      required: true
+
+  - type: input
+    id: rn-version
+    attributes:
+      label: React Native version
+      placeholder: "e.g. 0.84.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Android
+        - iOS
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      placeholder: "e.g. Android 14, iOS 17.4"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's happening vs what you expected.
+      placeholder: |
+        **What happened:**
+        ...
+
+        **What I expected:**
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: |
+        Provide a code snippet or a link to a minimal reproduction repository.
+        Issues without a reproduction may be closed without investigation.
+      placeholder: "Code snippet or link to a reproduction repo"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Paste relevant logs: `adb logcat` for Android, Xcode console for iOS.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant (screenshots, device model, etc.).
+
+  - type: checkboxes
+    id: architecture
+    attributes:
+      label: Architecture
+      description: This fork only supports New Architecture. Confirm which you're using.
+      options:
+        - label: New Architecture (Fabric / TurboModules)
