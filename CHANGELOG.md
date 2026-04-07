@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.1.19] - 2026-04-07
+
+### Fixed
+
+- **Android**: `pressAction.launchActivity` now defaults to `'default'` at the
+  native layer when `pressAction.id === 'default'` and `launchActivity` is not
+  explicitly set. The TypeScript validator has applied this default since
+  upstream PR #141 (Sept 2020), but native code paths that bypass the JS
+  validator (trigger notifications restored from the Room database after
+  reboot, headless tasks, future bridge changes) could reach native code with
+  `launchActivity` unset, causing "tap doesn't open app" bugs in certain
+  Android task management edge cases. This defense-in-depth fix closes the
+  gap at the native layer.
+
+  No user-facing behavior change for apps using the standard JS API — the
+  validator already handled this case. Safe to upgrade.
+
+- **Android**: Fixed a pre-existing upstream bug in `NotificationPendingIntent`
+  where String comparisons on line 155-157 used `!=` (reference equality)
+  instead of `.equals()` (value equality). The bug was dormant before this
+  release because the buggy code path was never reached for the
+  `id === 'default'` case — the null guard above it always short-circuited.
+  The new native layer default for `launchActivity` would have routed the
+  default press action through the buggy comparison for the first time,
+  unnecessarily overwriting the `getLaunchIntentForPackage()` intent with
+  a manually constructed one with different task stack flags. Both fixes
+  ship together because they are logically coupled.
+
 ## [9.1.18] - 2026-04-07
 
 ### Fixed
