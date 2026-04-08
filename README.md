@@ -42,7 +42,7 @@ This fork fills the gap: it preserves all of Notifee's advanced features, migrat
 - License: `Apache-2.0`
 - Full changelog: [CHANGELOG.md](CHANGELOG.md)
 
-The native core (NotifeeCore) is preserved intact and the public API is **100% compatible** with the original `@notifee/react-native` — migration is a safe, drop-in replacement.
+The native core (NotifeeCore) is compiled from source as part of the bridge module (since 9.2.0) and the public API is **100% compatible** with the original `@notifee/react-native` — migration is a safe, drop-in replacement.
 
 ## Installation
 
@@ -251,8 +251,9 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **iOS bridge uses Objective-C++** with `NativeNotifeeModuleSpecJSI` TurboModule conformance
 - **Minimum React Native 0.73**, development target **0.84**
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
+- **Single Android module** — the original Notifee shipped a pre-compiled AAR bundled inside the npm tarball under a frozen Maven coordinate; this fork compiles the core from source as part of the React Native bridge module on every consumer build. Eliminates the `FAIL_ON_PROJECT_REPOS` issue on RN 0.74+ and the Gradle cache staleness bug that could serve outdated bytecode after `yarn upgrade`.
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
-- **18 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **20 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 
@@ -281,6 +282,8 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `!=` reference equality on String comparison in `NotificationPendingIntent` (latent — would activate when `getLaunchActivity()` returns a non-null value for `id=default`) | Android | Pre-existing (latent) | 9.1.19 |
 | `pressAction.launchActivity` not defaulted at native layer when `pressAction.id === 'default'` | Android | N/A (defense-in-depth) | 9.1.19 |
 | Duplicate symbols linker error when using NSE (`$NotifeeExtension = true`) with static frameworks — `NotifeeExtensionHelper` compiled by both `RNNotifee` and `RNNotifeeCore` pods | iOS | Pre-existing | 9.1.22 |
+| `FAIL_ON_PROJECT_REPOS` rejection on RN 0.74+ — library injected a Maven repository into the consumer's `rootProject.allprojects` block, rejected by `dependencyResolutionManagement` mode | Android | N/A (architectural) | 9.2.0 |
+| Stale Gradle cache could serve outdated AAR bytecode after `yarn upgrade` — same Maven coordinate reused across releases violated Gradle's coordinate-immutability assumption | Android | N/A (architectural) | 9.2.0 |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's

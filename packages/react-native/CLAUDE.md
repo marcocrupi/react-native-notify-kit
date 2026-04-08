@@ -33,7 +33,7 @@ Utils in `src/utils/` — `validate.ts` (type guards), `id.ts` (ID generation), 
 ```bash
 yarn build          # genversion + tsc (generates version.ts then compiles)
 yarn build:watch    # tsc --watch for development
-yarn build:clean    # Removes dist/, android/libs/, android/build/, ios/build/
+yarn build:clean    # Removes dist/, android/build/, ios/build/
 ```
 
 Output goes to `dist/` (configured in tsconfig.json). Entry point: `dist/index.js`.
@@ -72,18 +72,28 @@ const isAndroid = Platform.OS === 'android';
 const isIOS = Platform.OS === 'ios';
 ```
 
-## Native Bridge Code
+## Native Android Code
 
-### Android (`android/src/main/kotlin/io/invertase/notifee/`)
+### Bridge (`android/src/main/kotlin/io/invertase/notifee/`)
 
 6 Kotlin files (TurboModule, extends `NativeNotifeeModuleSpec`):
 
 - `NotifeeApiModule.kt` — TurboModule bridge (all `@ReactMethod` implementations)
 - `NotifeePackage.kt` — `TurboReactPackage` registration (`isTurboModule=true`)
-- `NotifeeInitProvider.kt` — Auto-initialization via ContentProvider
+- `NotifeeInitProvider.kt` — Auto-initialization via ContentProvider (extends `app.notifee.core.InitProvider`)
 - `NotifeeEventSubscriber.kt` — Subscribes to core EventBus events
 - `HeadlessTask.kt` — Background JS execution
 - `NotifeeReactUtils.kt` — Conversion utilities
+
+### Core (`android/src/main/java/app/notifee/core/`)
+
+53 Java files — the native notification engine. All classes in `app.notifee.core.*` package (do NOT change namespace). Key entry points: `Notifee.java` (public facade), `NotificationManager.java` (notification CRUD). Sub-packages: `database/` (Room persistence), `event/` (event models), `interfaces/` (callbacks), `model/` (data models), `utility/` (helpers).
+
+### Tests (`android/src/test/`, `android/src/androidTest/`)
+
+- 2 unit tests: `NotificationAndroidPressActionModelTest.java`, `TimestampTriggerModelTest.java`
+- 2 instrumented tests: `ExampleInstrumentedTest.java`, `NotifeeCoreDatabaseTest.java`
+- Room schema exports: `android/schemas/app.notifee.core.database.NotifeeCoreDatabase/` (1.json, 2.json)
 
 ### iOS (`ios/RNNotifee/`)
 

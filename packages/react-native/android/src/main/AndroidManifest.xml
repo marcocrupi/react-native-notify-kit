@@ -1,10 +1,77 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="io.invertase.notifee">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+  <uses-permission android:name="android.permission.BROADCAST_CLOSE_SYSTEM_DIALOGS" android:maxSdkVersion="30" />
+  <!-- For Xiaomi devices to enable heads-up notifications as default (https://github.com/invertase/notifee/issues/296) -->
+  <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" android:minSdkVersion="23" />
 
   <application>
+    <!-- Receiver Service -->
+    <service
+      android:name="app.notifee.core.ReceiverService"
+      android:exported="false" />
+
+    <activity
+      android:name="app.notifee.core.NotificationReceiverActivity"
+      android:noHistory="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.Translucent.NoTitleBar"
+      android:exported="true" />
+
+    <!-- Foreground Service -->
+    <service
+      android:name="app.notifee.core.ForegroundService"
+      android:exported="false" />
+
+    <receiver
+        android:name="app.notifee.core.RebootBroadcastReceiver"
+        android:exported="false">
+        <intent-filter>
+            <action android:name="android.intent.action.BOOT_COMPLETED" />
+            <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+        </intent-filter>
+    </receiver>
+
+    <receiver
+      android:name="app.notifee.core.AlarmPermissionBroadcastReceiver"
+      android:exported="true">
+      <intent-filter>
+        <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+      </intent-filter>
+    </receiver>
+
+    <receiver
+      android:name="app.notifee.core.NotificationAlarmReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+      </intent-filter>
+    </receiver>
+
+    <!-- Broadcast Receiver -->
+    <receiver
+      android:name="app.notifee.core.BlockStateBroadcastReceiver"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="android.app.action.APP_BLOCK_STATE_CHANGED" />
+        <action android:name="android.app.action.NOTIFICATION_CHANNEL_BLOCK_STATE_CHANGED" />
+        <action android:name="android.app.action.NOTIFICATION_CHANNEL_GROUP_BLOCK_STATE_CHANGED" />
+      </intent-filter>
+    </receiver>
+
     <provider
-      android:name=".NotifeeInitProvider"
+      android:name="io.invertase.notifee.NotifeeInitProvider"
       android:authorities="${applicationId}.notifee-init-provider"
       android:exported="false"
       android:initOrder="-100" />

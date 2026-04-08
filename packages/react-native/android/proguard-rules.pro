@@ -1,3 +1,5 @@
+# --- Bridge classes ---
+
 -keep class io.invertase.notifee.NotifeeEventSubscriber
 -keep class io.invertase.notifee.NotifeeInitProvider
 -keepnames class io.invertase.notifee.NotifeePackage
@@ -12,8 +14,18 @@
 -keep class * extends com.facebook.react.ReactHost { *; }
 -keepnames class com.facebook.react.ReactActivity
 
+# --- Core classes ---
+
+# InitProvider is subclassed by the RN bridge module (NotifeeInitProvider).
+# R8 must not finalize its methods, otherwise the bridge cannot override onCreate().
+-keep class app.notifee.core.InitProvider { *; }
+-keeppackagenames app.notifee.core.**
+
+# --- Annotations ---
+
 # Preserve all annotations.
 -keepattributes *Annotation*
+-keepattributes Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,EnclosingMethod
 
 # Keep the classes/members we need for client functionality.
 -keep @interface androidx.annotation.Keep { *; }
@@ -34,6 +46,8 @@
 -keepclasseswithmembers class * {
   @app.notifee.core.KeepForSdk <methods>;
 }
+
+# --- Class/method preservation ---
 
 # Preserve all .class method names.
 -keepclassmembernames class * {
@@ -72,4 +86,3 @@
 -keepclassmembers class * extends org.greenrobot.eventbus.util.ThrowableFailureEvent {
     <init>(java.lang.Throwable);
 }
-

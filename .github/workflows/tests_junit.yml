@@ -5,7 +5,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/*.yml'
-      - 'android/**'
+      - 'packages/react-native/android/**'
   push:
     branches:
       - main
@@ -52,15 +52,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/build.gradle*') }}-v1
-
-      - name: Resolve Gradle Dependencies
-        uses: nick-fields/retry@v4
-        with:
-          timeout_minutes: 10
-          retry_wait_seconds: 60
-          max_attempts: 3
-          command: yarn build:core:android
+          key: ${{ runner.os }}-gradle-${{ hashFiles('packages/react-native/android/build.gradle*') }}-v1
 
       - name: Run JUnit Tests
         run: yarn test:core:android

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.2.0] - 2026-04-08
+
+### Changed
+
+- **Android**: **Internal architecture change** — collapsed the standalone NotifeeCore AAR into the React Native bridge as a single Android library module. The bundled local Maven repo at `packages/react-native/android/libs/` and the frozen coordinate `app.notifee:core:202108261754` (a 2021 timestamp inherited from upstream Invertase) are gone. Core Java sources now live at `packages/react-native/android/src/main/java/app/notifee/core/` and are compiled from source by the consumer app on every build.
+
+  **No public API changes.** The TypeScript surface is unchanged. Migration from 9.1.x requires zero code changes — upgrade the package and rebuild.
+
+  Verified end-to-end on a Pixel 9 Pro XL (Android 16): local notification display, AlarmManager-backed trigger notifications with the app killed, foreground service with `shortService` 3+ minute timeout (the 9.1.13 `onTimeout()` fix is preserved), and FCM push notifications.
+
+### Fixed
+
+- **Android**: `FAIL_ON_PROJECT_REPOS` rejection on React Native 0.74+. The library no longer injects a Maven repository into the consumer's `rootProject.allprojects { repositories { ... } }` block. React Native 0.74+ ships `settings.gradle` with `dependencyResolutionManagement { repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS }`, which rejected the previous pattern at Gradle sync time. The merged module no longer needs to inject any repository because the core sources are part of the bridge module.
+
+- **Android**: Stale Gradle cache serving outdated bytecode after `yarn upgrade`. Previously, the Maven coordinate `app.notifee:core:202108261754` was reused across all releases with different AAR contents — Gradle's cache assumes Maven coordinates are immutable and could serve a stale AAR from `~/.gradle/caches/modules-2/files-2.1/app.notifee/core/202108261754/` even after a successful npm upgrade. This was a silent, intermittent bug that affected only consumers who had previously installed any version of the library on the same machine. With the coordinate gone, the bytecode is rebuilt from source on every consumer build, making this bug structurally impossible.
+
 ## [9.1.22] - 2026-04-08
 
 ### Fixed
