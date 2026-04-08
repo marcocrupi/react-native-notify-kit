@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **iOS**: PRESS events from notification taps while the app was in background were incorrectly routed to `onForegroundEvent` instead of `onBackgroundEvent`. Three issues were addressed in `sendNotifeeCoreEvent:` (`NotifeeApiModule.mm`): (1) a `dispatch_after(1 second)` delay introduced during the TurboModule migration (9.1.0, commit 7082401) caused `UIApplication.applicationState` to be checked 1 second after the delegate callback — by which time iOS had already transitioned the app to Active, making the background branch unreachable; (2) the condition `== UIApplicationStateBackground` was incorrect because iOS reports `Inactive` (not `Background`) at the moment of a notification tap from background — changed to `!= UIApplicationStateActive`; (3) `applicationState` was being read on a background thread (`UNUserNotificationServiceConnection` queue), violating UIKit's main-thread requirement — wrapped in `dispatch_async(dispatch_get_main_queue())`. The existing two-tier event queue (`NotifeeCoreDelegateHolder._pendingEvents` + `pendingCoreEvents`) already handles the "JS not ready" case, so the delay was redundant. Known limitation: non-tap events (DELIVERED, TRIGGER_NOTIFICATION_CREATED, DISMISSED) emitted while the app is momentarily in Inactive state for unrelated reasons — Control Center open, incoming call — will be routed to the background handler. In practice this is uncommon because these events originate from contexts where the app is typically Active. If you rely on strict foreground delivery for non-tap events, check `AppState.currentState` in your handler. (#5)
+
 ## [9.2.0] - 2026-04-08
 
 ### Changed

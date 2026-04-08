@@ -88,15 +88,33 @@ RCT_EXPORT_MODULE();
 }
 
 - (void)sendNotifeeCoreEvent:(NSDictionary *_Nonnull)eventBody {
-  dispatch_after(
-      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (RCTRunningInAppExtension() ||
-            [UIApplication sharedApplication].applicationState == UIApplicationStateBackground) {
-          [self sendEventWithName:kReactNativeNotifeeNotificationBackgroundEvent body:eventBody];
-        } else {
-          [self sendEventWithName:kReactNativeNotifeeNotificationEvent body:eventBody];
-        }
-      });
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (!hasListeners) {
+      [pendingCoreEvents addObject:eventBody];
+      return;
+    }
+    // Routing foreground vs background is based on UIApplication state.
+    // iOS delivers didReceiveNotificationResponse: while the app is in
+    // Inactive state during a background tap transition, not Background —
+    // so we check != Active rather than == Background.
+    //
+    // Known limitation: this also routes non-tap events (DELIVERED,
+    // TRIGGER_NOTIFICATION_CREATED, DISMISSED) to the background channel
+    // if they happen to be emitted while the app is in Inactive state for
+    // unrelated reasons (Control Center open, incoming call, etc.). In
+    // practice this is rare because DELIVERED originates from
+    // willPresentNotification: (only called when app is Active) and the
+    // API-triggered events require an interactive JS context. If this
+    // becomes a real-world problem, the routing should be split by event
+    // type rather than by state alone.
+    BOOL isBackground = RCTRunningInAppExtension() ||
+        [UIApplication sharedApplication].applicationState != UIApplicationStateActive;
+    if (isBackground) {
+      [self sendEventWithName:kReactNativeNotifeeNotificationBackgroundEvent body:eventBody];
+    } else {
+      [self sendEventWithName:kReactNativeNotifeeNotificationEvent body:eventBody];
+    }
+  });
 }
 
 // clang-format off
