@@ -280,7 +280,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | DST (daylight saving time) shifts repeating scheduled notifications by ±1 hour | Android | [#875](https://github.com/invertase/notifee/issues/875) | 9.1.14 |
 | `!=` reference equality on String comparison in `NotificationPendingIntent` (latent — would activate when `getLaunchActivity()` returns a non-null value for `id=default`) | Android | Pre-existing (latent) | 9.1.19 |
 | `pressAction.launchActivity` not defaulted at native layer when `pressAction.id === 'default'` | Android | N/A (defense-in-depth) | 9.1.19 |
-| Duplicate symbols linker error when using NSE (`$NotifeeExtension = true`) with static frameworks — `NotifeeExtensionHelper` compiled by both `RNNotifee` and `RNNotifeeCore` pods | iOS | Pre-existing | Unreleased |
+| Duplicate symbols linker error when using NSE (`$NotifeeExtension = true`) with static frameworks — `NotifeeExtensionHelper` compiled by both `RNNotifee` and `RNNotifeeCore` pods | iOS | Pre-existing | 9.1.22 |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
