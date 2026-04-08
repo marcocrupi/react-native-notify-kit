@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **iOS**: Fixed duplicate symbols linker error when using Notification Service Extension (`$NotifeeExtension = true`) with static frameworks (`use_frameworks! :linkage => :static`). `NotifeeExtensionHelper.{h,m}` was compiled by both `RNNotifee` and `RNNotifeeCore` pods; added `s.exclude_files` in the `$NotifeeExtension` branch of `RNNotifee.podspec` so the files are only compiled by `RNNotifeeCore`.
+
 ## [9.1.21] - 2026-04-07
 
 ### Changed

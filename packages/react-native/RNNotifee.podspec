@@ -27,6 +27,7 @@ Pod::Spec.new do |s|
   elsif defined?($NotifeeExtension) && $NotifeeExtension == true
     # App uses Notification Service Extension
     Pod::UI.warn "RNNotifee: using Notification Service Extension."
+    s.exclude_files = 'ios/RNNotifee/NotifeeExtensionHelper.{h,m}'
     s.dependency 'RNNotifeeCore'
   else
     s.subspec "NotifeeCore" do |ss|
