@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - Removed unused `.buckconfig` (Buck is no longer used by React Native since 0.74; file was stale since 2019).
 - Removed unused `.flowconfig` (project is TypeScript-only; Flow config was a leftover from the original Invertase fork). Verified no references in `package.json`, CI workflows, or scripts.
+- **Android**: Removed unused EventBus annotation processor (`org.greenrobot:eventbus-annotation-processor`) and its `eventBusIndex` build option from the Gradle configuration. The generated `EventBusIndex` class was never referenced at runtime — `EventBus.builder().build()` is called without `.addIndex()`. This eliminates the confusing build warning `The following options were not recognized by any processor: '[eventBusIndex]'` reported in some configurations. No functional change — EventBus runtime dependency is unchanged.
 
 ## [9.2.1] - 2026-04-08
 

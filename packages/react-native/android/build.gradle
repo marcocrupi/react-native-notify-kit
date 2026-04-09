@@ -59,8 +59,7 @@ android {
 
     javaCompileOptions {
       annotationProcessorOptions {
-        arguments = ["room.schemaLocation": "$projectDir/schemas".toString(),
-                     eventBusIndex: 'app.notifee.core.EventBusIndex']
+        arguments = ["room.schemaLocation": "$projectDir/schemas".toString()]
       }
     }
   }
@@ -138,9 +137,7 @@ dependencies {
   api 'androidx.sqlite:sqlite-framework:2.6.2'
   annotationProcessor "androidx.room:room-compiler:$room_version"
 
-  def eventbus_version = '3.3.1' // https://github.com/greenrobot/EventBus/releases
-  api "org.greenrobot:eventbus:$eventbus_version"
-  annotationProcessor "org.greenrobot:eventbus-annotation-processor:$eventbus_version"
+  api 'org.greenrobot:eventbus:3.3.1' // https://github.com/greenrobot/EventBus/releases
 
   // --- Bridge dependencies ---
   implementation 'androidx.lifecycle:lifecycle-process:2.3.1'
