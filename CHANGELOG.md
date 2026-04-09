@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **iOS**: Fixed potential loss of notification events at cold start when the React Native bridge takes longer than 1 second to initialize. The previous implementation in `NotifeeCoreDelegateHolder` used a `dispatch_after(1 sec)` + `dispatch_once` combo to drain `_pendingEvents` (PRESS, DELIVERED, etc. emitted by iOS before `NotifeeApiModule` was ready). On large apps or slow devices where the bridge init exceeded 1 second, the flush could run before the delegate was connected, and the `dispatch_once` prevented any retry — events were permanently lost. The same `dispatch_once` also prevented re-flushing after a JS reload in dev mode, since the static token had already fired. Replaced with an event-driven synchronous flush triggered when `setDelegate:` installs a valid delegate: pending events are drained in FIFO order immediately, and any future delegate re-assignment (JS reload) flushes again. The second-level buffer in `NotifeeApiModule.pendingCoreEvents` (drained by `startObserving`) continues to handle the "delegate set but JS listeners not yet attached" window, so events are never dropped regardless of bridge or JS timing. Added `@synchronized(self)` around `_pendingEvents` mutations for thread safety. No public API change.
+
 - **iOS**: Corrected error message in `validateIOSPermissions` — the validator for the `badge` field threw `"'alert' badge a boolean value."` (wrong property name and ungrammatical) instead of `"'badge' expected a boolean value."`. Dev-only, surfaces only when passing a non-boolean to `requestPermission({ badge })`.
 
 ### Removed
