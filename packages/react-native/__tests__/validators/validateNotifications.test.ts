@@ -42,6 +42,7 @@ describe('Validate Notification', () => {
         loopSound: false,
         ongoing: false,
         onlyAlertOnce: false,
+        pressAction: { id: 'default', launchActivity: 'default' },
         showChronometer: false,
         showTimestamp: false,
         smallIcon: 'ic_launcher',

@@ -480,6 +480,38 @@ describe('Validate Android Notification', () => {
       );
     });
 
+    test('defaults pressAction to { id: default, launchActivity: default } when omitted', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.pressAction).toEqual({ id: 'default', launchActivity: 'default' });
+    });
+
+    test('emits opt-out sentinel when pressAction is explicitly null', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        pressAction: null,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.pressAction).toEqual({ id: '__NOTIFEE_OPT_OUT__' });
+    });
+
+    test('preserves explicit pressAction when provided', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        pressAction: { id: 'custom', launchActivity: 'com.example.Activity' },
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.pressAction).toEqual({
+        id: 'custom',
+        launchActivity: 'com.example.Activity',
+      });
+    });
+
     test('throws an error when importance value is invalid', () => {
       const channelGroup: NotificationAndroid = {
         channelId: 'channelId',

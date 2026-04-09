@@ -458,13 +458,33 @@ export default function validateAndroidNotification(
 
   /**
    * pressAction
+   *
+   * Defaults to { id: 'default', launchActivity: 'default' } when omitted,
+   * so tapping the notification opens the app. Pass pressAction: null explicitly
+   * to opt out (non-tappable notification).
+   *
+   * The opt-out uses a reserved sentinel id ('__NOTIFEE_OPT_OUT__') in the bundle
+   * sent to native, so the native layer can distinguish "absent" (synthesize default)
+   * from "explicitly null" (no launch intent). The same constant is defined in
+   * NotificationPendingIntent.java as PRESS_ACTION_OPT_OUT_ID.
    */
-  if (objectHasProperty(android, 'pressAction') && !isUndefined(android.pressAction)) {
+  if (
+    objectHasProperty(android, 'pressAction') &&
+    android.pressAction !== null &&
+    !isUndefined(android.pressAction)
+  ) {
     try {
       out.pressAction = validateAndroidPressAction(android.pressAction);
     } catch (e: any) {
       throw new Error(`'notification.android.pressAction' ${e.message}`);
     }
+  } else if (android.pressAction === null) {
+    // Explicit opt-out: emit sentinel so native can distinguish from "absent".
+    // DO NOT use '__NOTIFEE_OPT_OUT__' as a real pressAction id — reserved sentinel.
+    out.pressAction = { id: '__NOTIFEE_OPT_OUT__' };
+  } else {
+    // pressAction omitted or undefined: inject default so tapping opens the app
+    out.pressAction = { id: 'default', launchActivity: 'default' };
   }
 
   /**

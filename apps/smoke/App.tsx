@@ -309,6 +309,33 @@ function App() {
       });
     });
 
+  const displayDelayedNullPressAction = () =>
+    run('displayDelayedNullPressAction', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.createTriggerNotification(
+        {
+          title: 'Opt-out test (pressAction: null)',
+          body: 'Tap should NOT open the app',
+          data: { testId: 'null-press-action' },
+          android: {
+            channelId: 'default',
+            pressAction: null,
+          },
+        },
+        {
+          type: TriggerType.TIMESTAMP,
+          timestamp: Date.now() + 10000,
+          alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+        },
+      );
+    });
+
   const displayDelayedWithPressAction = () =>
     run('displayDelayedWithPressAction', async () => {
       if (Platform.OS === 'android') {
@@ -459,6 +486,7 @@ function App() {
         { label: 'Display Delayed (no pressAction)', onPress: displayDelayedNoPressAction },
         { label: 'Display with pressAction', onPress: displayWithPressAction },
         { label: 'Display Delayed (with pressAction)', onPress: displayDelayedWithPressAction },
+        { label: 'Delayed (pressAction: null opt-out)', onPress: displayDelayedNullPressAction },
       ],
     },
   ];

@@ -262,14 +262,18 @@ export interface NotificationAndroid {
   onlyAlertOnce?: boolean;
 
   /**
-   * By default notifications have no behaviour when a user presses them. The
-   * `pressAction` property allows you to set what happens when a user presses
-   * the notification.
+   * Controls what happens when a user presses the notification.
+   *
+   * Defaults to `{ id: 'default', launchActivity: 'default' }` when omitted,
+   * which opens the app's main activity on tap.
+   *
+   * Pass `null` explicitly to create a non-tappable notification (the notification
+   * will display but tapping it will do nothing).
    *
    * View the [Interaction](/react-native/android/interaction) documentation to learn
    * more.
    */
-  pressAction?: NotificationPressAction;
+  pressAction?: NotificationPressAction | null;
 
   /**
    * The `fullScreenAction` property allows you to show a custom UI

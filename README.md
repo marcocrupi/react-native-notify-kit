@@ -253,7 +253,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Single Android module** — the original Notifee shipped a pre-compiled AAR bundled inside the npm tarball under a frozen Maven coordinate; this fork compiles the core from source as part of the React Native bridge module on every consumer build. Eliminates the `FAIL_ON_PROJECT_REPOS` issue on RN 0.74+ and the Gradle cache staleness bug that could serve outdated bytecode after `yarn upgrade`.
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
-- **21 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **22 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 
@@ -285,6 +285,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `FAIL_ON_PROJECT_REPOS` rejection on RN 0.74+ — library injected a Maven repository into the consumer's `rootProject.allprojects` block, rejected by `dependencyResolutionManagement` mode | Android | N/A (architectural) | 9.2.0 |
 | Stale Gradle cache could serve outdated AAR bytecode after `yarn upgrade` — same Maven coordinate reused across releases violated Gradle's coordinate-immutability assumption | Android | N/A (architectural) | 9.2.0 |
 | `EventType.DELIVERED` not emitted for `displayNotification()` in foreground (only for trigger notifications) — `notifeeTrigger != nil` guard in `willPresentNotification:` suppressed the event, breaking iOS/Android symmetry | iOS | Pre-existing | 9.3.0 |
+| Tapping a notification without explicit `pressAction` does nothing (app doesn't open) — `NotificationPendingIntent.createIntent()` creates a tap-less PendingIntent when `pressActionModelBundle` is null, especially visible on trigger notifications after app kill | Android | Pre-existing (latent) | 9.3.0 |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
@@ -308,6 +309,8 @@ In addition to bug fixes, the fork makes a few opinionated default changes vs `@
 - **Foreground service notifications dismissed on Android 14+ are auto re-posted** (since 9.1.14) while the service is still running. Android 14 ignores `FLAG_ONGOING_EVENT` for most foreground service types (except `mediaPlayback`, `phoneCall`, and enterprise DPC); the library detects the dismissal and immediately re-displays the notification.
 
 - **`pressAction.launchActivity` defaults to `'default'` at the native layer when `pressAction.id === 'default'`** (since 9.1.19). The TypeScript validator already applied this default since upstream PR #141 (Sept 2020), but native code paths bypassing the validator (e.g., trigger notifications restored from the Room database after reboot, headless tasks) could miss it. The fork closes the gap at the native layer as defense-in-depth — eliminates an entire class of "tap doesn't open app" bugs in Android task management edge cases.
+
+- **`pressAction` defaults to `{ id: 'default', launchActivity: 'default' }` when omitted from the notification payload** (since 9.3.0). Upstream Notifee required an explicit `pressAction` for tap-to-open behavior — without it, the notification displayed but tapping did nothing (only the internal transparent `NotificationReceiverActivity` would launch and finish). The fork injects the default at both the TypeScript validator layer and the native `NotificationPendingIntent` layer (defense-in-depth for code paths bypassing the validator, such as trigger notifications rehydrated from Room DB after app kill). Opt out with `pressAction: null` for intentionally non-tappable notifications.
 
 - **Library no longer hardcodes `foregroundServiceType` in its manifest** (since 9.1.13 — **BREAKING vs upstream**). Apps using `asForegroundService: true` on Android 14+ must declare their own `foregroundServiceType` on `app.notifee.core.ForegroundService` in their app manifest. See [Foreground Service Setup](#foreground-service-setup-android-14) below for migration instructions. Upstream hardcoded `shortService`, which caused a manifest merger failure ([#1108](https://github.com/invertase/notifee/issues/1108)) and a 3-minute timeout ANR crash ([#703](https://github.com/invertase/notifee/issues/703)).
 
@@ -362,9 +365,11 @@ await notifee.createTriggerNotification(notification, {
 });
 ```
 
-### Android: `pressAction` required for tap handling
+### Android: `pressAction` defaults to opening the app on tap
 
-On Android, notifications require a `pressAction` to open the app when tapped:
+On Android, `pressAction` now defaults to `{ id: 'default', launchActivity: 'default' }` when omitted from the notification payload. This means tapping a notification opens the app's main activity by default — matching iOS behavior and eliminating a common footgun where trigger notifications appeared to work but tapping them did nothing after an app kill.
+
+You can still provide an explicit `pressAction` to customize tap behavior:
 
 ```typescript
 await notifee.displayNotification({
@@ -372,13 +377,23 @@ await notifee.displayNotification({
   body: 'Tap to open',
   android: {
     channelId: 'default',
-    pressAction: { id: 'default', launchActivity: 'default' },
+    pressAction: { id: 'default', launchActivity: 'default' }, // same as the default
   },
 });
 ```
 
-Without `pressAction`, the notification will display but tapping it will do nothing.
-This is Android platform behavior, not a bug. iOS opens the app by default on tap.
+To create a non-tappable notification (e.g. purely informative notifications from a background service), pass `pressAction: null` explicitly:
+
+```typescript
+await notifee.displayNotification({
+  title: 'Sync in progress',
+  body: 'Uploading files...',
+  android: {
+    channelId: 'default',
+    pressAction: null, // notification displays but tapping does nothing
+  },
+});
+```
 
 ## New APIs
 

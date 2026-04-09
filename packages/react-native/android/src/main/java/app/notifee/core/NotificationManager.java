@@ -115,6 +115,48 @@ class NotificationManager {
                   ReceiverService.DELETE_INTENT,
                   new String[] {"notification"},
                   notificationModel.toBundle()));
+          // Resolve the effective pressAction bundle for the content intent.
+          // Three cases:
+          //   1. pressAction is null (absent from bundle, e.g. trigger rehydrated from Room DB
+          //      after app kill): synthesize default { id:'default', launchActivity:'default' }
+          //      so tapping the notification opens the app (defense-in-depth for paths that
+          //      bypass the TS validator).
+          //   2. pressAction has the opt-out sentinel id: user explicitly passed
+          //      pressAction: null in JS — pass null to createIntent so no launch intent
+          //      is created (non-tappable notification).
+          //   3. pressAction is a normal bundle: pass through unchanged.
+          // Resolve the effective pressAction bundle for the content intent.
+          // Three cases:
+          //   1. pressAction is null (absent from bundle, e.g. trigger rehydrated from Room DB
+          //      after app kill): synthesize default { id:'default', launchActivity:'default' }
+          //      so tapping the notification opens the app (defense-in-depth for paths that
+          //      bypass the TS validator).
+          //   2. pressAction has the opt-out sentinel id: user explicitly passed
+          //      pressAction: null in JS — pass null to createIntent so no launch intent
+          //      is created (non-tappable notification).
+          //   3. pressAction is a normal bundle: pass through unchanged.
+          //
+          // pressActionForIntent  → used for creating the launch intent (or null for opt-out)
+          // pressActionForExtras  → used in the receiver intent extras (event payload);
+          //                         null for cases 1 & 2 to avoid leaking synthesized defaults
+          //                         or the sentinel id into the JS event.
+          Bundle pressActionForIntent = androidModel.getPressAction();
+          Bundle pressActionForExtras = pressActionForIntent;
+          if (pressActionForIntent == null) {
+            // Case 1: absent — synthesize default for launch, null for extras
+            pressActionForIntent = new Bundle();
+            pressActionForIntent.putString("id", "default");
+            pressActionForIntent.putString("launchActivity", "default");
+            // pressActionForExtras stays null: the original notification didn't have
+            // pressAction, so the event shouldn't either.
+          } else if (NotificationPendingIntent.PRESS_ACTION_OPT_OUT_ID.equals(
+              pressActionForIntent.getString("id"))) {
+            // Case 2: explicit opt-out sentinel — no launch intent, no sentinel in extras
+            pressActionForIntent = null;
+            pressActionForExtras = null;
+          }
+          // Case 3: normal pressAction — both variables point to the original bundle
+
           int targetSdkVersion =
               ContextHolder.getApplicationContext().getApplicationInfo().targetSdkVersion;
           if (targetSdkVersion >= Build.VERSION_CODES.S
@@ -122,18 +164,18 @@ class NotificationManager {
             builder.setContentIntent(
                 NotificationPendingIntent.createIntent(
                     notificationModel.getHashCode(),
-                    androidModel.getPressAction(),
+                    pressActionForIntent,
                     TYPE_PRESS,
                     new String[] {"notification", "pressAction"},
                     notificationModel.toBundle(),
-                    androidModel.getPressAction()));
+                    pressActionForExtras));
           } else {
             builder.setContentIntent(
                 ReceiverService.createIntent(
                     ReceiverService.PRESS_INTENT,
                     new String[] {"notification", "pressAction"},
                     notificationModel.toBundle(),
-                    androidModel.getPressAction()));
+                    pressActionForIntent));
           }
 
           if (notificationModel.getTitle() != null) {
