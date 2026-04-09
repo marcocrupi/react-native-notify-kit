@@ -28,7 +28,7 @@ export default function validateIOSPermissions(
 
   if (objectHasProperty(permissions, 'badge')) {
     if (!isBoolean(permissions.badge)) {
-      throw new Error("'alert' badge a boolean value.");
+      throw new Error("'badge' expected a boolean value.");
     }
 
     out.badge = permissions.badge;
