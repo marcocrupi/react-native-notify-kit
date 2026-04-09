@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **iOS**: Corrected error message in `validateIOSPermissions` — the validator for the `badge` field threw `"'alert' badge a boolean value."` (wrong property name and ungrammatical) instead of `"'badge' expected a boolean value."`. Dev-only, surfaces only when passing a non-boolean to `requestPermission({ badge })`.
+
+### Removed
+
+- Removed unused `.buckconfig` (Buck is no longer used by React Native since 0.74; file was stale since 2019).
+- Removed unused `.flowconfig` (project is TypeScript-only; Flow config was a leftover from the original Invertase fork). Verified no references in `package.json`, CI workflows, or scripts.
+
 ## [9.2.1] - 2026-04-08
 
 ### Fixed
