@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, Pressable, Platform, StyleSheet, View, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import notifee, {
@@ -15,6 +15,7 @@ import {
   onNotificationOpenedApp,
   getInitialNotification,
 } from '@react-native-firebase/messaging/lib/modular';
+import { DeliveredTestScreen } from './DeliveredTestScreen';
 
 // Uncomment to test cold start with remote notification handling disabled (fix #912)
 // notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } });
@@ -25,6 +26,7 @@ type Section = {
 };
 
 function App() {
+  const [screen, setScreen] = useState<'main' | 'delivered'>('main');
   const log = useCallback((msg: string) => {
     console.log(`[Notifee] ${msg}`);
   }, []);
@@ -446,6 +448,10 @@ function App() {
       ],
     },
     {
+      title: 'DELIVERED Test (9.3.0)',
+      buttons: [{ label: 'Open DELIVERED Test', onPress: () => setScreen('delivered') }],
+    },
+    {
       title: 'Bug #1128 Tests',
       buttons: [
         { label: 'Display with Data', onPress: displayWithData },
@@ -456,6 +462,14 @@ function App() {
       ],
     },
   ];
+
+  if (screen === 'delivered') {
+    return (
+      <SafeAreaProvider>
+        <DeliveredTestScreen onBack={() => setScreen('main')} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
