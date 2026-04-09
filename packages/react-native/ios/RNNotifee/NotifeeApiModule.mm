@@ -107,7 +107,8 @@ RCT_EXPORT_MODULE();
     // API-triggered events require an interactive JS context. If this
     // becomes a real-world problem, the routing should be split by event
     // type rather than by state alone.
-    BOOL isBackground = RCTRunningInAppExtension() ||
+    BOOL isBackground =
+        RCTRunningInAppExtension() ||
         [UIApplication sharedApplication].applicationState != UIApplicationStateActive;
     if (isBackground) {
       [self sendEventWithName:kReactNativeNotifeeNotificationBackgroundEvent body:eventBody];
