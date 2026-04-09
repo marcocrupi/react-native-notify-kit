@@ -253,7 +253,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Single Android module** — the original Notifee shipped a pre-compiled AAR bundled inside the npm tarball under a frozen Maven coordinate; this fork compiles the core from source as part of the React Native bridge module on every consumer build. Eliminates the `FAIL_ON_PROJECT_REPOS` issue on RN 0.74+ and the Gradle cache staleness bug that could serve outdated bytecode after `yarn upgrade`.
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
-- **20 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **21 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 
@@ -284,6 +284,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | Duplicate symbols linker error when using NSE (`$NotifeeExtension = true`) with static frameworks — `NotifeeExtensionHelper` compiled by both `RNNotifee` and `RNNotifeeCore` pods | iOS | Pre-existing | 9.1.22 |
 | `FAIL_ON_PROJECT_REPOS` rejection on RN 0.74+ — library injected a Maven repository into the consumer's `rootProject.allprojects` block, rejected by `dependencyResolutionManagement` mode | Android | N/A (architectural) | 9.2.0 |
 | Stale Gradle cache could serve outdated AAR bytecode after `yarn upgrade` — same Maven coordinate reused across releases violated Gradle's coordinate-immutability assumption | Android | N/A (architectural) | 9.2.0 |
+| `EventType.DELIVERED` not emitted for `displayNotification()` in foreground (only for trigger notifications) — `notifeeTrigger != nil` guard in `willPresentNotification:` suppressed the event, breaking iOS/Android symmetry | iOS | Pre-existing | 9.3.0 |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
@@ -309,6 +310,8 @@ In addition to bug fixes, the fork makes a few opinionated default changes vs `@
 - **`pressAction.launchActivity` defaults to `'default'` at the native layer when `pressAction.id === 'default'`** (since 9.1.19). The TypeScript validator already applied this default since upstream PR #141 (Sept 2020), but native code paths bypassing the validator (e.g., trigger notifications restored from the Room database after reboot, headless tasks) could miss it. The fork closes the gap at the native layer as defense-in-depth — eliminates an entire class of "tap doesn't open app" bugs in Android task management edge cases.
 
 - **Library no longer hardcodes `foregroundServiceType` in its manifest** (since 9.1.13 — **BREAKING vs upstream**). Apps using `asForegroundService: true` on Android 14+ must declare their own `foregroundServiceType` on `app.notifee.core.ForegroundService` in their app manifest. See [Foreground Service Setup](#foreground-service-setup-android-14) below for migration instructions. Upstream hardcoded `shortService`, which caused a manifest merger failure ([#1108](https://github.com/invertase/notifee/issues/1108)) and a 3-minute timeout ANR crash ([#703](https://github.com/invertase/notifee/issues/703)).
+
+- **iOS `EventType.DELIVERED` now emitted for all foreground notifications** (since 9.3.0 — **BREAKING vs upstream**). Upstream Notifee had a guard in `willPresentNotification:` that suppressed DELIVERED for notifications created via `displayNotification()` (immediate display), emitting it only for trigger notifications. Android always emitted DELIVERED in both cases. The fork removes the guard so iOS matches Android. If you registered `onForegroundEvent` listeners that did heavy work on DELIVERED assuming the event would only fire for trigger notifications, audit them — you may now receive an event per `displayNotification()` call while in foreground. **Known limitation**: trigger notifications that fire while the app is in background or killed still do not emit DELIVERED on iOS — this is a platform limitation (`willPresentNotification:` is only invoked in foreground, and iOS provides no delegate callback for background-delivered triggers). If you need delivery confirmation for background trigger notifications on iOS, check the notification's presence via `getDisplayedNotifications()` after the app returns to foreground.
 
 These changes are documented in the [CHANGELOG](CHANGELOG.md) under the release that introduced them. If you rely on any of the upstream defaults, you can either pin to the specific behavior via the opt-out flags listed above, or open an issue to discuss.
 
