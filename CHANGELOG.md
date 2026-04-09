@@ -182,3 +182,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Fixed `completionHandler` not being called on notification dismiss path in `didReceiveNotificationResponse:`, preventing potential handler leaks
 - Fixed `completionHandler` not being called in `willPresentNotification:` fallback path when no original delegate is available
 - Added missing `return` after forwarding to `_originalDelegate` in `didReceiveNotificationResponse:` default path, preventing potential fall-through to `parseUNNotificationRequest`
+
+## [9.1.11] - 2026-04-04
+
+### Fixed
+
+- Fixed Maven metadata checksums for published Android artifacts
+
+### Added
+
+- Added compatibility section to README documenting supported React Native versions
+
+## [9.1.10] - 2026-04-04
+
+### Fixed
+
+- Fixed Maven metadata checksums for published Android artifacts
+- Aligned package LICENSE with root repository LICENSE
+
+## [9.1.9] - 2026-04-04
+
+### Changed
+
+- Renamed package from `@notifee/react-native` to `react-native-notify-kit` across all source, configs, and documentation
+- **Android**: Replaced deprecated Kotlin APIs with current equivalents — `currentActivity` → `getCurrentActivity()`, `TurboReactPackage` → `BaseReactPackage`, `hasActiveCatalystInstance()` → `hasActiveReactInstance()`
+- Moved Jest tests from `tests_react_native/` into `packages/react-native/__tests__/` and removed the legacy test directory
+- Renamed `tests_react_native_new/` to `apps/smoke/` to clarify its role as a smoke-test app
+- Simplified GitHub Actions CI by removing stale workflows
+
+### Fixed
+
+- Removed `--provenance` flag from `publishConfig` to allow local `npm publish`
+- Excluded test files from root `tsconfig.json` and fixed lint formatting
+
+### Removed
+
+- Removed `notifee_platform_interface` package and its associated tests and dependencies (Flutter support dropped)
+
+## [9.1.8-rn084.0] - 2026-03-30
+
+Initial fork release targeting React Native 0.84 with TurboModule (JSI) architecture.
+
+### Added
+
+- **Android**: Migrated React Native bridge from legacy NativeModule to Kotlin TurboModule with JSI bindings
+- **iOS**: Migrated React Native bridge from legacy NativeModule to TurboModule with JSI bindings
+- Added React Native 0.84 smoke-test app with updated Jest configuration
+
+### Fixed
+
+- Fixed workspace-level lint and typecheck validation errors
+
+### Changed
+
+- Updated README to clarify maintained-fork positioning and project scope
