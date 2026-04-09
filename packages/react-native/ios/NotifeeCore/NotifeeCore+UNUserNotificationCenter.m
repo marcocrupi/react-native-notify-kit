@@ -148,16 +148,16 @@ struct {
       presentationOptions |= UNNotificationPresentationOptionAlert;
     }
 
-    NSDictionary *notifeeTrigger = notification.request.content.userInfo[kNotifeeUserInfoTrigger];
-    if (notifeeTrigger != nil) {
-      // post DELIVERED event
-      [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
-        @"type" : @(NotifeeCoreEventTypeDelivered),
-        @"detail" : @{
-          @"notification" : notifeeNotification,
-        }
-      }];
-    }
+    // Emit DELIVERED for every Notifee-owned notification presented in foreground.
+    // Previously guarded by `notifeeTrigger != nil`, which suppressed the event for
+    // displayNotification() calls — only trigger notifications got DELIVERED in foreground.
+    // Android emits DELIVERED unconditionally; this aligns iOS behavior.
+    [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
+      @"type" : @(NotifeeCoreEventTypeDelivered),
+      @"detail" : @{
+        @"notification" : notifeeNotification,
+      }
+    }];
 
     completionHandler(presentationOptions);
 

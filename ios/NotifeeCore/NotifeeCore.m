@@ -211,9 +211,15 @@
                                              trigger:nil];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [center addNotificationRequest:request
-               withCompletionHandler:^(NSError *error) {
-                 if (error == nil) {
+      [center
+          addNotificationRequest:request
+           withCompletionHandler:^(NSError *error) {
+             if (error == nil) {
+               // When the app is in foreground, willPresentNotification: emits
+               // DELIVERED for all Notifee-owned notifications. Only emit here
+               // when the app is NOT active to avoid duplicate events.
+               dispatch_async(dispatch_get_main_queue(), ^{
+                 if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
                    [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
                      @"type" : @(NotifeeCoreEventTypeDelivered),
                      @"detail" : @{
@@ -221,8 +227,10 @@
                      }
                    }];
                  }
-                 block(error);
-               }];
+               });
+             }
+             block(error);
+           }];
     });
   });
 }
