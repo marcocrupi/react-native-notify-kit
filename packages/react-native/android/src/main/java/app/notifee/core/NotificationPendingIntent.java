@@ -32,10 +32,10 @@ public class NotificationPendingIntent {
   private static final String TAG = "NotificationPendingIntent";
 
   /**
-   * Reserved sentinel pressAction id used to signal an explicit opt-out from tap-to-open
-   * behavior. When the TS validator sees {@code pressAction: null}, it emits a pressAction
-   * bundle with this id so the native layer can distinguish "user opted out" from "pressAction
-   * absent" (which triggers the default). DO NOT use this as a real pressAction id.
+   * Reserved sentinel pressAction id used to signal an explicit opt-out from tap-to-open behavior.
+   * When the TS validator sees {@code pressAction: null}, it emits a pressAction bundle with this
+   * id so the native layer can distinguish "user opted out" from "pressAction absent" (which
+   * triggers the default). DO NOT use this as a real pressAction id.
    *
    * <p>The same constant is mirrored in {@code validateAndroidNotification.ts}.
    */

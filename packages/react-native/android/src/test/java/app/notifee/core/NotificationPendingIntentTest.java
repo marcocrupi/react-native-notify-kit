@@ -16,8 +16,8 @@ public class NotificationPendingIntentTest {
 
   /**
    * Regression test: explicit pressAction with launchActivity produces a model that
-   * shouldCreateLaunchActivityIntent accepts. This is the most important test —
-   * it guards against refactoring breaking the existing "pressAction provided" path.
+   * shouldCreateLaunchActivityIntent accepts. This is the most important test — it guards against
+   * refactoring breaking the existing "pressAction provided" path.
    */
   @Test
   public void shouldCreateLaunchActivityIntent_withExplicitPressAction_returnsTrue() {
@@ -35,8 +35,8 @@ public class NotificationPendingIntentTest {
 
   /**
    * Verifies that the default pressAction bundle synthesized in NotificationManager when
-   * pressAction is absent produces a model that passes shouldCreateLaunchActivityIntent.
-   * This proves the null → synthesized-default path routes through the same code as explicit.
+   * pressAction is absent produces a model that passes shouldCreateLaunchActivityIntent. This
+   * proves the null → synthesized-default path routes through the same code as explicit.
    */
   @Test
   public void synthesizedDefaultBundle_producesValidModel() {
@@ -48,14 +48,12 @@ public class NotificationPendingIntentTest {
     NotificationAndroidPressActionModel model =
         NotificationAndroidPressActionModel.fromBundle(defaultBundle);
 
-    assertEquals(
-        "synthesized default model must have id='default'", "default", model.getId());
+    assertEquals("synthesized default model must have id='default'", "default", model.getId());
     assertEquals(
         "synthesized default model must have launchActivity='default'",
         "default",
         model.getLaunchActivity());
-    assertNotNull(
-        "synthesized default model must produce a non-null toBundle()", model.toBundle());
+    assertNotNull("synthesized default model must produce a non-null toBundle()", model.toBundle());
     assertTrue(
         "synthesized default must pass shouldCreateLaunchActivityIntent",
         NotificationPendingIntent.shouldCreateLaunchActivityIntent(model));
@@ -70,8 +68,8 @@ public class NotificationPendingIntentTest {
   }
 
   /**
-   * Regression: pressAction with a custom launchActivity (non-default) must also pass.
-   * Ensures the fix didn't break custom launch activity resolution.
+   * Regression: pressAction with a custom launchActivity (non-default) must also pass. Ensures the
+   * fix didn't break custom launch activity resolution.
    */
   @Test
   public void shouldCreateLaunchActivityIntent_withCustomLaunchActivity_returnsTrue() {
