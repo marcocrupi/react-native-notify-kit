@@ -1938,7 +1938,7 @@ PODS:
     - FirebaseCoreExtension
     - React-Core
     - RNFBApp
-  - RNNotifee (9.1.21):
+  - RNNotifee (9.2.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1959,9 +1959,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNNotifee/NotifeeCore (= 9.1.21)
+    - RNNotifee/NotifeeCore (= 9.2.1)
     - Yoga
-  - RNNotifee/NotifeeCore (9.1.21):
+  - RNNotifee/NotifeeCore (9.2.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2329,7 +2329,7 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: 4b09b00cd1b1d795700ed2cbd5af8184ff14e4f0
   RNFBApp: 4105e54d9ca4a1c10893a032268470f670181110
   RNFBMessaging: 6857871d9dff8f26b0c325fc7d97ba69cb77d213
-  RNNotifee: 05f34e2ff767d9e86c41154d7dd9a7ac6fa0b56a
+  RNNotifee: 3946ea1cc68e43ce83f9d721b55d19ea25904898
   Yoga: c0b3f2c7e8d3e327e450223a2414ca3fa296b9a2
 
 PODFILE CHECKSUM: a928ba0fc302501ca41de0e3b5197ee6c33dd95e
