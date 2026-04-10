@@ -29,6 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: `getLights()` and `cancelAllNotificationsWithIds()` now preserve exception stack traces in their error logs, making production failures diagnosable in bugreports.
 
+- **iOS**: `didReceiveNotificationResponse:withCompletionHandler:` now calls the completion handler immediately after emitting the PRESS/ACTION_PRESS event, instead of delaying it by 15 seconds via `dispatch_after`. The delay was a placeholder from 2020 (upstream Invertase) that was never revisited. Apple's contract requires prompt invocation; the 15-second delay could cause iOS to consider the handler lost, block subsequent notification tap deliveries, or trigger process termination if the app was suspended during the wait.
+
+- **iOS**: `requestPermission:` now propagates the `NSError` from `requestAuthorizationWithOptions:completionHandler:` to the JS promise. Previously, the error was silently swallowed (with a TODO comment acknowledging the gap since day 1), and `getNotificationSettings:` was called unconditionally — resolving the promise with settings data even when the authorization request failed. Apps under MDM restrictions or system-level notification policies could not detect or report the failure.
+
+- **iOS**: `displayNotification:` and `createTriggerNotification:` now capture and log errors from `contentByUpdatingWithProvider:error:` (communication notification intent) instead of passing `nil` for the error parameter. On failure, the notification is displayed with the original content (without communication styling) rather than potentially receiving nil content. This mirrors the error-handling pattern already present in the Notification Service Extension helper (`NotifeeCoreExtensionHelper`).
+
+- **iOS**: `getBadgeCount:` now calls the completion block with `(nil, 0)` when running in an app extension, instead of returning without calling the block. This matches the fallthrough pattern used by `setBadgeCount:`, `incrementBadgeCount:`, and `decrementBadgeCount:`, and prevents the JS promise from hanging indefinitely if `getBadgeCount()` is called from a Notification Service Extension.
+
+- **iOS**: Fixed a race condition in `NotifeeCoreDelegateHolder.didReceiveNotifeeCoreEvent:` where a notification event could be silently dropped (neither delivered nor buffered) if the weak delegate reference was zeroed (e.g., during JS reload in dev mode) while the `delegateRespondsTo` bitfield still indicated the delegate was available. The locked path now checks the resolved delegate for nil and falls back to buffering, ensuring events are preserved for the next `setDelegate:` call to flush.
+
+- **iOS**: Added `@synchronized(self)` guards around all access to `hasListeners` and `pendingCoreEvents` in `NotifeeApiModule.mm`. Previously, `didReceiveNotifeeCoreEvent:` (called from arbitrary UNUserNotificationCenter callback threads) could mutate `pendingCoreEvents` concurrently with `startObserving` (main thread), risking an NSMutableArray concurrent-mutation crash or silent event loss. The synchronization pattern matches `NotifeeCoreDelegateHolder`.
+
+- **iOS**: Replaced placeholder `// update me with logic` comment on the empty `messaging_didReceiveRemoteNotification:` handler (`NotifeeCore+NSNotificationCenter.m`) with documentation explaining that remote notifications are handled via `UNUserNotificationCenterDelegate` and the observer registration is preserved intentionally.
+
 ### Added
 
 - **Android**: New `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`. Controls whether foreground service notifications are shown immediately or deferred on Android 12+. Defaults to `IMMEDIATE` when `asForegroundService: true` and the property is omitted.

@@ -195,13 +195,21 @@
         // Use the intent to initialize the interaction.
         INInteraction *interaction = [[INInteraction alloc] initWithIntent:intent response:nil];
         interaction.direction = INInteractionDirectionIncoming;
-        [interaction donateInteractionWithCompletion:^(NSError *error) {
-          if (error)
+        [interaction donateInteractionWithCompletion:^(NSError *donateError) {
+          if (donateError)
             NSLog(@"NotifeeCore: Could not donate interaction for communication notification: %@",
-                  error);
+                  donateError);
         }];
 
-        content = [[content contentByUpdatingWithProvider:intent error:nil] mutableCopy];
+        NSError *contentUpdateError = nil;
+        UNNotificationContent *updatedContent =
+            [content contentByUpdatingWithProvider:intent error:&contentUpdateError];
+        if (contentUpdateError) {
+          NSLog(@"NotifeeCore: Could not update notification content with communication intent: %@",
+                contentUpdateError);
+        } else if (updatedContent != nil) {
+          content = [updatedContent mutableCopy];
+        }
       }
     }
 
@@ -270,13 +278,21 @@
         // Use the intent to initialize the interaction.
         INInteraction *interaction = [[INInteraction alloc] initWithIntent:intent response:nil];
         interaction.direction = INInteractionDirectionIncoming;
-        [interaction donateInteractionWithCompletion:^(NSError *error) {
-          if (error)
+        [interaction donateInteractionWithCompletion:^(NSError *donateError) {
+          if (donateError)
             NSLog(@"NotifeeCore: Could not donate interaction for communication notification: %@",
-                  error);
+                  donateError);
         }];
 
-        content = [[content contentByUpdatingWithProvider:intent error:nil] mutableCopy];
+        NSError *contentUpdateError = nil;
+        UNNotificationContent *updatedContent =
+            [content contentByUpdatingWithProvider:intent error:&contentUpdateError];
+        if (contentUpdateError) {
+          NSLog(@"NotifeeCore: Could not update notification content with communication intent: %@",
+                contentUpdateError);
+        } else if (updatedContent != nil) {
+          content = [updatedContent mutableCopy];
+        }
       }
     }
 
@@ -643,7 +659,8 @@
 
   id handler = ^(BOOL granted, NSError *_Nullable error) {
     if (error != nil) {
-      // TODO send error to notifeeMethodNSDictionaryBlock
+      block(error, nil);
+      return;
     }
 
     [self getNotificationSettings:block];
@@ -772,7 +789,9 @@
     NSInteger badgeCount = application.applicationIconBadgeNumber;
 
     block(nil, badgeCount == -1 ? 0 : badgeCount);
+    return;
   }
+  block(nil, 0);
 }
 
 + (void)incrementBadgeCount:(NSInteger)incrementBy withBlock:(notifeeMethodVoidBlock)block {

@@ -68,7 +68,11 @@
     // avoid an orphan event sitting in _pendingEvents forever.
     if (self->delegateRespondsTo.didReceiveNotificationEvent) {
       delegateToCall = self->delegate;
-    } else {
+    }
+    // Buffer if the delegate is not set, or if the bitfield is stale
+    // (delegateRespondsTo is true but the weak delegate ref has been
+    // zeroed — e.g., during JS reload when NotifeeApiModule is deallocated).
+    if (delegateToCall == nil) {
       [self->_pendingEvents addObject:notificationEvent];
     }
   }

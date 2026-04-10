@@ -74,7 +74,11 @@
 }
 
 - (void)messaging_didReceiveRemoteNotification:(nonnull NSNotification *)notification {
-  // update me with logic
+  // Intentionally empty: remote notifications are handled via
+  // UNUserNotificationCenterDelegate (willPresentNotification:,
+  // didReceiveNotificationResponse:). This observer is preserved to avoid
+  // behavior changes for any downstream code that may depend on the
+  // registration existing.
 }
 
 @end
