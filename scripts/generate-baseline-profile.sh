@@ -17,10 +17,21 @@ SMOKE_ANDROID="$REPO_ROOT/apps/smoke/android"
 LIBRARY_PROFILE="$REPO_ROOT/packages/react-native/android/src/main/baseline-prof.txt"
 
 echo "→ Verifying adb device connection..."
-adb devices | grep -w "device" > /dev/null || {
+DEVICE_COUNT=$(adb devices | grep -w "device" | grep -v "List" | wc -l | tr -d ' ')
+if [[ "$DEVICE_COUNT" -eq 0 ]]; then
     echo "❌ No adb device connected. Connect a device and enable USB debugging."
     exit 1
-}
+elif [[ "$DEVICE_COUNT" -gt 1 ]]; then
+    echo "❌ Multiple adb devices detected — baseline profile generation requires exactly one:"
+    echo ""
+    adb devices
+    echo ""
+    echo "This often happens when both USB and WiFi ADB are active for the same physical device."
+    echo "Options:"
+    echo "  1. Disconnect WiFi ADB:      adb disconnect <ip>:5555"
+    echo "  2. Specify a target device:  ANDROID_SERIAL=<serial> bash scripts/generate-baseline-profile.sh"
+    exit 1
+fi
 
 echo "→ Running :app:generateBaselineProfile (this can take several minutes)..."
 cd "$SMOKE_ANDROID"
