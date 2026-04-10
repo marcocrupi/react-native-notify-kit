@@ -63,10 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: `androidx.profileinstaller:profileinstaller:1.4.1` is now a transitive (`api`) dependency of the library. Consumers do not need to add it manually, but apps with custom dependency resolution may need to be aware of the new transitive dependency. This enables baseline profile installation on non-Play-Store distributions.
 
-- Added AGP version (8.12.0) to `CLAUDE.md` platform requirements.
-
-- Minor version bump recommended (e.g., `9.5.0`) due to the numeric enum validator strictness change. While the previous behavior (accepting reverse-mapped string keys) was always a bug, it is technically an observable behavior change for JavaScript consumers. TypeScript consumers are unaffected.
-
 ## [9.3.0] - 2026-04-09
 
 ### Changed
