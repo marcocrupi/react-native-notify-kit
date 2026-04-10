@@ -222,7 +222,17 @@ To modify push notification content before display (e.g., attach images), create
    }
    ```
 
-4. Run `cd ios && pod install`
+4. Implement `serviceExtensionTimeWillExpire` as a safety net. Notification Service Extensions have a ~30-second time budget; if your notification includes a large image attachment and the download is slow, the extension may be terminated before the content handler is called. Deliver a best-effort notification in the expiration handler:
+
+   ```objc
+   - (void)serviceExtensionTimeWillExpire {
+       // Deliver the notification with whatever content we have so far
+       // (e.g., without the image attachment if the download didn't finish).
+       self.contentHandler(self.bestAttemptContent);
+   }
+   ```
+
+5. Run `cd ios && pod install`
 
 ## Jest Testing
 
