@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.4.0] - 2026-04-10
+
 ### Fixed
 
 - **Android**: Foreground service notifications on Android 12+ (API 31+) were subject to a system-imposed display delay of up to 10 seconds because the library never called `setForegroundServiceBehavior(FOREGROUND_SERVICE_IMMEDIATE)`. This is now set by default when `asForegroundService: true`, eliminating the delay. Upstream issues: [invertase/notifee#272](https://github.com/invertase/notifee/issues/272), [invertase/notifee#1242](https://github.com/invertase/notifee/issues/1242). Opt out by setting `foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED` on the notification's `android` config.
