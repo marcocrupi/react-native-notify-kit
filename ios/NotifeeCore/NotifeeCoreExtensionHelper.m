@@ -164,8 +164,13 @@ static NSString *const kImagePathPrefix = @"image/";
     NSString *attachmentIdentifier = attachmentDict[@"id"];
     NSURL *attachmentURL = [NSURL URLWithString:attachmentDict[@"url"]];
 
-    NSURLSession *session = [NSURLSession
-        sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    // NSE has a ~30-second budget before iOS calls serviceExtensionTimeWillExpire
+    // and kills the process. Cap the download at 25 seconds to leave a 5-second
+    // margin for graceful fallback via the extension's expiration handler.
+    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+    config.timeoutIntervalForRequest = 25.0;
+    config.timeoutIntervalForResource = 25.0;
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:config];
     [[session
         downloadTaskWithURL:attachmentURL
           completionHandler:^(NSURL *temporaryFileLocation, NSURLResponse *response,

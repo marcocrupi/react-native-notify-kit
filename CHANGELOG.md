@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **iOS**: Replaced placeholder `// update me with logic` comment on the empty `messaging_didReceiveRemoteNotification:` handler (`NotifeeCore+NSNotificationCenter.m`) with documentation explaining that remote notifications are handled via `UNUserNotificationCenterDelegate` and the observer registration is preserved intentionally.
 
+- **iOS**: Notification Service Extension attachment downloads now cap the `NSURLSession` request and resource timeouts at 25 seconds, leaving a 5-second margin before iOS's ~30-second NSE budget expires. Previously, the default 60-second timeout could cause the extension process to be killed mid-download by `serviceExtensionTimeWillExpire` before `contentHandler` was called, resulting in the notification being lost entirely. This is a defense-in-depth fix — consumers should still implement their own `serviceExtensionTimeWillExpire` as a safety net, per the README's NSE guidance.
+
 ### Added
 
 - **Android**: New `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`. Controls whether foreground service notifications are shown immediately or deferred on Android 12+. Defaults to `IMMEDIATE` when `asForegroundService: true` and the property is omitted.
