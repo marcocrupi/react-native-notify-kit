@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: Foreground service notifications on Android 12+ (API 31+) were subject to a system-imposed display delay of up to 10 seconds because the library never called `setForegroundServiceBehavior(FOREGROUND_SERVICE_IMMEDIATE)`. This is now set by default when `asForegroundService: true`, eliminating the delay. Upstream issues: [invertase/notifee#272](https://github.com/invertase/notifee/issues/272), [invertase/notifee#1242](https://github.com/invertase/notifee/issues/1242). Opt out by setting `foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED` on the notification's `android` config.
+
+### Added
+
+- **Android**: New `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`. Controls whether foreground service notifications are shown immediately or deferred on Android 12+. Defaults to `IMMEDIATE` when `asForegroundService: true` and the property is omitted.
+
+- **Android**: `android.os.Trace` instrumentation on the foreground service notification path. Custom trace sections (`notifee:displayNotification`, `notifee:buildNotification`, `notifee:startForegroundService`, `notifee:ForegroundService.onStartCommand`, `notifee:startForeground`, `notifee:InitProvider.onCreate`, `notifee:warmup`) are visible in Perfetto traces for profiling notification display latency.
+
+### Changed
+
+- **Android**: `InitProvider` now pre-loads critical foreground service classes (`ForegroundService`, `NotificationManager`, `NotificationCompat.Builder`, etc.) and pre-warms the `INotificationManager` Binder proxy on a low-priority background thread during app startup. This moves ~50–100 ms of ART class loading and verification cost from the first `displayNotification()` call to app initialization, where it has zero UI impact. Opt out via `<meta-data android:name="notifee_init_warmup_enabled" android:value="false" />` in your app's `AndroidManifest.xml`.
+
 ## [9.3.0] - 2026-04-09
 
 ### Changed

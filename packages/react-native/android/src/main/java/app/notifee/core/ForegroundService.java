@@ -28,6 +28,7 @@ import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Trace;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationManagerCompat;
@@ -143,78 +144,41 @@ public class ForegroundService extends Service {
   @SuppressLint({"ForegroundServiceType", "MissingPermission"})
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-    // Check if action is to stop the foreground service
-    if (intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction())) {
-      stopSelf();
-      synchronized (sLock) {
-        mCurrentNotificationId = null;
-        mCurrentForegroundServiceType = -1;
-        mCurrentNotificationBundle = null;
-        mCurrentNotification = null;
-        mCurrentHashCode = 0;
-      }
-      return Service.START_STICKY_COMPATIBILITY;
-    }
-
-    Bundle extras = intent.getExtras();
-
-    if (extras != null) {
-      // Hash code is sent to service to ensure it is kept the same
-      int hashCode = extras.getInt("hashCode");
-      Notification notification = extras.getParcelable("notification");
-      Bundle bundle = extras.getBundle("notificationBundle");
-
-      if (notification != null && bundle != null) {
-        NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
-
-        Object pendingEvent = null;
-
+    Trace.beginSection("notifee:ForegroundService.onStartCommand");
+    try {
+      // Check if action is to stop the foreground service
+      if (intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction())) {
+        stopSelf();
         synchronized (sLock) {
-          if (mCurrentNotificationId == null) {
-            mCurrentNotificationId = notificationModel.getId();
-            mCurrentNotificationBundle = bundle;
-            mCurrentNotification = notification;
-            mCurrentHashCode = hashCode;
+          mCurrentNotificationId = null;
+          mCurrentForegroundServiceType = -1;
+          mCurrentNotificationBundle = null;
+          mCurrentNotification = null;
+          mCurrentHashCode = 0;
+        }
+        return Service.START_STICKY_COMPATIBILITY;
+      }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-              int foregroundServiceType = notificationModel.getAndroid().getForegroundServiceType();
-              if (foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
-                foregroundServiceType = resolveManifestServiceType();
-              }
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                  && foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
-                Logger.e(
-                    TAG,
-                    "Resolved foreground service type is NONE on API 34+; aborting"
-                        + " startForeground to avoid InvalidForegroundServiceTypeException.");
-                mCurrentNotificationId = null;
-                mCurrentNotificationBundle = null;
-                return START_NOT_STICKY;
-              }
-              startForeground(hashCode, notification, foregroundServiceType);
-              mCurrentForegroundServiceType = foregroundServiceType;
-            } else {
-              startForeground(hashCode, notification);
-            }
+      Bundle extras = intent.getExtras();
 
-            // On headless task complete
-            final MethodCallResult<Void> methodCallResult =
-                (e, aVoid) -> {
-                  stopForegroundCompat();
-                  synchronized (sLock) {
-                    mCurrentNotificationId = null;
-                    mCurrentForegroundServiceType = -1;
-                    mCurrentNotificationBundle = null;
-                    mCurrentNotification = null;
-                    mCurrentHashCode = 0;
-                  }
-                };
+      if (extras != null) {
+        // Hash code is sent to service to ensure it is kept the same
+        int hashCode = extras.getInt("hashCode");
+        Notification notification = extras.getParcelable("notification");
+        Bundle bundle = extras.getBundle("notificationBundle");
 
-            pendingEvent = new ForegroundServiceEvent(notificationModel, methodCallResult);
-          } else {
-            if (mCurrentNotificationId.equals(notificationModel.getId())) {
-              boolean shouldPostNotificationAgain = true;
-              // find if we need to start the service again if the type was changed
+        if (notification != null && bundle != null) {
+          NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
+
+          Object pendingEvent = null;
+
+          synchronized (sLock) {
+            if (mCurrentNotificationId == null) {
+              mCurrentNotificationId = notificationModel.getId();
+              mCurrentNotificationBundle = bundle;
+              mCurrentNotification = notification;
+              mCurrentHashCode = hashCode;
+
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 int foregroundServiceType =
                     notificationModel.getAndroid().getForegroundServiceType();
@@ -225,32 +189,91 @@ public class ForegroundService extends Service {
                     && foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
                   Logger.e(
                       TAG,
-                      "Resolved foreground service type is NONE on API 34+; skipping type"
-                          + " change.");
-                } else if (foregroundServiceType != mCurrentForegroundServiceType) {
+                      "Resolved foreground service type is NONE on API 34+; aborting"
+                          + " startForeground to avoid InvalidForegroundServiceTypeException.");
+                  mCurrentNotificationId = null;
+                  mCurrentNotificationBundle = null;
+                  return START_NOT_STICKY;
+                }
+                Trace.beginSection("notifee:startForeground");
+                try {
                   startForeground(hashCode, notification, foregroundServiceType);
-                  mCurrentForegroundServiceType = foregroundServiceType;
-                  shouldPostNotificationAgain = false;
+                } finally {
+                  Trace.endSection();
+                }
+                mCurrentForegroundServiceType = foregroundServiceType;
+              } else {
+                Trace.beginSection("notifee:startForeground");
+                try {
+                  startForeground(hashCode, notification);
+                } finally {
+                  Trace.endSection();
                 }
               }
-              if (shouldPostNotificationAgain) {
-                NotificationManagerCompat.from(ContextHolder.getApplicationContext())
-                    .notify(hashCode, notification);
-              }
+
+              // On headless task complete
+              final MethodCallResult<Void> methodCallResult =
+                  (e, aVoid) -> {
+                    stopForegroundCompat();
+                    synchronized (sLock) {
+                      mCurrentNotificationId = null;
+                      mCurrentForegroundServiceType = -1;
+                      mCurrentNotificationBundle = null;
+                      mCurrentNotification = null;
+                      mCurrentHashCode = 0;
+                    }
+                  };
+
+              pendingEvent = new ForegroundServiceEvent(notificationModel, methodCallResult);
             } else {
-              pendingEvent =
-                  new NotificationEvent(NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel);
+              if (mCurrentNotificationId.equals(notificationModel.getId())) {
+                boolean shouldPostNotificationAgain = true;
+                // find if we need to start the service again if the type was changed
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                  int foregroundServiceType =
+                      notificationModel.getAndroid().getForegroundServiceType();
+                  if (foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+                    foregroundServiceType = resolveManifestServiceType();
+                  }
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+                      && foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
+                    Logger.e(
+                        TAG,
+                        "Resolved foreground service type is NONE on API 34+; skipping type"
+                            + " change.");
+                  } else if (foregroundServiceType != mCurrentForegroundServiceType) {
+                    Trace.beginSection("notifee:startForeground");
+                    try {
+                      startForeground(hashCode, notification, foregroundServiceType);
+                    } finally {
+                      Trace.endSection();
+                    }
+                    mCurrentForegroundServiceType = foregroundServiceType;
+                    shouldPostNotificationAgain = false;
+                  }
+                }
+                if (shouldPostNotificationAgain) {
+                  NotificationManagerCompat.from(ContextHolder.getApplicationContext())
+                      .notify(hashCode, notification);
+                }
+              } else {
+                pendingEvent =
+                    new NotificationEvent(
+                        NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel);
+              }
             }
           }
-        }
 
-        if (pendingEvent != null) {
-          EventBus.post(pendingEvent);
+          if (pendingEvent != null) {
+            EventBus.post(pendingEvent);
+          }
         }
       }
-    }
 
-    return START_NOT_STICKY;
+      return START_NOT_STICKY;
+    } finally {
+      Trace.endSection();
+    }
   }
 
   @Nullable

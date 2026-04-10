@@ -98,6 +98,17 @@ public class NotificationAndroidModel {
   }
 
   /**
+   * Gets the foreground service behavior for the notification. Controls whether the foreground
+   * service notification is shown immediately or deferred on Android 12+.
+   *
+   * @return int matching a NotificationCompat.FOREGROUND_SERVICE_* constant
+   */
+  public int getForegroundServiceBehavior() {
+    return mNotificationAndroidBundle.getInt(
+        "foregroundServiceBehavior", NotificationCompat.FOREGROUND_SERVICE_DEFAULT);
+  }
+
+  /**
    * Gets if the notification should light up the screen when displayed
    *
    * @return Boolean

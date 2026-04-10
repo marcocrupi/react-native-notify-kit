@@ -20,12 +20,18 @@ package app.notifee.core;
 import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Trace;
 import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.NotificationManagerCompat;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @KeepForSdk
 public class InitProvider extends ContentProvider {
@@ -42,19 +48,93 @@ public class InitProvider extends ContentProvider {
     super.attachInfo(context, info);
   }
 
+  private static final String TAG = "InitProvider";
+
+  private static final String[] WARMUP_CLASSES = {
+    "app.notifee.core.ForegroundService",
+    "app.notifee.core.NotificationManager",
+    "app.notifee.core.model.NotificationModel",
+    "app.notifee.core.model.NotificationAndroidModel",
+    "app.notifee.core.model.ChannelModel",
+    "androidx.core.app.NotificationCompat$Builder",
+    "androidx.core.app.NotificationManagerCompat",
+  };
+
   @KeepForSdk
   @CallSuper
   @Override
   public boolean onCreate() {
-    if (ContextHolder.getApplicationContext() == null) {
-      Context context = getContext();
-      if (context != null && context.getApplicationContext() != null) {
-        context = context.getApplicationContext();
+    Trace.beginSection("notifee:InitProvider.onCreate");
+    try {
+      if (ContextHolder.getApplicationContext() == null) {
+        Context context = getContext();
+        if (context != null && context.getApplicationContext() != null) {
+          context = context.getApplicationContext();
+        }
+        ContextHolder.setApplicationContext(context);
       }
-      ContextHolder.setApplicationContext(context);
+
+      Context appContext = ContextHolder.getApplicationContext();
+      if (appContext != null && isWarmupEnabled(appContext)) {
+        dispatchWarmup(appContext);
+      }
+    } finally {
+      Trace.endSection();
     }
 
     return false;
+  }
+
+  private static boolean isWarmupEnabled(Context context) {
+    try {
+      ApplicationInfo ai =
+          context
+              .getPackageManager()
+              .getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
+      return ai.metaData == null || ai.metaData.getBoolean("notifee_init_warmup_enabled", true);
+    } catch (PackageManager.NameNotFoundException e) {
+      return true;
+    }
+  }
+
+  private static void dispatchWarmup(final Context context) {
+    ExecutorService executor =
+        Executors.newSingleThreadExecutor(
+            r -> {
+              Thread t = new Thread(r, "notifee-init-warmup");
+              t.setDaemon(true);
+              t.setPriority(Thread.MIN_PRIORITY);
+              return t;
+            });
+
+    final ClassLoader classLoader = context.getClassLoader();
+
+    executor.submit(
+        () -> {
+          Trace.beginSection("notifee:warmup");
+          try {
+            // Pre-load critical foreground service classes to move ART class loading/verification
+            // cost from the first displayNotification() call to app startup.
+            for (String className : WARMUP_CLASSES) {
+              try {
+                Class.forName(className, true, classLoader);
+              } catch (ClassNotFoundException e) {
+                Logger.d(TAG, "Warmup class not found: " + className);
+              }
+            }
+
+            // Pre-warm INotificationManager Binder proxy by touching NotificationManagerCompat.
+            try {
+              NotificationManagerCompat.from(context).getNotificationChannels();
+            } catch (Exception e) {
+              Logger.d(TAG, "Warmup Binder pre-warm failed: " + e.getMessage());
+            }
+          } finally {
+            Trace.endSection();
+          }
+        });
+
+    executor.shutdown();
   }
 
   @Nullable

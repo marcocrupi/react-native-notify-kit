@@ -20,6 +20,7 @@ import {
   AndroidBadgeIconType,
   AndroidCategory,
   AndroidDefaults,
+  AndroidForegroundServiceBehavior,
   AndroidForegroundServiceType,
   AndroidFlags,
   AndroidGroupAlertBehavior,
@@ -114,6 +115,24 @@ export default function validateAndroidNotification(
     }
 
     out.asForegroundService = android.asForegroundService;
+  }
+
+  /**
+   * foregroundServiceBehavior
+   */
+  if (
+    objectHasProperty(android, 'foregroundServiceBehavior') &&
+    !isUndefined(android.foregroundServiceBehavior)
+  ) {
+    if (
+      !Object.values(AndroidForegroundServiceBehavior).includes(android.foregroundServiceBehavior)
+    ) {
+      throw new Error(
+        "'notification.android.foregroundServiceBehavior' expected a valid AndroidForegroundServiceBehavior.",
+      );
+    }
+
+    out.foregroundServiceBehavior = android.foregroundServiceBehavior;
   }
 
   /**
@@ -757,6 +776,20 @@ export default function validateAndroidNotification(
    */
   if (out.asForegroundService && android && !objectHasProperty(android, 'ongoing')) {
     out.ongoing = true;
+  }
+
+  /**
+   * Auto-set foregroundServiceBehavior to IMMEDIATE for foreground service notifications.
+   * Only set when asForegroundService is true and the user did not provide an explicit value.
+   * When asForegroundService is false/undefined, strip the property entirely — it has no effect
+   * on non-FGS notifications and including it would bloat the Bundle unnecessarily.
+   */
+  if (out.asForegroundService) {
+    if (android && !objectHasProperty(android, 'foregroundServiceBehavior')) {
+      out.foregroundServiceBehavior = AndroidForegroundServiceBehavior.IMMEDIATE;
+    }
+  } else {
+    delete out.foregroundServiceBehavior;
   }
 
   return out;

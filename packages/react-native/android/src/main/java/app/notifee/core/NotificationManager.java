@@ -31,6 +31,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Trace;
 import android.service.notification.StatusBarNotification;
 import androidx.annotation.NonNull;
 import androidx.concurrent.futures.CallbackToFutureAdapter;
@@ -103,198 +104,204 @@ class NotificationManager {
      */
     Callable<NotificationCompat.Builder> builderCallable =
         () -> {
-          Boolean hasCustomSound = false;
-          NotificationCompat.Builder builder =
-              new NotificationCompat.Builder(getApplicationContext(), androidModel.getChannelId());
+          Trace.beginSection("notifee:buildNotification");
+          try {
+            Boolean hasCustomSound = false;
+            NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(
+                    getApplicationContext(), androidModel.getChannelId());
 
-          // must always keep at top
-          builder.setExtras(notificationModel.getData());
+            // must always keep at top
+            builder.setExtras(notificationModel.getData());
 
-          builder.setDeleteIntent(
-              ReceiverService.createIntent(
-                  ReceiverService.DELETE_INTENT,
-                  new String[] {"notification"},
-                  notificationModel.toBundle()));
-          // Resolve the effective pressAction bundle for the content intent.
-          // Three cases:
-          //   1. pressAction is null (absent from bundle, e.g. trigger rehydrated from Room DB
-          //      after app kill): synthesize default { id:'default', launchActivity:'default' }
-          //      so tapping the notification opens the app (defense-in-depth for paths that
-          //      bypass the TS validator).
-          //   2. pressAction has the opt-out sentinel id: user explicitly passed
-          //      pressAction: null in JS — pass null to createIntent so no launch intent
-          //      is created (non-tappable notification).
-          //   3. pressAction is a normal bundle: pass through unchanged.
-          // Resolve the effective pressAction bundle for the content intent.
-          // Three cases:
-          //   1. pressAction is null (absent from bundle, e.g. trigger rehydrated from Room DB
-          //      after app kill): synthesize default { id:'default', launchActivity:'default' }
-          //      so tapping the notification opens the app (defense-in-depth for paths that
-          //      bypass the TS validator).
-          //   2. pressAction has the opt-out sentinel id: user explicitly passed
-          //      pressAction: null in JS — pass null to createIntent so no launch intent
-          //      is created (non-tappable notification).
-          //   3. pressAction is a normal bundle: pass through unchanged.
-          //
-          // pressActionForIntent  → used for creating the launch intent (or null for opt-out)
-          // pressActionForExtras  → used in the receiver intent extras (event payload);
-          //                         null for cases 1 & 2 to avoid leaking synthesized defaults
-          //                         or the sentinel id into the JS event.
-          Bundle pressActionForIntent = androidModel.getPressAction();
-          Bundle pressActionForExtras = pressActionForIntent;
-          if (pressActionForIntent == null) {
-            // Case 1: absent — synthesize default for launch, null for extras
-            pressActionForIntent = new Bundle();
-            pressActionForIntent.putString("id", "default");
-            pressActionForIntent.putString("launchActivity", "default");
-            // pressActionForExtras stays null: the original notification didn't have
-            // pressAction, so the event shouldn't either.
-          } else if (NotificationPendingIntent.PRESS_ACTION_OPT_OUT_ID.equals(
-              pressActionForIntent.getString("id"))) {
-            // Case 2: explicit opt-out sentinel — no launch intent, no sentinel in extras
-            pressActionForIntent = null;
-            pressActionForExtras = null;
-          }
-          // Case 3: normal pressAction — both variables point to the original bundle
-
-          int targetSdkVersion =
-              ContextHolder.getApplicationContext().getApplicationInfo().targetSdkVersion;
-          if (targetSdkVersion >= Build.VERSION_CODES.S
-              && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            builder.setContentIntent(
-                NotificationPendingIntent.createIntent(
-                    notificationModel.getHashCode(),
-                    pressActionForIntent,
-                    TYPE_PRESS,
-                    new String[] {"notification", "pressAction"},
-                    notificationModel.toBundle(),
-                    pressActionForExtras));
-          } else {
-            builder.setContentIntent(
+            builder.setDeleteIntent(
                 ReceiverService.createIntent(
-                    ReceiverService.PRESS_INTENT,
-                    new String[] {"notification", "pressAction"},
-                    notificationModel.toBundle(),
-                    pressActionForIntent));
-          }
-
-          if (notificationModel.getTitle() != null) {
-            builder.setContentTitle(TextUtils.fromHtml(notificationModel.getTitle()));
-          }
-
-          if (notificationModel.getSubTitle() != null) {
-            builder.setSubText(TextUtils.fromHtml(notificationModel.getSubTitle()));
-          }
-
-          if (notificationModel.getBody() != null) {
-            builder.setContentText(TextUtils.fromHtml(notificationModel.getBody()));
-          }
-
-          if (androidModel.getBadgeIconType() != null) {
-            builder.setBadgeIconType(androidModel.getBadgeIconType());
-          }
-
-          if (androidModel.getCategory() != null) {
-            builder.setCategory(androidModel.getCategory());
-          }
-
-          if (androidModel.getColor() != null) {
-            builder.setColor(androidModel.getColor());
-          }
-
-          builder.setColorized(androidModel.getColorized());
-
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            builder.setChronometerCountDown(androidModel.getChronometerCountDown());
-          }
-
-          if (androidModel.getGroup() != null) {
-            builder.setGroup(androidModel.getGroup());
-          }
-
-          builder.setGroupAlertBehavior(androidModel.getGroupAlertBehaviour());
-          builder.setGroupSummary(androidModel.getGroupSummary());
-
-          if (androidModel.getInputHistory() != null) {
-            builder.setRemoteInputHistory(androidModel.getInputHistory());
-          }
-
-          if (androidModel.getLights() != null) {
-            ArrayList<Integer> lights = androidModel.getLights();
-            builder.setLights(lights.get(0), lights.get(1), lights.get(2));
-          }
-
-          builder.setLocalOnly(androidModel.getLocalOnly());
-
-          if (androidModel.getNumber() != null) {
-            builder.setNumber(androidModel.getNumber());
-          }
-
-          if (androidModel.getSound() != null) {
-            Uri soundUri = ResourceUtils.getSoundUri(androidModel.getSound());
-            if (soundUri != null) {
-              hasCustomSound = true;
-              builder.setSound(soundUri);
-            } else {
-              Logger.w(
-                  TAG,
-                  "Unable to retrieve sound for notification, sound was specified as: "
-                      + androidModel.getSound());
+                    ReceiverService.DELETE_INTENT,
+                    new String[] {"notification"},
+                    notificationModel.toBundle()));
+            // Resolve the effective pressAction bundle for the content intent.
+            // Three cases:
+            //   1. pressAction is null (absent from bundle, e.g. trigger rehydrated from Room DB
+            //      after app kill): synthesize default { id:'default', launchActivity:'default' }
+            //      so tapping the notification opens the app (defense-in-depth for paths that
+            //      bypass the TS validator).
+            //   2. pressAction has the opt-out sentinel id: user explicitly passed
+            //      pressAction: null in JS — pass null to createIntent so no launch intent
+            //      is created (non-tappable notification).
+            //   3. pressAction is a normal bundle: pass through unchanged.
+            // Resolve the effective pressAction bundle for the content intent.
+            // Three cases:
+            //   1. pressAction is null (absent from bundle, e.g. trigger rehydrated from Room DB
+            //      after app kill): synthesize default { id:'default', launchActivity:'default' }
+            //      so tapping the notification opens the app (defense-in-depth for paths that
+            //      bypass the TS validator).
+            //   2. pressAction has the opt-out sentinel id: user explicitly passed
+            //      pressAction: null in JS — pass null to createIntent so no launch intent
+            //      is created (non-tappable notification).
+            //   3. pressAction is a normal bundle: pass through unchanged.
+            //
+            // pressActionForIntent  → used for creating the launch intent (or null for opt-out)
+            // pressActionForExtras  → used in the receiver intent extras (event payload);
+            //                         null for cases 1 & 2 to avoid leaking synthesized defaults
+            //                         or the sentinel id into the JS event.
+            Bundle pressActionForIntent = androidModel.getPressAction();
+            Bundle pressActionForExtras = pressActionForIntent;
+            if (pressActionForIntent == null) {
+              // Case 1: absent — synthesize default for launch, null for extras
+              pressActionForIntent = new Bundle();
+              pressActionForIntent.putString("id", "default");
+              pressActionForIntent.putString("launchActivity", "default");
+              // pressActionForExtras stays null: the original notification didn't have
+              // pressAction, so the event shouldn't either.
+            } else if (NotificationPendingIntent.PRESS_ACTION_OPT_OUT_ID.equals(
+                pressActionForIntent.getString("id"))) {
+              // Case 2: explicit opt-out sentinel — no launch intent, no sentinel in extras
+              pressActionForIntent = null;
+              pressActionForExtras = null;
             }
-          }
+            // Case 3: normal pressAction — both variables point to the original bundle
 
-          builder.setDefaults(androidModel.getDefaults(hasCustomSound));
-          builder.setOngoing(androidModel.getOngoing());
-          builder.setOnlyAlertOnce(androidModel.getOnlyAlertOnce());
-          builder.setPriority(androidModel.getPriority());
-
-          NotificationAndroidModel.AndroidProgress progress = androidModel.getProgress();
-          if (progress != null) {
-            builder.setProgress(
-                progress.getMax(), progress.getCurrent(), progress.getIndeterminate());
-          }
-
-          if (androidModel.getShortcutId() != null) {
-            builder.setShortcutId(androidModel.getShortcutId());
-          }
-
-          builder.setShowWhen(androidModel.getShowTimestamp());
-
-          Integer smallIconId = androidModel.getSmallIcon();
-          if (smallIconId != null) {
-            Integer smallIconLevel = androidModel.getSmallIconLevel();
-            if (smallIconLevel != null) {
-              builder.setSmallIcon(smallIconId, smallIconLevel);
+            int targetSdkVersion =
+                ContextHolder.getApplicationContext().getApplicationInfo().targetSdkVersion;
+            if (targetSdkVersion >= Build.VERSION_CODES.S
+                && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+              builder.setContentIntent(
+                  NotificationPendingIntent.createIntent(
+                      notificationModel.getHashCode(),
+                      pressActionForIntent,
+                      TYPE_PRESS,
+                      new String[] {"notification", "pressAction"},
+                      notificationModel.toBundle(),
+                      pressActionForExtras));
             } else {
-              builder.setSmallIcon(smallIconId);
+              builder.setContentIntent(
+                  ReceiverService.createIntent(
+                      ReceiverService.PRESS_INTENT,
+                      new String[] {"notification", "pressAction"},
+                      notificationModel.toBundle(),
+                      pressActionForIntent));
             }
+
+            if (notificationModel.getTitle() != null) {
+              builder.setContentTitle(TextUtils.fromHtml(notificationModel.getTitle()));
+            }
+
+            if (notificationModel.getSubTitle() != null) {
+              builder.setSubText(TextUtils.fromHtml(notificationModel.getSubTitle()));
+            }
+
+            if (notificationModel.getBody() != null) {
+              builder.setContentText(TextUtils.fromHtml(notificationModel.getBody()));
+            }
+
+            if (androidModel.getBadgeIconType() != null) {
+              builder.setBadgeIconType(androidModel.getBadgeIconType());
+            }
+
+            if (androidModel.getCategory() != null) {
+              builder.setCategory(androidModel.getCategory());
+            }
+
+            if (androidModel.getColor() != null) {
+              builder.setColor(androidModel.getColor());
+            }
+
+            builder.setColorized(androidModel.getColorized());
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+              builder.setChronometerCountDown(androidModel.getChronometerCountDown());
+            }
+
+            if (androidModel.getGroup() != null) {
+              builder.setGroup(androidModel.getGroup());
+            }
+
+            builder.setGroupAlertBehavior(androidModel.getGroupAlertBehaviour());
+            builder.setGroupSummary(androidModel.getGroupSummary());
+
+            if (androidModel.getInputHistory() != null) {
+              builder.setRemoteInputHistory(androidModel.getInputHistory());
+            }
+
+            if (androidModel.getLights() != null) {
+              ArrayList<Integer> lights = androidModel.getLights();
+              builder.setLights(lights.get(0), lights.get(1), lights.get(2));
+            }
+
+            builder.setLocalOnly(androidModel.getLocalOnly());
+
+            if (androidModel.getNumber() != null) {
+              builder.setNumber(androidModel.getNumber());
+            }
+
+            if (androidModel.getSound() != null) {
+              Uri soundUri = ResourceUtils.getSoundUri(androidModel.getSound());
+              if (soundUri != null) {
+                hasCustomSound = true;
+                builder.setSound(soundUri);
+              } else {
+                Logger.w(
+                    TAG,
+                    "Unable to retrieve sound for notification, sound was specified as: "
+                        + androidModel.getSound());
+              }
+            }
+
+            builder.setDefaults(androidModel.getDefaults(hasCustomSound));
+            builder.setOngoing(androidModel.getOngoing());
+            builder.setOnlyAlertOnce(androidModel.getOnlyAlertOnce());
+            builder.setPriority(androidModel.getPriority());
+
+            NotificationAndroidModel.AndroidProgress progress = androidModel.getProgress();
+            if (progress != null) {
+              builder.setProgress(
+                  progress.getMax(), progress.getCurrent(), progress.getIndeterminate());
+            }
+
+            if (androidModel.getShortcutId() != null) {
+              builder.setShortcutId(androidModel.getShortcutId());
+            }
+
+            builder.setShowWhen(androidModel.getShowTimestamp());
+
+            Integer smallIconId = androidModel.getSmallIcon();
+            if (smallIconId != null) {
+              Integer smallIconLevel = androidModel.getSmallIconLevel();
+              if (smallIconLevel != null) {
+                builder.setSmallIcon(smallIconId, smallIconLevel);
+              } else {
+                builder.setSmallIcon(smallIconId);
+              }
+            }
+
+            if (androidModel.getSortKey() != null) {
+              builder.setSortKey(androidModel.getSortKey());
+            }
+
+            if (androidModel.getTicker() != null) {
+              builder.setTicker(androidModel.getTicker());
+            }
+
+            if (androidModel.getTimeoutAfter() != null) {
+              builder.setTimeoutAfter(androidModel.getTimeoutAfter());
+            }
+
+            builder.setUsesChronometer(androidModel.getShowChronometer());
+
+            long[] vibrationPattern = androidModel.getVibrationPattern();
+            if (vibrationPattern.length > 0) builder.setVibrate(vibrationPattern);
+
+            builder.setVisibility(androidModel.getVisibility());
+
+            long timestamp = androidModel.getTimestamp();
+            if (timestamp > -1) builder.setWhen(timestamp);
+
+            builder.setAutoCancel(androidModel.getAutoCancel());
+
+            return builder;
+          } finally {
+            Trace.endSection();
           }
-
-          if (androidModel.getSortKey() != null) {
-            builder.setSortKey(androidModel.getSortKey());
-          }
-
-          if (androidModel.getTicker() != null) {
-            builder.setTicker(androidModel.getTicker());
-          }
-
-          if (androidModel.getTimeoutAfter() != null) {
-            builder.setTimeoutAfter(androidModel.getTimeoutAfter());
-          }
-
-          builder.setUsesChronometer(androidModel.getShowChronometer());
-
-          long[] vibrationPattern = androidModel.getVibrationPattern();
-          if (vibrationPattern.length > 0) builder.setVibrate(vibrationPattern);
-
-          builder.setVisibility(androidModel.getVisibility());
-
-          long timestamp = androidModel.getTimestamp();
-          if (timestamp > -1) builder.setWhen(timestamp);
-
-          builder.setAutoCancel(androidModel.getAutoCancel());
-
-          return builder;
         };
 
     /*
@@ -619,47 +626,64 @@ class NotificationManager {
     return new ExtendedListenableFuture<>(notificationBundleToBuilder(notificationModel))
         .continueWith(
             (taskResult) -> {
-              NotificationCompat.Builder builder = taskResult;
+              Trace.beginSection("notifee:displayNotification");
+              try {
+                NotificationCompat.Builder builder = taskResult;
 
-              // Add the following extras for `getDisplayedNotifications()`
-              Bundle extrasBundle = new Bundle();
-              extrasBundle.putBundle(EXTRA_NOTIFEE_NOTIFICATION, notificationModel.toBundle());
-              if (triggerBundle != null) {
-                extrasBundle.putBundle(EXTRA_NOTIFEE_TRIGGER, triggerBundle);
-              }
-              builder.addExtras(extrasBundle);
-
-              // build notification
-              Notification notification = Objects.requireNonNull(builder).build();
-
-              int hashCode = notificationModel.getHashCode();
-
-              NotificationAndroidModel androidBundle = notificationModel.getAndroid();
-              if (androidBundle.getLoopSound()) {
-                notification.flags |= Notification.FLAG_INSISTENT;
-              }
-
-              if (androidBundle.getFlags() != null && androidBundle.getFlags().length > 0) {
-                for (int flag : androidBundle.getFlags()) {
-                  notification.flags |= flag;
+                // Add the following extras for `getDisplayedNotifications()`
+                Bundle extrasBundle = new Bundle();
+                extrasBundle.putBundle(EXTRA_NOTIFEE_NOTIFICATION, notificationModel.toBundle());
+                if (triggerBundle != null) {
+                  extrasBundle.putBundle(EXTRA_NOTIFEE_TRIGGER, triggerBundle);
                 }
+                builder.addExtras(extrasBundle);
+
+                NotificationAndroidModel androidBundle = notificationModel.getAndroid();
+
+                // Set foreground service behavior before building (only for FGS notifications).
+                // IMMEDIATE eliminates the 10-second display delay on Android 12+.
+                if (androidBundle.getAsForegroundService()) {
+                  builder.setForegroundServiceBehavior(
+                      androidBundle.getForegroundServiceBehavior());
+                }
+
+                // build notification
+                Notification notification = Objects.requireNonNull(builder).build();
+
+                int hashCode = notificationModel.getHashCode();
+                if (androidBundle.getLoopSound()) {
+                  notification.flags |= Notification.FLAG_INSISTENT;
+                }
+
+                if (androidBundle.getFlags() != null && androidBundle.getFlags().length > 0) {
+                  for (int flag : androidBundle.getFlags()) {
+                    notification.flags |= flag;
+                  }
+                }
+
+                if (androidBundle.getLightUpScreen()) {
+                  PowerManagerUtils.lightUpScreenIfNeeded(ContextHolder.getApplicationContext());
+                }
+
+                if (androidBundle.getAsForegroundService()) {
+                  Trace.beginSection("notifee:startForegroundService");
+                  try {
+                    ForegroundService.start(hashCode, notification, notificationModel.toBundle());
+                  } finally {
+                    Trace.endSection();
+                  }
+                } else {
+                  NotificationManagerCompat.from(getApplicationContext())
+                      .notify(androidBundle.getTag(), hashCode, notification);
+                }
+
+                EventBus.post(
+                    new NotificationEvent(NotificationEvent.TYPE_DELIVERED, notificationModel));
+
+                return Futures.immediateFuture(null);
+              } finally {
+                Trace.endSection();
               }
-
-              if (androidBundle.getLightUpScreen()) {
-                PowerManagerUtils.lightUpScreenIfNeeded(ContextHolder.getApplicationContext());
-              }
-
-              if (androidBundle.getAsForegroundService()) {
-                ForegroundService.start(hashCode, notification, notificationModel.toBundle());
-              } else {
-                NotificationManagerCompat.from(getApplicationContext())
-                    .notify(androidBundle.getTag(), hashCode, notification);
-              }
-
-              EventBus.post(
-                  new NotificationEvent(NotificationEvent.TYPE_DELIVERED, notificationModel));
-
-              return Futures.immediateFuture(null);
             },
             CACHED_THREAD_POOL);
   }

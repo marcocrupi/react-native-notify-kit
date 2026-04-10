@@ -293,6 +293,23 @@ export interface NotificationAndroid {
   foregroundServiceTypes?: AndroidForegroundServiceType[];
 
   /**
+   * Controls the display behavior of the foreground service notification on Android 12+.
+   *
+   * When `asForegroundService` is `true` and this property is not set, it defaults to
+   * `AndroidForegroundServiceBehavior.IMMEDIATE`, which eliminates the up to 10-second
+   * display delay that Android 12+ imposes on foreground service notifications.
+   *
+   * Set to `AndroidForegroundServiceBehavior.DEFERRED` to restore the platform default
+   * deferred behavior, or `AndroidForegroundServiceBehavior.DEFAULT` for the framework-neutral
+   * default.
+   *
+   * Ignored when `asForegroundService` is `false` or not set.
+   *
+   * @platform android API 31+
+   */
+  foregroundServiceBehavior?: AndroidForegroundServiceBehavior;
+
+  /**
    * Set a notification importance for devices without channel support.
    *
    * Devices using Android API Level < 26 have no channel support, meaning incoming notifications
@@ -1479,4 +1496,49 @@ export enum AndroidForegroundServiceType {
   FOREGROUND_SERVICE_TYPE_SPECIAL_USE = 1073741824,
   FOREGROUND_SERVICE_TYPE_SYSTEM_EXEMPTED = 1024,
   FOREGROUND_SERVICE_TYPE_MANIFEST = -1,
+}
+
+/**
+ * Controls the display behavior of foreground service notifications on Android 12+.
+ *
+ * Values are aligned with androidx.core.app.NotificationCompat constants:
+ *   DEFAULT   = NotificationCompat.FOREGROUND_SERVICE_DEFAULT   (0)
+ *   IMMEDIATE = NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE (1)
+ *   DEFERRED  = NotificationCompat.FOREGROUND_SERVICE_DEFERRED  (2)
+ *
+ * Do not change these numeric values without updating the native getter in
+ * NotificationAndroidModel.java.
+ *
+ * @platform android
+ */
+export enum AndroidForegroundServiceBehavior {
+  /**
+   * Framework default. Equivalent to not calling `setForegroundServiceBehavior()` at all.
+   * On Android 12+, the system may defer display of the foreground service notification
+   * by up to 10 seconds unless an exemption applies.
+   *
+   * Corresponds to `NotificationCompat.FOREGROUND_SERVICE_DEFAULT`.
+   */
+  DEFAULT = 0,
+
+  /**
+   * The foreground service notification is shown immediately after the service starts.
+   * Eliminates the 10-second display delay imposed by Android 12+ on foreground service
+   * notifications.
+   *
+   * This is the library default when `asForegroundService` is `true` and
+   * `foregroundServiceBehavior` is not explicitly set.
+   *
+   * Corresponds to `NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE`.
+   */
+  IMMEDIATE = 1,
+
+  /**
+   * The foreground service notification display may be deferred by up to 10 seconds by the
+   * system. This matches the default Android 12+ behavior and the (unintended) behavior of
+   * upstream `@notifee/react-native`.
+   *
+   * Corresponds to `NotificationCompat.FOREGROUND_SERVICE_DEFERRED`.
+   */
+  DEFERRED = 2,
 }

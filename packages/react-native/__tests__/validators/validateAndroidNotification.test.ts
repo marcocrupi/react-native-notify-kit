@@ -4,6 +4,7 @@ import {
   AndroidVisibility,
   AndroidBadgeIconType,
   AndroidDefaults,
+  AndroidForegroundServiceBehavior,
   AndroidGroupAlertBehavior,
   AndroidAction,
   AndroidCategory,
@@ -456,6 +457,104 @@ describe('Validate Android Notification', () => {
 
       const result = validateAndroidNotification(notification);
       expect(result.ongoing).toBe(false);
+    });
+
+    test('defaults foregroundServiceBehavior to IMMEDIATE when asForegroundService is true and property is omitted', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.foregroundServiceBehavior).toBe(AndroidForegroundServiceBehavior.IMMEDIATE);
+    });
+
+    test('preserves explicit DEFERRED foregroundServiceBehavior', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.foregroundServiceBehavior).toBe(AndroidForegroundServiceBehavior.DEFERRED);
+    });
+
+    test('preserves explicit DEFAULT foregroundServiceBehavior', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFAULT,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.foregroundServiceBehavior).toBe(AndroidForegroundServiceBehavior.DEFAULT);
+    });
+
+    test('does not include foregroundServiceBehavior when asForegroundService is false', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: false,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.foregroundServiceBehavior).toBeUndefined();
+    });
+
+    test('does not include foregroundServiceBehavior when asForegroundService is not set', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.foregroundServiceBehavior).toBeUndefined();
+    });
+
+    test('strips foregroundServiceBehavior when asForegroundService is explicitly false even if value provided', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: false,
+        foregroundServiceBehavior: AndroidForegroundServiceBehavior.IMMEDIATE,
+      };
+
+      const result = validateAndroidNotification(notification);
+      expect(result.foregroundServiceBehavior).toBeUndefined();
+    });
+
+    test('throws an error when foregroundServiceBehavior is invalid', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        foregroundServiceBehavior: 99 as any,
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.foregroundServiceBehavior' expected a valid AndroidForegroundServiceBehavior.",
+      );
+    });
+
+    test('throws an error when foregroundServiceBehavior is a string', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        foregroundServiceBehavior: 'immediate' as any,
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.foregroundServiceBehavior' expected a valid AndroidForegroundServiceBehavior.",
+      );
+    });
+
+    test('throws an error when foregroundServiceBehavior is a negative number', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        asForegroundService: true,
+        foregroundServiceBehavior: -1 as any,
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.foregroundServiceBehavior' expected a valid AndroidForegroundServiceBehavior.",
+      );
     });
 
     test('throws an error when onlyAlertOnce is invalid', () => {
