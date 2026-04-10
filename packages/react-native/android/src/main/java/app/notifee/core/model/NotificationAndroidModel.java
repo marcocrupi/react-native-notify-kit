@@ -74,6 +74,11 @@ public class NotificationAndroidModel {
         Objects.requireNonNull(
             mNotificationAndroidBundle.getParcelableArrayList("foregroundServiceTypes"));
 
+    if (foregroundServiceTypesArrayList.isEmpty()) {
+      Logger.w(TAG, "foregroundServiceTypes is empty; treating as absent");
+      return ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST;
+    }
+
     int foregroundServiceType = 0;
     for (int i = 0; i < foregroundServiceTypesArrayList.size(); i++) {
       foregroundServiceType |= ObjectUtils.getInt(foregroundServiceTypesArrayList.get(i));

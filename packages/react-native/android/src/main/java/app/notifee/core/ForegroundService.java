@@ -19,6 +19,8 @@ package app.notifee.core;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
@@ -31,6 +33,7 @@ import android.os.IBinder;
 import android.os.Trace;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import app.notifee.core.event.ForegroundServiceEvent;
 import app.notifee.core.event.NotificationEvent;
@@ -45,6 +48,19 @@ public class ForegroundService extends Service {
       "app.notifee.core.ForegroundService.STOP";
 
   private static final Object sLock = new Object();
+  private static final String DEFENSIVE_CHANNEL_ID = "notifee_fg_default";
+  private static final int DEFENSIVE_NOTIFICATION_ID = Integer.MAX_VALUE - 1;
+
+  /**
+   * Tracks whether startForeground() has been called on THIS service instance. This is an instance
+   * field (not static) because the static fields below track cross-invocation notification state
+   * shared across the process lifetime, but mStartForegroundCalled must track whether this specific
+   * service instance — which may be a fresh recreation after process death — has fulfilled
+   * Android's startForeground() contract. If the process is killed and Android recreates the
+   * service, all statics reset AND a new instance is created; we need per-instance tracking to know
+   * whether the recreated instance has called startForeground() before attempting stopSelf().
+   */
+  private volatile boolean mStartForegroundCalled = false;
 
   public static String mCurrentNotificationId = null;
 
@@ -148,6 +164,24 @@ public class ForegroundService extends Service {
     try {
       // Check if action is to stop the foreground service
       if (intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction())) {
+        // If startForeground() was never called on this instance (e.g., Android recreated the
+        // service after a process kill and the first intent is a STOP), we must call it
+        // defensively before stopSelf() to satisfy Android's 5-second startForeground()
+        // contract and avoid ForegroundServiceDidNotStartInTimeException (ANR).
+        if (!mStartForegroundCalled) {
+          try {
+            ensureDefensiveChannel();
+            Notification placeholder =
+                new NotificationCompat.Builder(this, DEFENSIVE_CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .build();
+            startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder);
+            mStartForegroundCalled = true;
+            stopForegroundCompat();
+          } catch (Exception e) {
+            Logger.e(TAG, "Defensive startForeground on STOP path failed", e);
+          }
+        }
         stopSelf();
         synchronized (sLock) {
           mCurrentNotificationId = null;
@@ -191,8 +225,13 @@ public class ForegroundService extends Service {
                       TAG,
                       "Resolved foreground service type is NONE on API 34+; aborting"
                           + " startForeground to avoid InvalidForegroundServiceTypeException.");
+                  // Reset all stale state before early return so a subsequent valid
+                  // invocation on the same service instance starts clean.
                   mCurrentNotificationId = null;
+                  mCurrentForegroundServiceType = -1;
                   mCurrentNotificationBundle = null;
+                  mCurrentNotification = null;
+                  mCurrentHashCode = 0;
                   return START_NOT_STICKY;
                 }
                 Trace.beginSection("notifee:startForeground");
@@ -201,6 +240,7 @@ public class ForegroundService extends Service {
                 } finally {
                   Trace.endSection();
                 }
+                mStartForegroundCalled = true;
                 mCurrentForegroundServiceType = foregroundServiceType;
               } else {
                 Trace.beginSection("notifee:startForeground");
@@ -209,6 +249,7 @@ public class ForegroundService extends Service {
                 } finally {
                   Trace.endSection();
                 }
+                mStartForegroundCalled = true;
               }
 
               // On headless task complete
@@ -248,6 +289,7 @@ public class ForegroundService extends Service {
                     } finally {
                       Trace.endSection();
                     }
+                    mStartForegroundCalled = true;
                     mCurrentForegroundServiceType = foregroundServiceType;
                     shouldPostNotificationAgain = false;
                   }
@@ -326,6 +368,26 @@ public class ForegroundService extends Service {
     return Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
         ? ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
         : ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST;
+  }
+
+  /**
+   * Ensures the defensive notification channel exists. Required for the placeholder notification
+   * used on the STOP path when startForeground() was never called on this instance.
+   */
+  private void ensureDefensiveChannel() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+      if (nm != null && nm.getNotificationChannel(DEFENSIVE_CHANNEL_ID) == null) {
+        NotificationChannel channel =
+            new NotificationChannel(
+                DEFENSIVE_CHANNEL_ID, "Foreground Service", NotificationManager.IMPORTANCE_MIN);
+        channel.setShowBadge(false);
+        channel.enableLights(false);
+        channel.enableVibration(false);
+        channel.setSound(null, null);
+        nm.createNotificationChannel(channel);
+      }
+    }
   }
 
   @SuppressWarnings("deprecation")

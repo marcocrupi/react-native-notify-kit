@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: Foreground service notifications on Android 12+ (API 31+) were subject to a system-imposed display delay of up to 10 seconds because the library never called `setForegroundServiceBehavior(FOREGROUND_SERVICE_IMMEDIATE)`. This is now set by default when `asForegroundService: true`, eliminating the delay. Upstream issues: [invertase/notifee#272](https://github.com/invertase/notifee/issues/272), [invertase/notifee#1242](https://github.com/invertase/notifee/issues/1242). Opt out by setting `foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED` on the notification's `android` config.
 
+- **Android**: ANR-proofed the foreground service STOP path. When a `ForegroundService` instance receives a STOP intent (or null intent) without `startForeground()` having been called on that instance — possible when Android recreates the service after a process kill, or when a cancellation alarm races with the display path — the service now calls a defensive `startForeground()` with a minimal placeholder notification before `stopSelf()`, preventing `ForegroundServiceDidNotStartInTimeException` (ANR). The placeholder is immediately torn down via `stopForeground(STOP_FOREGROUND_REMOVE)` and is not visible to the user.
+
+- **Android**: Reset stale `mCurrentNotification`, `mCurrentHashCode`, and `mCurrentForegroundServiceType` on the foreground service NONE early return path (API 34+, no `foregroundServiceType` declared in manifest). Previously, these fields retained values from a prior invocation when the same service instance was reused, potentially causing incorrect notification updates or mismatched hash codes on subsequent valid invocations.
+
+- **Android**: Empty `foregroundServiceTypes` arrays that bypass the TypeScript validator (e.g., trigger notifications restored from the Room database after a library upgrade) are now treated as absent at the native layer in `NotificationAndroidModel.getForegroundServiceType()`, with a diagnostic log message. The TypeScript validator already rejects empty arrays at validation time.
+
+- **TypeScript**: Numeric enum validators now correctly reject reverse-mapped string keys across all numeric enum types (`AndroidBadgeIconType`, `AndroidDefaults`, `AndroidFlags`, `AndroidGroupAlertBehavior`, `AndroidImportance`, `AndroidVisibility`, `AndroidForegroundServiceType`, `AndroidForegroundServiceBehavior`, `RepeatFrequency`, `AlarmType`). Previously, passing a string like `importance: "HIGH"` instead of `importance: AndroidImportance.HIGH` passed validation but was silently ignored by the native `Bundle.getInt()` call, causing the default value to be used. TypeScript consumers were not affected because the type system already rejected this at compile time. JavaScript consumers passing string keys will now receive a clear validation error and should use the numeric enum values instead.
+
+- **Tests**: `setPlatform` test helper no longer fails silently on repeated calls within a single test block. Added `configurable: true` and `writable: true` to the `Object.defineProperty` calls.
+
 ### Added
 
 - **Android**: New `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`. Controls whether foreground service notifications are shown immediately or deferred on Android 12+. Defaults to `IMMEDIATE` when `asForegroundService: true` and the property is omitted.
@@ -26,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Android**: `InitProvider` now pre-loads critical foreground service classes (`ForegroundService`, `NotificationManager`, `NotificationCompat.Builder`, etc.) and pre-warms the `INotificationManager` Binder proxy on a low-priority background thread during app startup. This moves ~50–100 ms of ART class loading and verification cost from the first `displayNotification()` call to app initialization, where it has zero UI impact. Opt out via `<meta-data android:name="notifee_init_warmup_enabled" android:value="false" />` in your app's `AndroidManifest.xml`.
 
 - **Android**: `androidx.profileinstaller:profileinstaller:1.4.1` is now a transitive (`api`) dependency of the library. Consumers do not need to add it manually, but apps with custom dependency resolution may need to be aware of the new transitive dependency. This enables baseline profile installation on non-Play-Store distributions.
+
+- Added AGP version (8.12.0) to `CLAUDE.md` platform requirements.
+
+- Minor version bump recommended (e.g., `9.5.0`) due to the numeric enum validator strictness change. While the previous behavior (accepting reverse-mapped string keys) was always a bug, it is technically an observable behavior change for JavaScript consumers. TypeScript consumers are unaffected.
 
 ## [9.3.0] - 2026-04-09
 

@@ -82,9 +82,17 @@ export function isValidUrl(url: string): boolean {
 }
 
 export function isValidEnum(value: any, enumType: Record<string, any>): boolean {
-  if (!Object.values(enumType).includes(value)) {
-    return false;
-  }
+  // Filter out reverse-mapped string keys that TypeScript adds to numeric enums.
+  // In a numeric enum { A=0, B=1 }, Object.values() returns [0, 1, "A", "B"].
+  // The reverse-mapped string "A" satisfies typeof enumType["A"] === 'number',
+  // whereas real string enum values (e.g., TimeUnit.SECONDS = 'SECONDS')
+  // satisfy typeof enumType["SECONDS"] === 'string', so they are kept.
+  const values = Object.values(enumType).filter(
+    v => typeof v !== 'string' || typeof enumType[v] !== 'number',
+  );
+  return values.includes(value);
+}
 
-  return true;
+export function getNumericEnumValues(enumType: Record<string, any>): number[] {
+  return Object.values(enumType).filter((v): v is number => typeof v === 'number');
 }

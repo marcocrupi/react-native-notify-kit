@@ -913,5 +913,78 @@ describe('Validate Android Notification', () => {
         "'notification.android.smallIconLevel' expected value to be a number.",
       );
     });
+
+    /**
+     * Numeric enum reverse-mapped string key rejection tests (Bug #4).
+     *
+     * TypeScript numeric enums have a dual nature at runtime:
+     * Object.values(AndroidImportance) returns [3, 4, 2, 1, 0, "DEFAULT", "HIGH", ...].
+     * Previously, passing a string key like "HIGH" would pass validation but be silently
+     * ignored by the native layer (Bundle.getInt() returns 0 for string values).
+     */
+    test('throws an error when importance is a reverse-mapped string key', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        importance: 'DEFAULT' as any,
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.importance' expected a valid Importance.",
+      );
+    });
+
+    test('accepts a valid numeric importance value', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        importance: AndroidImportance.HIGH,
+      };
+
+      const $ = validateAndroidNotification(notification);
+      expect($.importance).toEqual(AndroidImportance.HIGH);
+    });
+
+    test('throws an error when importance is an invalid numeric value', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        importance: 999 as any,
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.importance' expected a valid Importance.",
+      );
+    });
+
+    test('throws an error when badgeIconType is a reverse-mapped string key', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        badgeIconType: 'NONE' as any,
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.badgeIconType' expected a valid AndroidBadgeIconType.",
+      );
+    });
+
+    test('throws an error when defaults array contains a reverse-mapped string key', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        defaults: ['ALL' as any],
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.defaults' invalid array value, expected an AndroidDefaults value.",
+      );
+    });
+
+    test('throws an error when foregroundServiceTypes array contains a reverse-mapped string key', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        foregroundServiceTypes: ['FOREGROUND_SERVICE_TYPE_DATA_SYNC' as any],
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.foregroundServiceTypes' invalid array value, expected an AndroidForegroundServiceType value.",
+      );
+    });
   });
 });

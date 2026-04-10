@@ -13,6 +13,8 @@ import {
   isString,
   isUndefined,
   isIOS,
+  isValidEnum,
+  getNumericEnumValues,
 } from '../utils';
 
 import { AndroidImportance } from '../types/NotificationAndroid';
@@ -124,9 +126,7 @@ export default function validateAndroidNotification(
     objectHasProperty(android, 'foregroundServiceBehavior') &&
     !isUndefined(android.foregroundServiceBehavior)
   ) {
-    if (
-      !Object.values(AndroidForegroundServiceBehavior).includes(android.foregroundServiceBehavior)
-    ) {
+    if (!isValidEnum(android.foregroundServiceBehavior, AndroidForegroundServiceBehavior)) {
       throw new Error(
         "'notification.android.foregroundServiceBehavior' expected a valid AndroidForegroundServiceBehavior.",
       );
@@ -172,7 +172,7 @@ export default function validateAndroidNotification(
    * badgeIconType
    */
   if (objectHasProperty(android, 'badgeIconType') && !isUndefined(android.badgeIconType)) {
-    if (!Object.values(AndroidBadgeIconType).includes(android.badgeIconType)) {
+    if (!isValidEnum(android.badgeIconType, AndroidBadgeIconType)) {
       throw new Error(
         "'notification.android.badgeIconType' expected a valid AndroidBadgeIconType.",
       );
@@ -258,7 +258,7 @@ export default function validateAndroidNotification(
       );
     }
 
-    const defaults = Object.values(AndroidDefaults);
+    const defaults = getNumericEnumValues(AndroidDefaults);
 
     for (let i = 0; i < android.defaults.length; i++) {
       if (!defaults.includes(android.defaults[i])) {
@@ -289,7 +289,7 @@ export default function validateAndroidNotification(
     objectHasProperty(android, 'groupAlertBehavior') &&
     !isUndefined(android.groupAlertBehavior)
   ) {
-    if (!Object.values(AndroidGroupAlertBehavior).includes(android.groupAlertBehavior)) {
+    if (!isValidEnum(android.groupAlertBehavior, AndroidGroupAlertBehavior)) {
       throw new Error(
         "'notification.android.groupAlertBehavior' expected a valid AndroidGroupAlertBehavior.",
       );
@@ -426,10 +426,10 @@ export default function validateAndroidNotification(
       );
     }
 
-    const defaults = Object.values(AndroidForegroundServiceType);
+    const foregroundServiceTypeValues = getNumericEnumValues(AndroidForegroundServiceType);
 
     for (let i = 0; i < android.foregroundServiceTypes.length; i++) {
-      if (!defaults.includes(android.foregroundServiceTypes[i])) {
+      if (!foregroundServiceTypeValues.includes(android.foregroundServiceTypes[i])) {
         throw new Error(
           "'notification.android.foregroundServiceTypes' invalid array value, expected an AndroidForegroundServiceType value.",
         );
@@ -448,13 +448,13 @@ export default function validateAndroidNotification(
     }
 
     if (android.flags.length === 0) {
-      throw new Error("'notification.android.flags' expected an array containing AndroidDefaults.");
+      throw new Error("'notification.android.flags' expected an array containing AndroidFlags.");
     }
 
-    const defaults = Object.values(AndroidFlags);
+    const flagValues = getNumericEnumValues(AndroidFlags);
 
     for (let i = 0; i < android.flags.length; i++) {
-      if (!defaults.includes(android.flags[i])) {
+      if (!flagValues.includes(android.flags[i])) {
         throw new Error(
           "'notification.android.flags' invalid array value, expected an AndroidFlags value.",
         );
@@ -521,7 +521,7 @@ export default function validateAndroidNotification(
    * importance
    */
   if (objectHasProperty(android, 'importance') && !isUndefined(android.importance)) {
-    if (!Object.values(AndroidImportance).includes(android.importance)) {
+    if (!isValidEnum(android.importance, AndroidImportance)) {
       throw new Error("'notification.android.importance' expected a valid Importance.");
     }
 
@@ -732,7 +732,7 @@ export default function validateAndroidNotification(
    * visibility
    */
   if (objectHasProperty(android, 'visibility') && android.visibility !== undefined) {
-    if (!Object.values(AndroidVisibility).includes(android.visibility)) {
+    if (!isValidEnum(android.visibility, AndroidVisibility)) {
       throw new Error(
         "'notification.android.visibility' expected a valid AndroidVisibility value.",
       );

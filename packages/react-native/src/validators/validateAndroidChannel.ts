@@ -2,7 +2,7 @@
  * Copyright (c) 2016-present Invertase Limited
  */
 
-import { objectHasProperty, isArray, isBoolean, isObject, isString } from '../utils';
+import { objectHasProperty, isArray, isBoolean, isObject, isString, isValidEnum } from '../utils';
 import { isValidColor, isValidVibratePattern } from './validate';
 
 import { AndroidImportance } from '../types/NotificationAndroid';
@@ -121,7 +121,7 @@ export default function validateAndroidChannel(channel: AndroidChannel): Android
    * importance
    */
   if (objectHasProperty(channel, 'importance') && channel.importance !== undefined) {
-    if (!Object.values(AndroidImportance).includes(channel.importance)) {
+    if (!isValidEnum(channel.importance, AndroidImportance)) {
       throw new Error("'channel.importance' expected an Importance value.");
     }
 
@@ -149,7 +149,7 @@ export default function validateAndroidChannel(channel: AndroidChannel): Android
    * visibility
    */
   if (objectHasProperty(channel, 'visibility') && channel.visibility !== undefined) {
-    if (!Object.values(AndroidVisibility).includes(channel.visibility)) {
+    if (!isValidEnum(channel.visibility, AndroidVisibility)) {
       throw new Error("'channel.visibility' expected visibility to be an AndroidVisibility value.");
     }
 

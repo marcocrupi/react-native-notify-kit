@@ -102,7 +102,7 @@ After modifying native core code, you MUST rebuild before testing:
 
 ## Platform Requirements
 
-- **Android**: compileSdk 35, minSdk 24, targetSdk 35, Java 17
+- **Android**: compileSdk 35, minSdk 24, targetSdk 35, Java 17, AGP 8.12.0 (managed by `@react-native/gradle-plugin` version catalog — verify via the plugin before trusting this file)
 - **iOS**: Deployment target iOS 15.1+, Objective-C++
 - **React Native**: >=0.73.0 (New Architecture only, peer dependency)
 - **Node/Yarn**: Yarn 4.6.0, Node >=22, no package-lock (npm disabled)
