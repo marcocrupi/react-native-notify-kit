@@ -256,6 +256,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **23 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
+- **Baseline Profile** — the library AAR ships a Baseline Profile that instructs ART to AOT-compile the foreground service notification hot path at install time, eliminating JIT penalty on first invocation
 
 ## Bugs Fixed from Upstream Notifee
 
@@ -420,6 +421,52 @@ With `handleRemoteNotifications: false`:
 - Local Notifee notifications → still handled by Notifee (unchanged)
 
 Default is `true` (backward compatible — Notifee handles everything, same as original Notifee behavior).
+
+## Advanced / Troubleshooting
+
+### Manual warmup control
+
+The library automatically pre-warms the foreground service notification path during app startup via `InitProvider`. **Most apps do not need to do anything extra.** However, in certain edge cases the automatic warmup may not be sufficient:
+
+- **Lazy-loaded library** — if `react-native-notify-kit` is code-split or lazy-loaded, `InitProvider` runs but the TurboModule/JS bridge side isn't initialized yet.
+- **Post-splash-screen warmup** — apps that want to defer warmup to after the splash screen instead of during `Application.onCreate()`.
+- **Low-end devices** — rare cases where the `InitProvider` warmup hasn't finished by the time the user triggers the first notification.
+
+For these cases, call `prewarmForegroundService()` at a moment of your choosing:
+
+```typescript
+import notifee from 'react-native-notify-kit';
+
+// Call after splash screen, during onboarding, or before the user
+// is likely to trigger a foreground service notification.
+await notifee.prewarmForegroundService();
+```
+
+**Key facts:**
+
+- **Idempotent** — safe to call multiple times; class loading after the first call is a no-op from ART's perspective.
+- **iOS no-op** — resolves immediately on iOS (Android-only optimization).
+- **Does NOT start a foreground service** — it only performs class loading and Binder proxy warming. No Google Play policy risk.
+- **Best-effort** — internal failures are logged and swallowed; the promise always resolves.
+
+To verify whether calling this method provides a measurable benefit for your app, capture a Perfetto trace with `notifee:*` trace sections and compare the `notifee:displayNotification` duration with and without the prewarm call. See the Phase 1 Perfetto measurement instructions for the exact `adb shell perfetto` command.
+
+### Regenerating the Baseline Profile
+
+The library ships a Baseline Profile (`packages/react-native/android/src/main/baseline-prof.txt`) that instructs ART to AOT-compile the notification hot path at install time. This profile should be regenerated after significant changes to the notification display code path.
+
+**Prerequisites:**
+
+- A physical device connected via adb (Pixel 9 Pro XL with Android 16+ recommended) or a running emulator with API 33+
+- The smoke app must be buildable (`yarn install` in the repo root)
+
+**Command:**
+
+```bash
+bash scripts/generate-baseline-profile.sh
+```
+
+The script runs the macrobenchmark test in `apps/smoke/android/baselineprofile/`, captures the profile on the connected device, filters it to library-only rules, and copies it to the library's `src/main/baseline-prof.txt`. Review the generated file for unexpected entries, then commit it.
 
 ## Documentation
 

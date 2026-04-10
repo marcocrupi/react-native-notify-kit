@@ -49,6 +49,7 @@ export interface Spec extends TurboModule {
   getPowerManagerInfo(): Promise<Object>;
   openPowerManagerSettings(): Promise<void>;
   stopForegroundService(): Promise<void>;
+  prewarmForegroundService(): Promise<void>;
   hideNotificationDrawer(): void;
   addListener(eventName: string): void;
   removeListeners(count: number): void;

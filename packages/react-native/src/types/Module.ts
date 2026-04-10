@@ -420,6 +420,26 @@ export interface Module {
   stopForegroundService(): Promise<void>;
 
   /**
+   * Pre-warms the foreground service notification path by eagerly loading critical
+   * classes and warming the `INotificationManager` Binder proxy on a background thread.
+   *
+   * Most apps do **not** need this method — the library automatically performs warmup
+   * at app startup via `InitProvider`. This API is an escape hatch for edge cases:
+   *
+   * - Apps where the library is lazy-loaded or code-split
+   * - Apps that want to defer warmup to after the splash screen
+   * - Low-end devices where the `InitProvider` warmup hasn't finished by the time
+   *   the first notification is displayed
+   *
+   * Safe to call multiple times (idempotent). On iOS this resolves immediately as a no-op.
+   *
+   * See the "Advanced / Troubleshooting" section in the README for more details.
+   *
+   * @platform android
+   */
+  prewarmForegroundService(): Promise<void>;
+
+  /**
    * Request specific notification permissions for your application on the current device.
    *
    * Both iOS & Android return an `NotificationSettings` interface. To check whether overall

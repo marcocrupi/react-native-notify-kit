@@ -17,9 +17,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: `android.os.Trace` instrumentation on the foreground service notification path. Custom trace sections (`notifee:displayNotification`, `notifee:buildNotification`, `notifee:startForegroundService`, `notifee:ForegroundService.onStartCommand`, `notifee:startForeground`, `notifee:InitProvider.onCreate`, `notifee:warmup`) are visible in Perfetto traces for profiling notification display latency.
 
+- **Android**: `notifee.prewarmForegroundService()` opt-in API for manual warmup control. Pre-warms the foreground service notification path by eagerly loading critical classes and warming the `INotificationManager` Binder proxy on a background thread. Most apps do not need this — the library handles warmup automatically via `InitProvider`. This is an escape hatch for edge cases: lazy-loaded libraries, post-splash-screen warmup, or low-end devices where the automatic warmup hasn't completed by the first notification. Idempotent, safe to call multiple times. Resolves immediately as a no-op on iOS.
+
+- **Android**: Baseline Profile shipped in the library AAR covering the foreground service notification cold-start path. Instructs ART to AOT-compile notification hot-path methods at install time, eliminating JIT penalty on first invocation (estimated 20-40% reduction in JIT cost on first `displayNotification()` call). Fully transparent to consumers — AGP 8.3+ automatically merges the profile at APK build time.
+
 ### Changed
 
 - **Android**: `InitProvider` now pre-loads critical foreground service classes (`ForegroundService`, `NotificationManager`, `NotificationCompat.Builder`, etc.) and pre-warms the `INotificationManager` Binder proxy on a low-priority background thread during app startup. This moves ~50–100 ms of ART class loading and verification cost from the first `displayNotification()` call to app initialization, where it has zero UI impact. Opt out via `<meta-data android:name="notifee_init_warmup_enabled" android:value="false" />` in your app's `AndroidManifest.xml`.
+
+- **Android**: `androidx.profileinstaller:profileinstaller:1.4.1` is now a transitive (`api`) dependency of the library. Consumers do not need to add it manually, but apps with custom dependency resolution may need to be aware of the new transitive dependency. This enables baseline profile installation on non-Play-Store distributions.
 
 ## [9.3.0] - 2026-04-09
 

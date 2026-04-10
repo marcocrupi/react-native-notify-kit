@@ -317,6 +317,36 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
             }
     }
 
+    override fun prewarmForegroundService(promise: Promise) {
+        val context = reactApplicationContext.applicationContext ?: run {
+            promise.reject("ERR_CONTEXT", "ReactApplicationContext is null")
+            return
+        }
+        val executor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread(r, "notifee-prewarm").apply {
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+            }
+        }
+        executor.submit {
+            android.os.Trace.beginSection("notifee:prewarm")
+            try {
+                app.notifee.core.WarmupHelper.runWarmup(context)
+                promise.resolve(null)
+            } catch (t: Throwable) {
+                // Best-effort semantics: warmup failures don't reject the promise.
+                // WarmupHelper logs and swallows internal errors; if something
+                // unexpectedly escapes, log it and still resolve so the JS-side
+                // await does not hang.
+                Logger.e("NotifeeApiModule", "prewarmForegroundService unexpectedly threw", t)
+                promise.resolve(null)
+            } finally {
+                android.os.Trace.endSection()
+            }
+        }
+        executor.shutdown()
+    }
+
     override fun hideNotificationDrawer() {
         NotifeeReactUtils.hideNotificationDrawer()
     }

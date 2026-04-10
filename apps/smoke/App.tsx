@@ -22,7 +22,7 @@ import { DeliveredTestScreen } from './DeliveredTestScreen';
 
 type Section = {
   title: string;
-  buttons: Array<{ label: string; onPress: () => void }>;
+  buttons: Array<{ label: string; onPress: () => void; testID?: string }>;
 };
 
 function App() {
@@ -405,6 +405,9 @@ function App() {
       });
     });
 
+  const prewarmFgs = () =>
+    run('prewarmForegroundService', () => notifee.prewarmForegroundService());
+
   const startFgsNoOngoing = () =>
     run('startFgsNoOngoing', async () => {
       await notifee.createChannel({
@@ -448,8 +451,13 @@ function App() {
     {
       title: 'Foreground Service',
       buttons: [
-        { label: 'Start Foreground Service', onPress: startForegroundService },
+        {
+          label: 'Start Foreground Service',
+          onPress: startForegroundService,
+          testID: 'fgs-trigger-button',
+        },
         { label: 'Stop Foreground Service', onPress: stopForegroundService },
+        { label: 'Prewarm FGS', onPress: prewarmFgs },
         { label: 'Start FGS (no type)', onPress: startFgsNoType },
         { label: 'Start FGS (no ongoing)', onPress: startFgsNoOngoing },
       ],
@@ -511,6 +519,7 @@ function App() {
                 {section.buttons.map(b => (
                   <Pressable
                     key={b.label}
+                    testID={b.testID}
                     style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
                     onPress={b.onPress}
                     android_ripple={{ color: 'rgba(255,255,255,0.3)' }}

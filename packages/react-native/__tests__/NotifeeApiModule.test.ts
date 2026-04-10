@@ -237,6 +237,31 @@ describe('Notifee Api Module', () => {
     });
   });
 
+  describe('prewarmForegroundService', () => {
+    test('resolves on iOS without calling native', async () => {
+      setPlatform('ios');
+      const res = await apiModule.prewarmForegroundService();
+      expect(res).toBeUndefined();
+      expect(mockNotifeeNativeModule.prewarmForegroundService).not.toBeCalled();
+    });
+
+    test('calls native on Android', async () => {
+      setPlatform('android');
+      mockNotifeeNativeModule.prewarmForegroundService.mockResolvedValue(undefined);
+      const res = await apiModule.prewarmForegroundService();
+      expect(res).toBeUndefined();
+      expect(mockNotifeeNativeModule.prewarmForegroundService).toBeCalledTimes(1);
+    });
+
+    test('repeated calls forward to native each time', async () => {
+      setPlatform('android');
+      mockNotifeeNativeModule.prewarmForegroundService.mockResolvedValue(undefined);
+      await apiModule.prewarmForegroundService();
+      await apiModule.prewarmForegroundService();
+      expect(mockNotifeeNativeModule.prewarmForegroundService).toBeCalledTimes(2);
+    });
+  });
+
   describe('getNotificationSettings', () => {
     describe('on Android', () => {
       beforeEach(() => {

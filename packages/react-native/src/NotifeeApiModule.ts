@@ -826,6 +826,13 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
     return this.native.stopForegroundService();
   };
 
+  public prewarmForegroundService = (): Promise<void> => {
+    if (!isAndroid) {
+      return Promise.resolve();
+    }
+    return this.native.prewarmForegroundService();
+  };
+
   public hideNotificationDrawer = (): void => {
     if (!isAndroid) {
       return;

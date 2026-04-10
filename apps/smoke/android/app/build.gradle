@@ -1,6 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "androidx.baselineprofile"
 
 // Apply google-services plugin only when google-services.json is present.
 // Without the file, Firebase push notifications are unavailable but the app
@@ -111,6 +112,12 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
+        benchmark {
+            initWith release
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ["release"]
+            debuggable false
+        }
     }
 }
 
@@ -123,4 +130,7 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    implementation "androidx.profileinstaller:profileinstaller:1.4.1"
+    baselineProfile project(":baselineprofile")
 }

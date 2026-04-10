@@ -418,6 +418,11 @@ RCT_EXPORT_MODULE();
   resolve(nil);
 }
 
+- (void)prewarmForegroundService:(RCTPromiseResolveBlock)resolve
+                          reject:(RCTPromiseRejectBlock)reject {
+  resolve(nil);
+}
+
 - (void)hideNotificationDrawer {
   // Android-only, no-op on iOS
 }

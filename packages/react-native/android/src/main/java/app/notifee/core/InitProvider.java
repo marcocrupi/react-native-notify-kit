@@ -29,7 +29,6 @@ import android.os.Trace;
 import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.NotificationManagerCompat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -49,16 +48,6 @@ public class InitProvider extends ContentProvider {
   }
 
   private static final String TAG = "InitProvider";
-
-  private static final String[] WARMUP_CLASSES = {
-    "app.notifee.core.ForegroundService",
-    "app.notifee.core.NotificationManager",
-    "app.notifee.core.model.NotificationModel",
-    "app.notifee.core.model.NotificationAndroidModel",
-    "app.notifee.core.model.ChannelModel",
-    "androidx.core.app.NotificationCompat$Builder",
-    "androidx.core.app.NotificationManagerCompat",
-  };
 
   @KeepForSdk
   @CallSuper
@@ -107,33 +96,7 @@ public class InitProvider extends ContentProvider {
               return t;
             });
 
-    final ClassLoader classLoader = context.getClassLoader();
-
-    executor.submit(
-        () -> {
-          Trace.beginSection("notifee:warmup");
-          try {
-            // Pre-load critical foreground service classes to move ART class loading/verification
-            // cost from the first displayNotification() call to app startup.
-            for (String className : WARMUP_CLASSES) {
-              try {
-                Class.forName(className, true, classLoader);
-              } catch (ClassNotFoundException e) {
-                Logger.d(TAG, "Warmup class not found: " + className);
-              }
-            }
-
-            // Pre-warm INotificationManager Binder proxy by touching NotificationManagerCompat.
-            try {
-              NotificationManagerCompat.from(context).getNotificationChannels();
-            } catch (Exception e) {
-              Logger.d(TAG, "Warmup Binder pre-warm failed: " + e.getMessage());
-            }
-          } finally {
-            Trace.endSection();
-          }
-        });
-
+    executor.submit(() -> WarmupHelper.runWarmup(context));
     executor.shutdown();
   }
 
