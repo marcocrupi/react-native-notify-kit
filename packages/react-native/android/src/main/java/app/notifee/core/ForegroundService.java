@@ -150,6 +150,11 @@ public class ForegroundService extends Service {
       // Call start service first with stop action
       context.startService(intent);
     } catch (IllegalStateException illegalStateException) {
+      Logger.w(
+          TAG,
+          "startService() threw IllegalStateException on STOP path;"
+              + " falling back to stopService()",
+          illegalStateException);
       // try to stop with stopService command
       context.stopService(intent);
     } catch (Exception exception) {
@@ -164,24 +169,7 @@ public class ForegroundService extends Service {
     try {
       // Check if action is to stop the foreground service
       if (intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction())) {
-        // If startForeground() was never called on this instance (e.g., Android recreated the
-        // service after a process kill and the first intent is a STOP), we must call it
-        // defensively before stopSelf() to satisfy Android's 5-second startForeground()
-        // contract and avoid ForegroundServiceDidNotStartInTimeException (ANR).
-        if (!mStartForegroundCalled) {
-          try {
-            ensureDefensiveChannel();
-            Notification placeholder =
-                new NotificationCompat.Builder(this, DEFENSIVE_CHANNEL_ID)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .build();
-            startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder);
-            mStartForegroundCalled = true;
-            stopForegroundCompat();
-          } catch (Exception e) {
-            Logger.e(TAG, "Defensive startForeground on STOP path failed", e);
-          }
-        }
+        ensureStartForegroundContractSatisfied();
         stopSelf();
         synchronized (sLock) {
           mCurrentNotificationId = null;
@@ -205,6 +193,7 @@ public class ForegroundService extends Service {
           NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
 
           Object pendingEvent = null;
+          boolean noneEarlyReturn = false;
 
           synchronized (sLock) {
             if (mCurrentNotificationId == null) {
@@ -225,23 +214,25 @@ public class ForegroundService extends Service {
                       TAG,
                       "Resolved foreground service type is NONE on API 34+; aborting"
                           + " startForeground to avoid InvalidForegroundServiceTypeException.");
-                  // Reset all stale state before early return so a subsequent valid
-                  // invocation on the same service instance starts clean.
+                  // Reset stale state while still holding the lock.
                   mCurrentNotificationId = null;
                   mCurrentForegroundServiceType = -1;
                   mCurrentNotificationBundle = null;
                   mCurrentNotification = null;
                   mCurrentHashCode = 0;
-                  return START_NOT_STICKY;
+                  // Set flag to call the helper AFTER releasing sLock — it performs
+                  // Binder IPC (PackageManager + startForeground) and must not hold sLock.
+                  noneEarlyReturn = true;
+                } else {
+                  Trace.beginSection("notifee:startForeground");
+                  try {
+                    startForeground(hashCode, notification, foregroundServiceType);
+                  } finally {
+                    Trace.endSection();
+                  }
+                  mStartForegroundCalled = true;
+                  mCurrentForegroundServiceType = foregroundServiceType;
                 }
-                Trace.beginSection("notifee:startForeground");
-                try {
-                  startForeground(hashCode, notification, foregroundServiceType);
-                } finally {
-                  Trace.endSection();
-                }
-                mStartForegroundCalled = true;
-                mCurrentForegroundServiceType = foregroundServiceType;
               } else {
                 Trace.beginSection("notifee:startForeground");
                 try {
@@ -252,20 +243,22 @@ public class ForegroundService extends Service {
                 mStartForegroundCalled = true;
               }
 
-              // On headless task complete
-              final MethodCallResult<Void> methodCallResult =
-                  (e, aVoid) -> {
-                    stopForegroundCompat();
-                    synchronized (sLock) {
-                      mCurrentNotificationId = null;
-                      mCurrentForegroundServiceType = -1;
-                      mCurrentNotificationBundle = null;
-                      mCurrentNotification = null;
-                      mCurrentHashCode = 0;
-                    }
-                  };
+              if (!noneEarlyReturn) {
+                // On headless task complete
+                final MethodCallResult<Void> methodCallResult =
+                    (e, aVoid) -> {
+                      stopForegroundCompat();
+                      synchronized (sLock) {
+                        mCurrentNotificationId = null;
+                        mCurrentForegroundServiceType = -1;
+                        mCurrentNotificationBundle = null;
+                        mCurrentNotification = null;
+                        mCurrentHashCode = 0;
+                      }
+                    };
 
-              pendingEvent = new ForegroundServiceEvent(notificationModel, methodCallResult);
+                pendingEvent = new ForegroundServiceEvent(notificationModel, methodCallResult);
+              }
             } else {
               if (mCurrentNotificationId.equals(notificationModel.getId())) {
                 boolean shouldPostNotificationAgain = true;
@@ -304,6 +297,13 @@ public class ForegroundService extends Service {
                         NotificationEvent.TYPE_FG_ALREADY_EXIST, notificationModel);
               }
             }
+          }
+
+          // Handle NONE early return outside the lock — the helper performs Binder IPC
+          // (PackageManager query + startForeground) that must not hold sLock.
+          if (noneEarlyReturn) {
+            ensureStartForegroundContractSatisfied();
+            return START_NOT_STICKY;
           }
 
           if (pendingEvent != null) {
@@ -396,6 +396,110 @@ public class ForegroundService extends Service {
       stopForeground(STOP_FOREGROUND_REMOVE);
     } else {
       stopForeground(true);
+    }
+  }
+
+  /**
+   * Queries the PackageManager for the {@code foregroundServiceType} attribute declared on this
+   * service's {@code <service>} element in AndroidManifest.xml.
+   *
+   * <p>This is intentionally separate from {@link #resolveManifestServiceType()} (which resolves
+   * the effective type for the normal startForeground path). That method is static, uses {@link
+   * ContextHolder#getApplicationContext()} (which may be null during early recreation), and has
+   * different return semantics — it maps missing types to {@code FOREGROUND_SERVICE_TYPE_MANIFEST}
+   * on API 29-33 and to {@code FOREGROUND_SERVICE_TYPE_NONE} on API 34+. This method is an instance
+   * method that uses {@code this} as context (always valid inside a running Service) and returns
+   * the raw declared value without any API-level mapping, which is what the proactive manifest
+   * check in {@link #ensureStartForegroundContractSatisfied()} needs.
+   *
+   * @return the raw {@code foregroundServiceType} bitmask from the manifest, or 0 if the service is
+   *     not declared or has no explicit type
+   */
+  private int getDeclaredForegroundServiceType() {
+    try {
+      ComponentName component = new ComponentName(this, ForegroundService.class);
+      ServiceInfo info =
+          getPackageManager().getServiceInfo(component, PackageManager.GET_META_DATA);
+      return info.getForegroundServiceType();
+    } catch (PackageManager.NameNotFoundException e) {
+      return 0;
+    }
+  }
+
+  /**
+   * Ensures Android's 5-second {@code startForeground()} contract is satisfied before an early
+   * return from {@link #onStartCommand(Intent, int, int)}.
+   *
+   * <p>This method is idempotent: if {@link #mStartForegroundCalled} is already {@code true} (i.e.,
+   * this service instance has previously called {@code startForeground()} successfully), this
+   * method returns immediately without side effects.
+   *
+   * <p>On API 34+ (Android 14), this method performs a proactive manifest check via {@link
+   * #getDeclaredForegroundServiceType()} before attempting the defensive {@code startForeground()}
+   * call. If no {@code foregroundServiceType} is declared in the manifest, the method throws a
+   * {@link RuntimeException} with a clear error message and documentation URL instead of proceeding
+   * to a call that would fail with a cryptic {@code SecurityException}.
+   *
+   * <p>On API levels below 34, the manifest check is skipped and the defensive {@code
+   * startForeground()} is called directly, as no {@code foregroundServiceType} declaration is
+   * required.
+   *
+   * @throws RuntimeException if the manifest is missing required {@code foregroundServiceType}
+   *     declarations on API 34+, or if the defensive {@code startForeground()} call fails for any
+   *     other reason. In both cases, the exception terminates the process with a crash report that
+   *     is more actionable than the ANR that would otherwise occur.
+   */
+  @SuppressLint({"ForegroundServiceType", "MissingPermission"})
+  private void ensureStartForegroundContractSatisfied() {
+    if (mStartForegroundCalled) {
+      return;
+    }
+
+    // Proactive manifest check on API 34+: fail fast with actionable message.
+    // Also caches the declared type for use in the 3-param startForeground() call below.
+    int declaredTypes = 0;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+      declaredTypes = getDeclaredForegroundServiceType();
+      if (declaredTypes == 0) {
+        String msg =
+            "react-native-notify-kit: ForegroundService cannot start — "
+                + "no foregroundServiceType declared in AndroidManifest.xml on API 34+. "
+                + "See https://github.com/marcocrupi/react-native-notify-kit"
+                + "#foreground-service-setup-android-14";
+        Logger.e(TAG, msg);
+        // Intentional crash: a RuntimeException here terminates the process with a clear,
+        // actionable crash report within milliseconds — well inside the 5-second ANR budget.
+        // The alternative (catching and calling stopSelf()) leaves Android's startForeground()
+        // contract unsatisfied, which produces a ForegroundServiceDidNotStartInTimeException
+        // ANR with a framework-only stack trace that gives no indication of the root cause.
+        // Do NOT suppress this throw without also providing an alternative mechanism to satisfy
+        // the startForeground() contract or terminate the process before the ANR fires.
+        throw new RuntimeException(msg);
+      }
+    }
+
+    try {
+      ensureDefensiveChannel();
+      Notification placeholder =
+          new NotificationCompat.Builder(this, DEFENSIVE_CHANNEL_ID)
+              .setSmallIcon(android.R.drawable.ic_dialog_info)
+              .build();
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        // On API 34+, pass the manifest-declared type explicitly rather than relying on
+        // the 2-param startForeground() to resolve type 0 → manifest type. This avoids
+        // ambiguity about implicit type resolution behavior across OEM variants.
+        startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder, declaredTypes);
+      } else {
+        startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder);
+      }
+      mStartForegroundCalled = true;
+      stopForegroundCompat();
+    } catch (Exception e) {
+      String msg =
+          "react-native-notify-kit: defensive startForeground() failed. "
+              + "This indicates an inconsistent service state and the process cannot recover.";
+      Logger.e(TAG, msg, e);
+      throw new RuntimeException(msg, e);
     }
   }
 

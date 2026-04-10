@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Tests**: `setPlatform` test helper no longer fails silently on repeated calls within a single test block. Added `configurable: true` and `writable: true` to the `Object.defineProperty` calls.
 
+- **Android**: `ForegroundService` defensive STOP path now fails fast with a clear error message and documentation URL when the consumer's manifest is missing required `foregroundServiceType` declarations on API 34+, instead of silently ANRing with a cryptic framework stack trace.
+
+- **Android**: `ForegroundService` NONE early return path now honors Android's 5-second `startForeground()` contract via the same tracked-boolean defensive pattern as the STOP path, preventing edge-case ANRs during service recreation after process kill.
+
+- **Android**: `ForegroundService.stop()` now logs a warning (via `Logger.w`) when `startService()` throws `IllegalStateException` and falls back to `stopService()`, instead of silently swallowing the exception. The fallback behavior is unchanged.
+
+- **Android**: `getLights()` and `cancelAllNotificationsWithIds()` now preserve exception stack traces in their error logs, making production failures diagnosable in bugreports.
+
 ### Added
 
 - **Android**: New `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`. Controls whether foreground service notifications are shown immediately or deferred on Android 12+. Defaults to `IMMEDIATE` when `asForegroundService: true` and the property is omitted.

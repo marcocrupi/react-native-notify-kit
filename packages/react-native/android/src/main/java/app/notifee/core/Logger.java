@@ -49,6 +49,11 @@ public class Logger {
   }
 
   @KeepForSdk
+  public static void w(@NonNull String tag, String message, Throwable throwable) {
+    Log.w(TAG, tagAndMessage(tag, message), throwable);
+  }
+
+  @KeepForSdk
   public static void e(@NonNull String tag, String message, Exception e) {
     Log.e(TAG, tagAndMessage(tag, message), e);
     EventBus.post(new LogEvent(LogEvent.LEVEL_ERROR, tag, message, e));

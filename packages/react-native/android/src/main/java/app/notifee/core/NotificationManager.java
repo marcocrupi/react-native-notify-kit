@@ -583,7 +583,8 @@ class NotificationManager {
                           Logger.e(
                               TAG,
                               "cancelAllNotificationsWithIds -> Failed to parse id as integer  "
-                                  + id);
+                                  + id,
+                              e);
                         }
 
                         if (integerId != null) {

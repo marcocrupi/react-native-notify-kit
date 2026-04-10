@@ -344,7 +344,7 @@ public class NotificationAndroidModel {
 
         return lights;
       } catch (Exception e) {
-        Logger.e(TAG, "getLights -> Failed to parse lights");
+        Logger.e(TAG, "getLights -> Failed to parse lights", e);
         return null;
       }
     }
