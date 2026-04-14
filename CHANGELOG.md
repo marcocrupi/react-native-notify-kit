@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [9.5.0] - 2026-04-14
-
 ### Fixed
 
 - **Android**: Resolved upstream issue [invertase/notifee#549](https://github.com/invertase/notifee/issues/549) — `cancelTriggerNotifications()` and `createTriggerNotification()` JS Promises resolved before the underlying Room database write completed, causing a race where a cancel-then-create pattern could leave inconsistent state. Root cause: `WorkDataRepository.insert` / `deleteAll` / `deleteById` / `deleteByIds` / `update` were fire-and-forget `void` methods that returned immediately while the actual DAO call was still enqueued on a cached thread pool. All five mutation methods now return `ListenableFuture<Void>` and are chained into the outer future at every call site. Empirical reproduction rate on a Pixel 9 Pro XL before the fix: ~3.3% per attempt, <50ms window (Scenario B/C of `repro-549-findings.md`). Post-fix: 0 inconsistencies across 150 attempts in `post-fix-549-verification.md`.
