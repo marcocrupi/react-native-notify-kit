@@ -79,17 +79,29 @@ fi
 # ─── Verdict ───────────────────────────────────────────────────────────────
 
 pass=1
+found_xml=0
 # Robolectric unit runner writes one XML per test class under testDebugUnitTest/
 for xml in "$REPORT_ROOT"/unit/TEST-*.xml "$REPORT_ROOT"/instrumented/debug/TEST-*.xml; do
   [[ -f "$xml" ]] || continue
+  found_xml=$((found_xml + 1))
   if ! grep -q 'failures="0" errors="0"' "$xml"; then
     pass=0
     echo "FAILURE in $xml" >&2
   fi
 done
 
+# Load-bearing guard: if zero XML reports were found the verdict loop above
+# would leave `pass=1` and exit 0 with a false green, even when the Gradle
+# tasks silently produced nothing — e.g. the copy paths at lines 63/76 drift
+# across AGP versions (both `cp` calls are guarded by `|| true`), or a stale
+# instrumentation filter matches no test class. Fail loud instead. Discovered
+# by the second-pass code review after Step 7.
+if [[ "$found_xml" == "0" ]]; then
+  fail "no test XML reports found in $REPORT_ROOT — did the Gradle tasks actually run? Check the copy paths."
+fi
+
 if [[ "$pass" == "1" ]]; then
-  log "✅ all Step 7 regression guards pass on $serial"
+  log "✅ all Step 7 regression guards pass on $serial ($found_xml test suites verified)"
   log "reports saved to $REPORT_ROOT"
   exit 0
 else
