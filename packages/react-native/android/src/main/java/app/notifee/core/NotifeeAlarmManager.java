@@ -65,6 +65,51 @@ class NotifeeAlarmManager {
       Executors.newSingleThreadScheduledExecutor();
   private static final long RECEIVER_WRITE_TIMEOUT_SECONDS = 8;
 
+  /**
+   * Wraps {@code future} in a {@link Futures#withTimeout} safety net and arranges for {@code
+   * pendingResult.finish()} to be called exactly once — on success, on failure, or on timeout. Use
+   * from a {@link BroadcastReceiver#goAsync} scope where the receiver must tell Android "I'm done"
+   * within ~10s or the process is killed. Timeouts are logged at {@code WARN} with the supplied
+   * {@code logContext}; real failures at {@code ERROR}.
+   */
+  private static void finishReceiverWhenDone(
+      @NonNull ListenableFuture<?> future,
+      @Nullable BroadcastReceiver.PendingResult pendingResult,
+      @NonNull String logContext) {
+    ListenableFuture<?> bounded =
+        Futures.withTimeout(
+            future, RECEIVER_WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS, TIMEOUT_SCHEDULER);
+    Futures.addCallback(
+        bounded,
+        new FutureCallback<Object>() {
+          @Override
+          public void onSuccess(Object result) {
+            if (pendingResult != null) {
+              pendingResult.finish();
+            }
+          }
+
+          @Override
+          public void onFailure(@NonNull Throwable t) {
+            if (t instanceof TimeoutException) {
+              Logger.w(
+                  TAG,
+                  "Room write for "
+                      + logContext
+                      + " did not complete within "
+                      + RECEIVER_WRITE_TIMEOUT_SECONDS
+                      + "s; finishing BroadcastReceiver anyway to avoid ANR");
+            } else {
+              Logger.e(TAG, "Failure in " + logContext, new Exception(t));
+            }
+            if (pendingResult != null) {
+              pendingResult.finish();
+            }
+          }
+        },
+        alarmManagerListeningExecutor);
+  }
+
   static void displayScheduledNotification(
       Bundle alarmManagerNotification, @Nullable BroadcastReceiver.PendingResult pendingResult) {
     if (alarmManagerNotification == null) {
@@ -136,45 +181,10 @@ class NotifeeAlarmManager {
             },
             alarmManagerExecutor);
 
-    // Cap the wait at RECEIVER_WRITE_TIMEOUT_SECONDS — a wedged Room must not
-    // ANR the BroadcastReceiver. On timeout we still finish() the receiver and
-    // log a warning; the missed persistence will be retried on the next fire.
-    ListenableFuture<Void> timeBoundedFuture =
-        Futures.withTimeout(
-            displayAndPersistFuture,
-            RECEIVER_WRITE_TIMEOUT_SECONDS,
-            TimeUnit.SECONDS,
-            TIMEOUT_SCHEDULER);
-
-    Futures.addCallback(
-        timeBoundedFuture,
-        new FutureCallback<Void>() {
-          @Override
-          public void onSuccess(Void unused) {
-            if (pendingResult != null) {
-              pendingResult.finish();
-            }
-          }
-
-          @Override
-          public void onFailure(@NonNull Throwable t) {
-            if (t instanceof TimeoutException) {
-              Logger.w(
-                  TAG,
-                  "Room write for scheduled notification "
-                      + id
-                      + " did not complete within "
-                      + RECEIVER_WRITE_TIMEOUT_SECONDS
-                      + "s; finishing BroadcastReceiver anyway to avoid ANR");
-            } else {
-              Logger.e(TAG, "Failed to display notification", new Exception(t));
-            }
-            if (pendingResult != null) {
-              pendingResult.finish();
-            }
-          }
-        },
-        alarmManagerExecutor);
+    // Awaits the Room write before pendingResult.finish(), bounded by the 8s
+    // ANR safety timeout. Handles success, failure, and timeout uniformly.
+    finishReceiverWhenDone(
+        displayAndPersistFuture, pendingResult, "displayScheduledNotification[" + id + "]");
   }
 
   public static PendingIntent getAlarmManagerIntentForNotification(String notificationId) {
@@ -404,45 +414,12 @@ class NotifeeAlarmManager {
               }
             }
 
+            // Awaits all per-entity update futures before finishing the boot
+            // receiver, bounded by the 8s ANR safety timeout. Any not-yet-
+            // persisted next-fire anchors left behind on timeout will catch up
+            // on the next alarm fire.
             ListenableFuture<List<Void>> combined = Futures.allAsList(updateFutures);
-            ListenableFuture<List<Void>> timeBoundedCombined =
-                Futures.withTimeout(
-                    combined,
-                    RECEIVER_WRITE_TIMEOUT_SECONDS,
-                    TimeUnit.SECONDS,
-                    TIMEOUT_SCHEDULER);
-
-            Futures.addCallback(
-                timeBoundedCombined,
-                new FutureCallback<List<Void>>() {
-                  @Override
-                  public void onSuccess(List<Void> unused) {
-                    Logger.d(TAG, "Reschedule complete; all updates flushed to Room");
-                    if (pendingResult != null) {
-                      pendingResult.finish();
-                    }
-                  }
-
-                  @Override
-                  public void onFailure(@NonNull Throwable t) {
-                    if (t instanceof TimeoutException) {
-                      Logger.w(
-                          TAG,
-                          "Reboot reschedule Room writes did not complete within "
-                              + RECEIVER_WRITE_TIMEOUT_SECONDS
-                              + "s; finishing BroadcastReceiver anyway to avoid ANR."
-                              + " Any not-yet-persisted next-fire anchors will catch up"
-                              + " on the next alarm fire.");
-                    } else {
-                      Logger.e(
-                          TAG, "Failed to reschedule notifications", new Exception(t));
-                    }
-                    if (pendingResult != null) {
-                      pendingResult.finish();
-                    }
-                  }
-                },
-                alarmManagerListeningExecutor);
+            finishReceiverWhenDone(combined, pendingResult, "rescheduleNotifications");
           }
 
           @Override
