@@ -16,6 +16,15 @@ import {
   getInitialNotification,
 } from '@react-native-firebase/messaging/lib/modular';
 import { DeliveredTestScreen } from './DeliveredTestScreen';
+import { TriggerRaceTestScreen } from './TriggerRaceTestScreen';
+
+// VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
+// When true, the app launches directly into the race-test screen and auto-runs
+// all scenarios 3 seconds after mount. The script flips this to true, force-stops
+// and relaunches the app five times, parses the [RACE549] logcat summary lines,
+// and flips the flag back to false before exiting. Leave as `false` in the
+// checked-in source so normal development is unaffected.
+const VERIFY_549_AUTO_RUN = false;
 
 // Uncomment to test cold start with remote notification handling disabled (fix #912)
 // notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } });
@@ -26,7 +35,9 @@ type Section = {
 };
 
 function App() {
-  const [screen, setScreen] = useState<'main' | 'delivered'>('main');
+  const [screen, setScreen] = useState<'main' | 'delivered' | 'race549'>(
+    VERIFY_549_AUTO_RUN ? 'race549' : 'main',
+  );
   const log = useCallback((msg: string) => {
     console.log(`[Notifee] ${msg}`);
   }, []);
@@ -487,6 +498,10 @@ function App() {
       buttons: [{ label: 'Open DELIVERED Test', onPress: () => setScreen('delivered') }],
     },
     {
+      title: 'Issue #549 Race Test',
+      buttons: [{ label: 'Open #549 Race Test', onPress: () => setScreen('race549') }],
+    },
+    {
       title: 'Bug #1128 Tests',
       buttons: [
         { label: 'Display with Data', onPress: displayWithData },
@@ -503,6 +518,17 @@ function App() {
     return (
       <SafeAreaProvider>
         <DeliveredTestScreen onBack={() => setScreen('main')} />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (screen === 'race549') {
+    return (
+      <SafeAreaProvider>
+        <TriggerRaceTestScreen
+          onBack={() => setScreen('main')}
+          autoRun={VERIFY_549_AUTO_RUN}
+        />
       </SafeAreaProvider>
     );
   }
