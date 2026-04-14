@@ -142,6 +142,31 @@ describe('Notifee Api Module', () => {
     expect(mockNotifeeNativeModule.cancelTriggerNotification).toBeCalledWith(notificationId);
   });
 
+  // Regression guard for the #549 fix: Room write failures used to be
+  // silently swallowed by WorkDataRepository's fire-and-forget executor.
+  // After the fix they propagate through the JS Promise as a rejection.
+  // These tests ensure the JS layer does not re-introduce silent swallowing.
+  test('cancelTriggerNotifications rejects when native rejects', async () => {
+    const boom = new Error('db-fail');
+    mockNotifeeNativeModule.cancelTriggerNotifications.mockRejectedValueOnce(boom);
+
+    await expect(apiModule.cancelTriggerNotifications()).rejects.toThrow('db-fail');
+    expect(mockNotifeeNativeModule.cancelTriggerNotifications).toBeCalledTimes(1);
+  });
+
+  test('createTriggerNotification rejects when native rejects', async () => {
+    const boom = new Error('insert-fail');
+    mockNotifeeNativeModule.createTriggerNotification.mockRejectedValueOnce(boom);
+
+    await expect(
+      apiModule.createTriggerNotification(
+        { id: 'x', title: 't' },
+        { type: TriggerType.TIMESTAMP, timestamp: Date.now() + 60_000 },
+      ),
+    ).rejects.toThrow('insert-fail');
+    expect(mockNotifeeNativeModule.createTriggerNotification).toBeCalledTimes(1);
+  });
+
   describe('createChannel', () => {
     test('return empty string for iOS', async () => {
       setPlatform('ios');
