@@ -13,20 +13,59 @@ package app.notifee.core;
  *
  * NOT RUN IN CI.
  *
- * Instrumented regression test for caller #8 (reboot recovery anchor
- * persistence) from pre-fix-549-audit.md. Seeds five recurring trigger rows
- * with timestamps in the past, invokes NotifeeAlarmManager.rescheduleNotifications
- * via its public entry point, and asserts that every row has an advanced
- * timestamp once the reschedule completes — proving that the per-entity
- * WorkDataRepository.update(...) futures are awaited before the
- * BroadcastReceiver finish path, which is the #549 fix commit
- * 71fa20e ("fix(android): persist reboot recovery anchor updates before
- * finishing receiver").
+ * Instrumented regression suite for the reboot-recovery path in
+ * NotifeeAlarmManager.rescheduleNotifications, covering three upstream
+ * issues across five test cases:
  *
- * Run manually:
+ *   1. rescheduleNotifications_advancesEveryAnchorBeforeCompleting
+ *      (upstream invertase/notifee#549 — reboot-recovery anchor persistence
+ *      from caller #8 of pre-fix-549-audit.md). Seeds five HOURLY recurring
+ *      rows with past anchors and asserts every row has an advanced
+ *      timestamp once the reschedule completes, proving per-entity
+ *      WorkDataRepository update futures are awaited before the
+ *      BroadcastReceiver finish path. Regression guard for commit 71fa20e.
+ *
+ *   2. rescheduleNotifications_dailyTriggers_advancesStaleAnchorsToFuture
+ *      (upstream invertase/notifee#839 — DAILY trigger fails to re-fire
+ *      from day 2 onwards on Android). Seeds stale DAILY anchors, asserts
+ *      they are advanced to the future AND that an AlarmManager
+ *      PendingIntent is registered for each row (proving
+ *      scheduleTimestampTriggerNotification → setNextTimestamp →
+ *      alarmManager.set* ran in order).
+ *
+ *   3. rescheduleNotifications_staleNonRepeating_withinGracePeriod_rowIsDeleted
+ *      (upstream invertase/notifee#734 — zombie stale triggers on OEM
+ *      reboot-suppressed devices, within 24h grace period). Seeds a stale
+ *      non-repeating row 1h in the past; asserts the row is deleted after
+ *      the reschedule pass, proving the fire-once-then-delete primary
+ *      branch of handleStaleNonRepeatingTrigger ran.
+ *
+ *   4. rescheduleNotifications_staleNonRepeating_beyondGracePeriod_rowIsDeleted
+ *      (upstream invertase/notifee#734, beyond 24h grace period). Seeds a
+ *      stale non-repeating row 48h in the past; asserts the row is deleted
+ *      without firing a notification (delete-silent branch).
+ *
+ *   5. rescheduleNotifications_staleNonRepeating_displayFails_rowStillDeleted
+ *      (upstream invertase/notifee#734 resilience path, discovered via the
+ *      Step 6 smoke dry-run). Seeds a deliberately malformed non-repeating
+ *      row (no `android` sub-bundle) so NotificationManager.displayNotification
+ *      throws NullPointerException inside NotificationAndroidModel.getChannelId.
+ *      Asserts the row is STILL deleted because Futures.catchingAsync in
+ *      handleStaleNonRepeatingTrigger routes the failure through the
+ *      resilient branch that still runs deleteById.
+ *
+ * Run manually via the smoke harness (recommended — wraps gradle + copies
+ * reports + fails loud if no XML reports are found):
+ *
+ *     scripts/verify-step7-fixes.sh
+ *
+ * Or directly with Gradle. Note that `--tests` is NOT a valid command-line
+ * option on the AGP DeviceProviderInstrumentTestTask — use the
+ * instrumentation runner argument property instead:
+ *
  *     cd apps/smoke/android
  *     ./gradlew :react-native-notify-kit:connectedDebugAndroidTest \
- *         --tests app.notifee.core.RebootRecoveryTest
+ *         -Pandroid.testInstrumentationRunnerArguments.class=app.notifee.core.RebootRecoveryTest
  */
 
 import static org.junit.Assert.assertEquals;
@@ -310,7 +349,10 @@ public class RebootRecoveryTest {
     new NotifeeAlarmManager().rescheduleNotifications(null);
 
     // The resilient chain is:
-    //   displayNotification → CATCHING Throwable → Futures.immediateFuture(null) → deleteById
+    //   displayNotification
+    //     → CATCHING Exception (narrowed in Step 7 to let Error propagate)
+    //     → Futures.immediateFuture(null)
+    //     → deleteById
     // So even though the first step explodes on NullPointerException, the deleteById continuation
     // still runs. We observe the same terminal state as the happy path: the Room row is gone.
     awaitRowDeleted(id);
