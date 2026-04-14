@@ -97,7 +97,7 @@ for i in $(seq 1 "$RUNS"); do
   adb shell am start -n "$ACTIVITY" >/dev/null
   RUN_TIMESTAMPS[i]="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-  log "waiting up to ${PER_RUN_TIMEOUT}s for RACE549-DONE"
+  log "waiting up to ${PER_RUN_TIMEOUT}s for RACE549]-DONE"
   # Collect logcat output until we see -DONE or timeout.
   LOGFILE="$(mktemp -t verify549-run.XXXXXX)"
   (
@@ -105,7 +105,7 @@ for i in $(seq 1 "$RUNS"); do
     LOGCAT_PID=$!
     SECONDS_WAITED=0
     while [ "$SECONDS_WAITED" -lt "$PER_RUN_TIMEOUT" ]; do
-      if grep -q "RACE549-DONE" "$LOGFILE" 2>/dev/null; then
+      if grep -q "RACE549]-DONE" "$LOGFILE" 2>/dev/null; then
         kill -9 $LOGCAT_PID 2>/dev/null || true
         exit 0
       fi
@@ -117,10 +117,12 @@ for i in $(seq 1 "$RUNS"); do
   ) || fail "run $i did not finish within ${PER_RUN_TIMEOUT}s; see $LOGFILE"
 
   # Extract per-scenario summaries. Each is a single JSON object on one line.
-  A="$(grep 'RACE549-A-summary' "$LOGFILE" | sed -n 's/.*RACE549-A-summary //p' | tail -1)"
-  B="$(grep 'RACE549-B-summary' "$LOGFILE" | sed -n 's/.*RACE549-B-summary //p' | tail -1)"
-  C="$(grep 'RACE549-C-summary' "$LOGFILE" | sed -n 's/.*RACE549-C-summary //p' | tail -1)"
-  D="$(grep 'RACE549-D-summary' "$LOGFILE" | sed -n 's/.*RACE549-D-summary //p' | tail -1)"
+  # Note: the console.log TAG is "[RACE549]" so the on-wire line contains
+  # "[RACE549]-A-summary {...}" — patterns must include the literal "]".
+  A="$(grep 'RACE549\]-A-summary' "$LOGFILE" | sed -n 's/.*RACE549\]-A-summary //p' | tail -1)"
+  B="$(grep 'RACE549\]-B-summary' "$LOGFILE" | sed -n 's/.*RACE549\]-B-summary //p' | tail -1)"
+  C="$(grep 'RACE549\]-C-summary' "$LOGFILE" | sed -n 's/.*RACE549\]-C-summary //p' | tail -1)"
+  D="$(grep 'RACE549\]-D-summary' "$LOGFILE" | sed -n 's/.*RACE549\]-D-summary //p' | tail -1)"
 
   [ -n "$A" ] && [ -n "$B" ] && [ -n "$C" ] && [ -n "$D" ] \
       || fail "run $i: missing one or more summaries; see $LOGFILE"
