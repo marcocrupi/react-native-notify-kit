@@ -30,10 +30,13 @@ package app.notifee.core;
  */
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -73,10 +76,15 @@ import org.junit.runner.RunWith;
 public class RebootRecoveryTest {
 
   private static final int SEED_COUNT = 5;
+  private static final int DAILY_SEED_COUNT = 2;
   private static final long HOUR_IN_MS = 60L * 60 * 1000;
+  private static final long DAY_IN_MS = 24 * HOUR_IN_MS;
 
   /** 5 hours before "now" — well in the past so setNextTimestamp must advance. */
   private static final long OLD_ANCHOR_OFFSET_MS = 5 * HOUR_IN_MS;
+
+  /** 2 days before "now" — stale DAILY anchor that must be advanced by reboot recovery. */
+  private static final long OLD_DAILY_ANCHOR_OFFSET_MS = 2 * DAY_IN_MS;
 
   private static final long POLL_DEADLINE_MS = 15_000;
   private static final long POLL_INTERVAL_MS = 100;
@@ -100,6 +108,9 @@ public class RebootRecoveryTest {
     // Cancel every real alarm the test scheduled so the device is left clean.
     for (int i = 0; i < SEED_COUNT; i++) {
       NotifeeAlarmManager.cancelNotification(testId(i));
+    }
+    for (int i = 0; i < DAILY_SEED_COUNT; i++) {
+      NotifeeAlarmManager.cancelNotification(dailyTestId(i));
     }
     repo.deleteAll().get(5, TimeUnit.SECONDS);
   }
@@ -147,14 +158,79 @@ public class RebootRecoveryTest {
   }
 
   /**
+   * Regression test for upstream invertase/notifee#839 — DAILY trigger fails to re-fire from day
+   * 2 onwards on Android. Seeds {@value DAILY_SEED_COUNT} stale DAILY anchors, invokes reboot
+   * recovery, and asserts that every row's timestamp has been advanced into the future AND that
+   * an AlarmManager PendingIntent has been registered for each row (proving the fix path
+   * scheduleTimestampTriggerNotification → setNextTimestamp → alarmManager.set* ran in order).
+   */
+  @Test
+  public void rescheduleNotifications_dailyTriggers_advancesStaleAnchorsToFuture()
+      throws Exception {
+    long now = System.currentTimeMillis();
+    long oldAnchor = now - OLD_DAILY_ANCHOR_OFFSET_MS;
+    long minExpectedAnchor = now;
+
+    for (int i = 0; i < DAILY_SEED_COUNT; i++) {
+      repo.insert(buildDailyEntity(dailyTestId(i), oldAnchor)).get(5, TimeUnit.SECONDS);
+    }
+    assertEquals(DAILY_SEED_COUNT, repo.getAll().get(5, TimeUnit.SECONDS).size());
+
+    new NotifeeAlarmManager().rescheduleNotifications(null);
+
+    List<WorkDataEntity> rows =
+        awaitAllAnchorsAdvancedWithExpectedCount(minExpectedAnchor, DAILY_SEED_COUNT);
+
+    assertEquals(
+        "no DAILY rows lost during reboot recovery", DAILY_SEED_COUNT, rows.size());
+    for (WorkDataEntity row : rows) {
+      Bundle triggerBundle = ObjectUtils.bytesToBundle(row.getTrigger());
+      long newAnchor = ObjectUtils.getLong(triggerBundle.get("timestamp"));
+      assertTrue(
+          "DAILY row "
+              + row.getId()
+              + " must be advanced to the future: was="
+              + oldAnchor
+              + " now="
+              + newAnchor,
+          newAnchor >= minExpectedAnchor);
+      assertTrue(
+          "DAILY row " + row.getId() + " must not be advanced more than 25h ahead: " + newAnchor,
+          newAnchor < now + 25L * HOUR_IN_MS);
+    }
+
+    // Every DAILY row must have a live AlarmManager PendingIntent registered. FLAG_NO_CREATE
+    // returns null if no matching PendingIntent exists — which would mean
+    // scheduleTimestampTriggerNotification never ran or setNextTimestamp did not reach the
+    // alarmManager.set* call.
+    for (int i = 0; i < DAILY_SEED_COUNT; i++) {
+      Intent intent = new Intent(context, NotificationAlarmReceiver.class);
+      intent.putExtra("notificationId", dailyTestId(i));
+      PendingIntent pi =
+          PendingIntent.getBroadcast(
+              context,
+              dailyTestId(i).hashCode(),
+              intent,
+              PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_MUTABLE);
+      assertNotNull(
+          "AlarmManager PendingIntent must be registered for DAILY row " + dailyTestId(i), pi);
+    }
+  }
+
+  /**
    * Polls {@link WorkDataRepository#getAll()} until every row has a timestamp at or after {@code
    * minExpectedAnchor}, or fails on timeout.
    */
   private List<WorkDataEntity> awaitAllAnchorsAdvanced(long minExpectedAnchor) throws Exception {
+    return awaitAllAnchorsAdvancedWithExpectedCount(minExpectedAnchor, SEED_COUNT);
+  }
+
+  private List<WorkDataEntity> awaitAllAnchorsAdvancedWithExpectedCount(
+      long minExpectedAnchor, int expectedCount) throws Exception {
     long deadline = System.currentTimeMillis() + POLL_DEADLINE_MS;
     while (System.currentTimeMillis() < deadline) {
       List<WorkDataEntity> rows = repo.getAll().get(5, TimeUnit.SECONDS);
-      if (rows.size() == SEED_COUNT && allAdvanced(rows, minExpectedAnchor)) {
+      if (rows.size() == expectedCount && allAdvanced(rows, minExpectedAnchor)) {
         return rows;
       }
       Thread.sleep(POLL_INTERVAL_MS);
@@ -200,5 +276,30 @@ public class RebootRecoveryTest {
 
   private static String testId(int i) {
     return "reboot-recovery-test-" + i;
+  }
+
+  /** Build a recurring-daily trigger entity with the given id and initial anchor. */
+  private static WorkDataEntity buildDailyEntity(String id, long anchorMs) {
+    Bundle notificationBundle = new Bundle();
+    notificationBundle.putString("id", id);
+    notificationBundle.putString("title", "RebootRecoveryTest daily " + id);
+
+    Bundle triggerBundle = new Bundle();
+    triggerBundle.putInt("type", 0); // TIMESTAMP
+    triggerBundle.putLong("timestamp", anchorMs);
+    triggerBundle.putInt("repeatFrequency", 1); // DAILY
+    Bundle alarmManagerBundle = new Bundle();
+    alarmManagerBundle.putInt("type", 3); // SET_EXACT_AND_ALLOW_WHILE_IDLE
+    triggerBundle.putBundle("alarmManager", alarmManagerBundle);
+
+    return new WorkDataEntity(
+        id,
+        ObjectUtils.bundleToBytes(notificationBundle),
+        ObjectUtils.bundleToBytes(triggerBundle),
+        true /* withAlarmManager */);
+  }
+
+  private static String dailyTestId(int i) {
+    return "reboot-recovery-daily-test-" + i;
   }
 }

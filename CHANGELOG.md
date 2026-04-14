@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Android**: Regression tests for DAILY/WEEKLY/HOURLY trigger rescheduling cycle, including DST spring-forward and fall-back edge cases (upstream: [invertase/notifee#839](https://github.com/invertase/notifee/issues/839), [#875](https://github.com/invertase/notifee/issues/875)).
+
 ## [9.5.0] - 2026-04-14
 
 ### Fixed
