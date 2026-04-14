@@ -47,6 +47,28 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+/**
+ * ⚠️ WARNING — DESTRUCTIVE INSTRUMENTED TEST ⚠️
+ *
+ * <p>This test calls {@code WorkDataRepository.getInstance(context)}, which returns the
+ * production singleton backed by the on-disk {@code notifee_core_database}. The {@code @Before}
+ * and {@code @After} hooks call {@code deleteAll()} on that database.
+ *
+ * <p>If you run this test on a device that has REAL scheduled notifee notifications (your
+ * personal phone, a shared QA device, a customer's device), THOSE NOTIFICATIONS WILL BE
+ * SILENTLY DELETED. There is no undo.
+ *
+ * <p>Run this test only on:
+ *
+ * <ul>
+ *   <li>Throwaway emulators
+ *   <li>Dedicated test devices
+ *   <li>Devices where you have explicitly verified that no production notifee state exists
+ * </ul>
+ *
+ * <p>A structural fix (migrate to an in-memory Room database for tests) is the correct
+ * long-term solution but is out of scope for the #549 fix PR.
+ */
 @RunWith(AndroidJUnit4.class)
 public class RebootRecoveryTest {
 
