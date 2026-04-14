@@ -22,6 +22,15 @@ import android.content.SharedPreferences;
 
 class Preferences {
   private static final String PREFERENCES_FILE = "app.notifee.core";
+
+  /**
+   * SharedPreferences key storing the value of {@code Settings.Global.BOOT_COUNT} observed on the
+   * most recent successful app init. Compared against the current {@code BOOT_COUNT} to detect a
+   * reboot since the last app run — the core mechanism of the OEM cold-start recovery added for
+   * upstream invertase/notifee#734.
+   */
+  static final String LAST_KNOWN_BOOT_COUNT_KEY = "notifee_last_known_boot_count";
+
   private static Preferences sharedInstance = new Preferences();
   private SharedPreferences preferences;
 

@@ -49,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class NotifeeAlarmManager {
   private static final String TAG = "NotifeeAlarmManager";
@@ -66,6 +67,18 @@ class NotifeeAlarmManager {
    */
   private static final long STALE_TRIGGER_GRACE_PERIOD_MS = TimeUnit.HOURS.toMillis(24);
 
+  /**
+   * Process-wide guard against concurrent reschedule passes. Set via {@code compareAndSet} at the
+   * entry of {@link #rescheduleNotifications} and cleared on every terminal path. Prevents the
+   * double-advancement race that would occur if {@code RebootBroadcastReceiver} (triggered by
+   * BOOT_COMPLETED) and {@code InitProvider} (triggered by the BOOT_COUNT cold-start recovery added
+   * for upstream invertase/notifee#734) both ran {@code rescheduleNotifications} in parallel: for
+   * past-timestamp repeating triggers, {@code setNextTimestamp} advances the anchor in-place, so
+   * two concurrent passes would skip a full period. Duplicate concurrent requests are logged and
+   * dropped — the winning pass owns the reschedule cycle to completion.
+   */
+  private static final AtomicBoolean rescheduleInProgress = new AtomicBoolean(false);
+
   // Scheduler used only as the timeout clock for Futures.withTimeout on Room
   // writes happening inside BroadcastReceiver.goAsync() scopes. Broadcasts have
   // ~10s before Android kills the process, so we cap the Room wait at 8s and
@@ -80,10 +93,15 @@ class NotifeeAlarmManager {
    * from a {@link BroadcastReceiver#goAsync} scope where the receiver must tell Android "I'm done"
    * within ~10s or the process is killed. Timeouts are logged at {@code WARN} with the supplied
    * {@code logContext}; real failures at {@code ERROR}.
+   *
+   * <p>If {@code beforeFinish} is non-null it is executed immediately before {@code
+   * pendingResult.finish()} on both the success and failure paths. Callers use this hook to release
+   * any process-wide state they acquired before dispatching (e.g. the reschedule lock).
    */
   private static void finishReceiverWhenDone(
       @NonNull ListenableFuture<?> future,
       @Nullable BroadcastReceiver.PendingResult pendingResult,
+      @Nullable Runnable beforeFinish,
       @NonNull String logContext) {
     ListenableFuture<?> bounded =
         Futures.withTimeout(
@@ -93,6 +111,9 @@ class NotifeeAlarmManager {
         new FutureCallback<Object>() {
           @Override
           public void onSuccess(Object result) {
+            if (beforeFinish != null) {
+              beforeFinish.run();
+            }
             if (pendingResult != null) {
               pendingResult.finish();
             }
@@ -110,6 +131,9 @@ class NotifeeAlarmManager {
                       + "s; finishing BroadcastReceiver anyway to avoid ANR");
             } else {
               Logger.e(TAG, "Failure in " + logContext, new Exception(t));
+            }
+            if (beforeFinish != null) {
+              beforeFinish.run();
             }
             if (pendingResult != null) {
               pendingResult.finish();
@@ -191,7 +215,7 @@ class NotifeeAlarmManager {
     // Awaits the Room write before pendingResult.finish(), bounded by the 8s
     // ANR safety timeout. Handles success, failure, and timeout uniformly.
     finishReceiverWhenDone(
-        displayAndPersistFuture, pendingResult, "displayScheduledNotification[" + id + "]");
+        displayAndPersistFuture, pendingResult, null, "displayScheduledNotification[" + id + "]");
   }
 
   public static PendingIntent getAlarmManagerIntentForNotification(String notificationId) {
@@ -443,6 +467,16 @@ class NotifeeAlarmManager {
   }
 
   void rescheduleNotifications(@Nullable BroadcastReceiver.PendingResult pendingResult) {
+    if (!rescheduleInProgress.compareAndSet(false, true)) {
+      Logger.i(TAG, "Reschedule already in progress, skipping duplicate request");
+      if (pendingResult != null) {
+        pendingResult.finish();
+      }
+      return;
+    }
+
+    final Runnable releaseLock = () -> rescheduleInProgress.set(false);
+
     Logger.d(TAG, "Reschedule Notifications on reboot");
     Futures.addCallback(
         getScheduledNotifications(),
@@ -456,6 +490,7 @@ class NotifeeAlarmManager {
                     + " recurring alarms");
 
             if (workDataEntities == null || workDataEntities.isEmpty()) {
+              releaseLock.run();
               if (pendingResult != null) {
                 pendingResult.finish();
               }
@@ -481,14 +516,18 @@ class NotifeeAlarmManager {
             // Awaits all per-entity update futures before finishing the boot
             // receiver, bounded by the 8s ANR safety timeout. Any not-yet-
             // persisted next-fire anchors left behind on timeout will catch up
-            // on the next alarm fire.
+            // on the next alarm fire. The releaseLock runnable is invoked from
+            // inside finishReceiverWhenDone's terminal callbacks (success,
+            // failure, or timeout), guaranteeing the CAS flag is cleared
+            // exactly once on every code path.
             ListenableFuture<List<Void>> combined = Futures.allAsList(updateFutures);
-            finishReceiverWhenDone(combined, pendingResult, "rescheduleNotifications");
+            finishReceiverWhenDone(combined, pendingResult, releaseLock, "rescheduleNotifications");
           }
 
           @Override
           public void onFailure(@NonNull Throwable t) {
             Logger.e(TAG, "Failed to reschedule notifications", new Exception(t));
+            releaseLock.run();
             if (pendingResult != null) {
               pendingResult.finish();
             }
