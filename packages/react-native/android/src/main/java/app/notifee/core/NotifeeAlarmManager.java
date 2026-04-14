@@ -144,8 +144,7 @@ class NotifeeAlarmManager {
                   || workDataEntity.getNotification() == null
                   || workDataEntity.getTrigger() == null) {
                 Logger.w(
-                    TAG,
-                    "Attempted to handle doScheduledWork but no notification data was found.");
+                    TAG, "Attempted to handle doScheduledWork but no notification data was found.");
                 return Futures.immediateFuture(null);
               }
 
@@ -174,8 +173,7 @@ class NotifeeAlarmManager {
                                   true));
                     }
                     // not repeating, delete database entry if work is a one-time request
-                    return WorkDataRepository.getInstance(getApplicationContext())
-                        .deleteById(id);
+                    return WorkDataRepository.getInstance(getApplicationContext()).deleteById(id);
                   },
                   alarmManagerExecutor);
             },
@@ -335,10 +333,10 @@ class NotifeeAlarmManager {
    * On reboot, reschedule one trigger notification created via alarm manager.
    *
    * <p>Returns a future that completes when Room has persisted the updated next-fire anchor. The
-   * caller MUST await this future before calling {@code pendingResult.finish()} — otherwise
-   * Android may kill the boot receiver's process before Room has drained, and the next reboot
-   * will reschedule from the stale anchor. This bug is NOT in upstream invertase/notifee#549 and
-   * was surfaced only by the pre-fix-549-audit.md read-only caller audit (Caller #8).
+   * caller MUST await this future before calling {@code pendingResult.finish()} — otherwise Android
+   * may kill the boot receiver's process before Room has drained, and the next reboot will
+   * reschedule from the stale anchor. This bug is NOT in upstream invertase/notifee#549 and was
+   * surfaced only by the pre-fix-549-audit.md read-only caller audit (Caller #8).
    */
   ListenableFuture<Void> rescheduleNotification(WorkDataEntity workDataEntity) {
     if (workDataEntity.getNotification() == null || workDataEntity.getTrigger() == null) {

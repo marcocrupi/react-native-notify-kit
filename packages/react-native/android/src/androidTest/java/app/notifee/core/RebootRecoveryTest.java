@@ -50,13 +50,13 @@ import org.junit.runner.RunWith;
 /**
  * ⚠️ WARNING — DESTRUCTIVE INSTRUMENTED TEST ⚠️
  *
- * <p>This test calls {@code WorkDataRepository.getInstance(context)}, which returns the
- * production singleton backed by the on-disk {@code notifee_core_database}. The {@code @Before}
- * and {@code @After} hooks call {@code deleteAll()} on that database.
+ * <p>This test calls {@code WorkDataRepository.getInstance(context)}, which returns the production
+ * singleton backed by the on-disk {@code notifee_core_database}. The {@code @Before} and
+ * {@code @After} hooks call {@code deleteAll()} on that database.
  *
- * <p>If you run this test on a device that has REAL scheduled notifee notifications (your
- * personal phone, a shared QA device, a customer's device), THOSE NOTIFICATIONS WILL BE
- * SILENTLY DELETED. There is no undo.
+ * <p>If you run this test on a device that has REAL scheduled notifee notifications (your personal
+ * phone, a shared QA device, a customer's device), THOSE NOTIFICATIONS WILL BE SILENTLY DELETED.
+ * There is no undo.
  *
  * <p>Run this test only on:
  *
@@ -66,16 +66,18 @@ import org.junit.runner.RunWith;
  *   <li>Devices where you have explicitly verified that no production notifee state exists
  * </ul>
  *
- * <p>A structural fix (migrate to an in-memory Room database for tests) is the correct
- * long-term solution but is out of scope for the #549 fix PR.
+ * <p>A structural fix (migrate to an in-memory Room database for tests) is the correct long-term
+ * solution but is out of scope for the #549 fix PR.
  */
 @RunWith(AndroidJUnit4.class)
 public class RebootRecoveryTest {
 
   private static final int SEED_COUNT = 5;
   private static final long HOUR_IN_MS = 60L * 60 * 1000;
+
   /** 5 hours before "now" — well in the past so setNextTimestamp must advance. */
   private static final long OLD_ANCHOR_OFFSET_MS = 5 * HOUR_IN_MS;
+
   private static final long POLL_DEADLINE_MS = 15_000;
   private static final long POLL_INTERVAL_MS = 100;
 
@@ -131,8 +133,12 @@ public class RebootRecoveryTest {
       Bundle triggerBundle = ObjectUtils.bytesToBundle(row.getTrigger());
       long newAnchor = ObjectUtils.getLong(triggerBundle.get("timestamp"));
       assertTrue(
-          "row " + row.getId() + " must have an advanced anchor: was="
-              + oldAnchor + " now=" + newAnchor,
+          "row "
+              + row.getId()
+              + " must have an advanced anchor: was="
+              + oldAnchor
+              + " now="
+              + newAnchor,
           newAnchor >= oldAnchor + HOUR_IN_MS);
       assertTrue(
           "row " + row.getId() + " anchor must be in the future: " + newAnchor,

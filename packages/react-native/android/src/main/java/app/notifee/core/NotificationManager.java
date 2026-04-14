@@ -548,8 +548,7 @@ class NotificationManager {
                 // has drained. Fixes upstream invertase/notifee#549.
                 return Futures.transformAsync(
                     NotifeeAlarmManager.cancelAllNotifications(),
-                    ignored ->
-                        WorkDataRepository.getInstance(getApplicationContext()).deleteAll(),
+                    ignored -> WorkDataRepository.getInstance(getApplicationContext()).deleteAll(),
                     LISTENING_CACHED_THREAD_POOL);
               }
               return Futures.immediateFuture(null);
@@ -616,8 +615,7 @@ class NotificationManager {
               // Promise — only completes after Room has drained. Fixes upstream
               // invertase/notifee#549 for the per-id cancel path.
               if (notificationType != NOTIFICATION_TYPE_DISPLAYED) {
-                return WorkDataRepository.getInstance(getApplicationContext())
-                    .deleteByIds(ids);
+                return WorkDataRepository.getInstance(getApplicationContext()).deleteByIds(ids);
               }
               return Futures.immediateFuture(null);
             },
@@ -1044,8 +1042,7 @@ class NotificationManager {
                                     // the already-displayed notification.
                                     Logger.e(
                                         TAG,
-                                        "Failed to delete one-time trigger row after"
-                                            + " display",
+                                        "Failed to delete one-time trigger row after" + " display",
                                         new Exception(t));
                                     completer.set(Result.success());
                                   }

@@ -34,8 +34,8 @@ import org.junit.Test;
 
 /**
  * Locks in the post-#549 contract that every {@link WorkDataRepository} mutation method returns a
- * non-null {@link ListenableFuture} that only transitions to done after the underlying DAO call
- * has actually returned — and that DAO exceptions propagate through {@code ExecutionException}.
+ * non-null {@link ListenableFuture} that only transitions to done after the underlying DAO call has
+ * actually returned — and that DAO exceptions propagate through {@code ExecutionException}.
  *
  * <p>Before the #549 fix, these methods were {@code void} and enqueued their work fire-and-forget
  * on a cached thread pool. Any future refactor that drops the future return type or silently
@@ -83,9 +83,7 @@ public class WorkDataRepositoryFutureContractTest {
         .insert(entity);
 
     ListenableFuture<Void> f = repo.insert(entity);
-    assertTrue(
-        "DAO should be entered within 1s",
-        daoEntered.await(1, TimeUnit.SECONDS));
+    assertTrue("DAO should be entered within 1s", daoEntered.await(1, TimeUnit.SECONDS));
     assertFalse("insert future must not be done while DAO is blocked", f.isDone());
 
     daoGate.countDown();

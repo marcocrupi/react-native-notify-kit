@@ -67,9 +67,7 @@ public class WorkDataRepositoryRaceTest {
             .allowMainThreadQueries()
             .build();
     // Shared cached thread pool matches the production executor's concurrency profile.
-    executor =
-        MoreExecutors.listeningDecorator(
-            Executors.newCachedThreadPool());
+    executor = MoreExecutors.listeningDecorator(Executors.newCachedThreadPool());
     repo = new WorkDataRepository(db.workDao(), executor);
   }
 
@@ -167,11 +165,11 @@ public class WorkDataRepositoryRaceTest {
   // ------- Scenario D analogue: concurrent stress -------
 
   /**
-   * Fire 20 concurrent insert and 20 concurrent deleteAll operations across a fixed thread pool
-   * and verify the system reaches a deterministic final state after all futures complete. This
-   * does NOT assert a specific final count — ordering between concurrent creates and cancels is
-   * implementation-defined — but it does assert that every future completes successfully and the
-   * DB is readable at the end.
+   * Fire 20 concurrent insert and 20 concurrent deleteAll operations across a fixed thread pool and
+   * verify the system reaches a deterministic final state after all futures complete. This does NOT
+   * assert a specific final count — ordering between concurrent creates and cancels is
+   * implementation-defined — but it does assert that every future completes successfully and the DB
+   * is readable at the end.
    */
   @Test
   public void concurrentInsertAndDelete_allFuturesComplete()
@@ -209,8 +207,7 @@ public class WorkDataRepositoryRaceTest {
       repo.insert(entity("dup")).get(2, TimeUnit.SECONDS);
       // If we reach here the DAO uses REPLACE or similar — mark the test as passing but log.
     } catch (ExecutionException e) {
-      assertFalse(
-          "ExecutionException must wrap a real cause, not null", e.getCause() == null);
+      assertFalse("ExecutionException must wrap a real cause, not null", e.getCause() == null);
     } catch (Throwable unexpected) {
       fail("Expected ExecutionException or success, got: " + unexpected);
     }
