@@ -23,7 +23,7 @@ logcat tag and are all visible via the smoke script's `NOTIFEE:V` filter
 manually without a priority filter, add `NOTIFEE:V` to see everything.
 
 | Path | Fingerprint |
-|------|-------------|
+| ---- | ----------- |
 | RebootBroadcastReceiver fired (BOOT_COMPLETED delivered) | `NOTIFEE (RebootReceiver): Received reboot event` |
 | RebootBroadcastReceiver sync failure (try/catch guard, Step 1) | `NOTIFEE (RebootReceiver): Failed to reschedule notifications after reboot` |
 | NotifeeAlarmManager reschedule pass started | `NOTIFEE (NotifeeAlarmManager): Reschedule Notifications on reboot` |
@@ -38,6 +38,7 @@ manually without a priority filter, add `NOTIFEE:V` to see everything.
 
 Every reschedule pass, regardless of entry point, should also emit one of
 these terminals once the async chain completes:
+
 - `NOTIFEE (NotifeeAlarmManager): Failure in rescheduleNotifications` (on error)
 - (silent success — no dedicated log line, the PendingResult just finishes)
 
@@ -59,12 +60,14 @@ originally scheduled time on a device where BOOT_COMPLETED *is* delivered normal
 7. Capture logs: `scripts/smoke-test-734.sh logcat-dump /tmp/s1-logcat.txt`
 
 **Expected** in `/tmp/s1-logcat.txt`:
+
 - `NOTIFEE (RebootReceiver): Received reboot event`
 - `NOTIFEE (NotifeeAlarmManager): Reschedule Notifications on reboot`
 - `NOTIFEE (NotifeeAlarmManager): Reschedule starting for 1 recurring alarms` (or more)
 - Followed by the notification firing and `NotificationManager` delivery logs.
 
 **Fail modes**:
+
 - No `RebootReceiver` line → BOOT_COMPLETED not delivered by the device
   (suggests OEM autostart restriction — see Scenario 4).
 - `Failed to reschedule` line → Step 1 guard caught a regression; inspect
@@ -89,6 +92,7 @@ row directly into Room via the Java API which bypasses the validators.
 
 **Expected**: gradle reports `BUILD SUCCESSFUL` with `RebootRecoveryTest`
 running 4 tests, all passing. The two Step 2 cases are:
+
 - `rescheduleNotifications_staleNonRepeating_withinGracePeriod_rowIsDeleted`
 - `rescheduleNotifications_staleNonRepeating_beyondGracePeriod_rowIsDeleted`
 
@@ -162,6 +166,7 @@ Simulation recipe (works on any emulator or normal test device):
 - `scripts/smoke-test-734.sh prefs-dump` now shows the updated baseline.
 
 **Fail modes**:
+
 - No `Boot detected since last run` line → `InitProvider.dispatchBootCheck`
   did not run, or BOOT_COUNT didn't change (unlikely after a real reboot).
 - No `Reschedule already in progress` line **and** two `Reschedule starting`
@@ -192,6 +197,7 @@ path.
 7. `scripts/smoke-test-734.sh logcat-dump /tmp/s5-logcat.txt`
 
 **Expected**:
+
 - `NOTIFEE (NotifeeAlarmManager): Reschedule Notifications on reboot`
 - `NOTIFEE (NotifeeAlarmManager): Reschedule starting for 1 recurring alarms`
 - **Exactly one** "Reschedule starting" line (if both reboot-receiver and
@@ -203,7 +209,7 @@ path.
 
 ## Quick checklist to paste into a bug report if something fails
 
-```
+```text
 Device / emulator: <model + Android version>
 Notifee fork commit: <output of `git rev-parse HEAD`>
 Scenario: <1 | 2 | 3 | 4 | 5>
