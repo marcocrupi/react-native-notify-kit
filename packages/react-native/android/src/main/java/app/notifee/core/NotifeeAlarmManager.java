@@ -321,10 +321,18 @@ class NotifeeAlarmManager {
             alarmManagerListeningExecutor);
   }
 
-  /* On reboot, reschedule trigger notifications created via alarm manager  */
-  void rescheduleNotification(WorkDataEntity workDataEntity) {
+  /**
+   * On reboot, reschedule one trigger notification created via alarm manager.
+   *
+   * <p>Returns a future that completes when Room has persisted the updated next-fire anchor. The
+   * caller MUST await this future before calling {@code pendingResult.finish()} — otherwise
+   * Android may kill the boot receiver's process before Room has drained, and the next reboot
+   * will reschedule from the stale anchor. This bug is NOT in upstream invertase/notifee#549 and
+   * was surfaced only by the pre-fix-549-audit.md read-only caller audit (Caller #8).
+   */
+  ListenableFuture<Void> rescheduleNotification(WorkDataEntity workDataEntity) {
     if (workDataEntity.getNotification() == null || workDataEntity.getTrigger() == null) {
-      return;
+      return Futures.immediateFuture(null);
     }
 
     byte[] notificationBytes = workDataEntity.getNotification();
@@ -340,22 +348,23 @@ class NotifeeAlarmManager {
       case 0:
         TimestampTriggerModel trigger = TimestampTriggerModel.fromBundle(triggerBundle);
         if (!trigger.getWithAlarmManager()) {
-          return;
+          return Futures.immediateFuture(null);
         }
 
         scheduleTimestampTriggerNotification(notificationModel, trigger);
-        // Persist updated timestamp so next reboot starts from the correct anchor
-        WorkDataRepository.getInstance(getApplicationContext())
+        // Persist updated timestamp so next reboot starts from the correct anchor.
+        return WorkDataRepository.getInstance(getApplicationContext())
             .update(
                 new WorkDataEntity(
                     workDataEntity.getId(),
                     workDataEntity.getNotification(),
                     ObjectUtils.bundleToBytes(trigger.toBundle()),
                     workDataEntity.getWithAlarmManager()));
-        break;
       case 1:
         // TODO: support interval triggers with alarm manager
-        break;
+        return Futures.immediateFuture(null);
+      default:
+        return Futures.immediateFuture(null);
     }
   }
 
@@ -366,19 +375,78 @@ class NotifeeAlarmManager {
         new FutureCallback<List<WorkDataEntity>>() {
           @Override
           public void onSuccess(List<WorkDataEntity> workDataEntities) {
-            try {
-              for (WorkDataEntity workDataEntity : workDataEntities) {
-                rescheduleNotification(workDataEntity);
-              }
-            } finally {
+            Logger.d(
+                TAG,
+                "Reschedule starting for "
+                    + (workDataEntities != null ? workDataEntities.size() : 0)
+                    + " recurring alarms");
+
+            if (workDataEntities == null || workDataEntities.isEmpty()) {
               if (pendingResult != null) {
                 pendingResult.finish();
               }
+              return;
             }
+
+            List<ListenableFuture<Void>> updateFutures = new ArrayList<>(workDataEntities.size());
+            for (WorkDataEntity workDataEntity : workDataEntities) {
+              try {
+                updateFutures.add(rescheduleNotification(workDataEntity));
+              } catch (Throwable t) {
+                // A single bad entity must not prevent the rest of the batch
+                // from being rescheduled — log and continue.
+                Logger.w(
+                    TAG,
+                    "Failed to reschedule entity "
+                        + workDataEntity.getId()
+                        + ": "
+                        + t.getMessage());
+              }
+            }
+
+            ListenableFuture<List<Void>> combined = Futures.allAsList(updateFutures);
+            ListenableFuture<List<Void>> timeBoundedCombined =
+                Futures.withTimeout(
+                    combined,
+                    RECEIVER_WRITE_TIMEOUT_SECONDS,
+                    TimeUnit.SECONDS,
+                    TIMEOUT_SCHEDULER);
+
+            Futures.addCallback(
+                timeBoundedCombined,
+                new FutureCallback<List<Void>>() {
+                  @Override
+                  public void onSuccess(List<Void> unused) {
+                    Logger.d(TAG, "Reschedule complete; all updates flushed to Room");
+                    if (pendingResult != null) {
+                      pendingResult.finish();
+                    }
+                  }
+
+                  @Override
+                  public void onFailure(@NonNull Throwable t) {
+                    if (t instanceof TimeoutException) {
+                      Logger.w(
+                          TAG,
+                          "Reboot reschedule Room writes did not complete within "
+                              + RECEIVER_WRITE_TIMEOUT_SECONDS
+                              + "s; finishing BroadcastReceiver anyway to avoid ANR."
+                              + " Any not-yet-persisted next-fire anchors will catch up"
+                              + " on the next alarm fire.");
+                    } else {
+                      Logger.e(
+                          TAG, "Failed to reschedule notifications", new Exception(t));
+                    }
+                    if (pendingResult != null) {
+                      pendingResult.finish();
+                    }
+                  }
+                },
+                alarmManagerListeningExecutor);
           }
 
           @Override
-          public void onFailure(Throwable t) {
+          public void onFailure(@NonNull Throwable t) {
             Logger.e(TAG, "Failed to reschedule notifications", new Exception(t));
             if (pendingResult != null) {
               pendingResult.finish();
