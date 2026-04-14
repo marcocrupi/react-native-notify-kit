@@ -29,14 +29,25 @@ import android.content.Intent;
  * display chain completes. This is critical on Android 14+ when the app is killed.
  */
 public class NotificationAlarmReceiver extends BroadcastReceiver {
+  private static final String TAG = "NotificationAlarmReceiver";
+
   @Override
   public void onReceive(Context context, Intent intent) {
     PendingResult pendingResult = goAsync();
-
-    if (ContextHolder.getApplicationContext() == null) {
-      ContextHolder.setApplicationContext(context.getApplicationContext());
+    // See RebootBroadcastReceiver for the rationale behind this guard.
+    boolean asyncHandoffSucceeded = false;
+    try {
+      if (ContextHolder.getApplicationContext() == null) {
+        ContextHolder.setApplicationContext(context.getApplicationContext());
+      }
+      NotifeeAlarmManager.displayScheduledNotification(intent.getExtras(), pendingResult);
+      asyncHandoffSucceeded = true;
+    } catch (Throwable t) {
+      Logger.e(TAG, "Failed to display scheduled notification", t);
+    } finally {
+      if (!asyncHandoffSucceeded && pendingResult != null) {
+        pendingResult.finish();
+      }
     }
-
-    NotifeeAlarmManager.displayScheduledNotification(intent.getExtras(), pendingResult);
   }
 }
