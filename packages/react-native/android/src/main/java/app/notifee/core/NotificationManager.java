@@ -543,15 +543,14 @@ class NotificationManager {
             task -> {
               if (notificationType == NOTIFICATION_TYPE_TRIGGER
                   || notificationType == NOTIFICATION_TYPE_ALL) {
-                return new ExtendedListenableFuture<Void>(
-                        NotifeeAlarmManager.cancelAllNotifications())
-                    .addOnCompleteListener(
-                        (e, result) -> {
-                          if (e == null) {
-                            WorkDataRepository.getInstance(getApplicationContext()).deleteAll();
-                          }
-                        },
-                        LISTENING_CACHED_THREAD_POOL);
+                // Chain the Room delete onto the alarm-manager cancel so the outer
+                // future — and therefore the JS Promise — only completes after Room
+                // has drained. Fixes upstream invertase/notifee#549.
+                return Futures.transformAsync(
+                    NotifeeAlarmManager.cancelAllNotifications(),
+                    ignored ->
+                        WorkDataRepository.getInstance(getApplicationContext()).deleteAll(),
+                    LISTENING_CACHED_THREAD_POOL);
               }
               return Futures.immediateFuture(null);
             },
@@ -613,9 +612,12 @@ class NotificationManager {
                 }))
         .continueWith(
             task -> {
-              // delete all from database
+              // Chain the Room delete so the outer future — and therefore the JS
+              // Promise — only completes after Room has drained. Fixes upstream
+              // invertase/notifee#549 for the per-id cancel path.
               if (notificationType != NOTIFICATION_TYPE_DISPLAYED) {
-                WorkDataRepository.getInstance(getApplicationContext()).deleteByIds(ids);
+                return WorkDataRepository.getInstance(getApplicationContext())
+                    .deleteByIds(ids);
               }
               return Futures.immediateFuture(null);
             },
@@ -691,56 +693,75 @@ class NotificationManager {
 
   static ListenableFuture<Void> createTriggerNotification(
       NotificationModel notificationModel, Bundle triggerBundle) {
-    return LISTENING_CACHED_THREAD_POOL.submit(
-        () -> {
-          int triggerType = ObjectUtils.getInt(triggerBundle.get("type"));
-          switch (triggerType) {
-            case 0:
-              createTimestampTriggerNotification(notificationModel, triggerBundle);
-              break;
-            case 1:
-              createIntervalTriggerNotification(notificationModel, triggerBundle);
-              break;
-          }
+    int triggerType = ObjectUtils.getInt(triggerBundle.get("type"));
+    ListenableFuture<Void> scheduleFuture;
+    switch (triggerType) {
+      case 0:
+        scheduleFuture = createTimestampTriggerNotification(notificationModel, triggerBundle);
+        break;
+      case 1:
+        scheduleFuture = createIntervalTriggerNotification(notificationModel, triggerBundle);
+        break;
+      default:
+        scheduleFuture = Futures.immediateFuture(null);
+        break;
+    }
 
+    return Futures.transform(
+        scheduleFuture,
+        unused -> {
           EventBus.post(
               new NotificationEvent(
                   NotificationEvent.TYPE_TRIGGER_NOTIFICATION_CREATED, notificationModel));
-
           return null;
-        });
+        },
+        LISTENING_CACHED_THREAD_POOL);
   }
 
-  static void createIntervalTriggerNotification(
+  // Returns a future that completes only after the Room insert has persisted AND
+  // WorkManager has enqueued the periodic work. Chaining Room-first guarantees the
+  // worker reads the row on its first fire even if the process is killed between
+  // the JS Promise resolving and WorkManager scheduling. Fixes upstream
+  // invertase/notifee#549 for the interval-trigger path.
+  static ListenableFuture<Void> createIntervalTriggerNotification(
       NotificationModel notificationModel, Bundle triggerBundle) {
     IntervalTriggerModel trigger = IntervalTriggerModel.fromBundle(triggerBundle);
     String uniqueWorkName = "trigger:" + notificationModel.getId();
-    WorkManager workManager = WorkManager.getInstance(getApplicationContext());
+    Context context = getApplicationContext();
 
-    Data.Builder workDataBuilder =
-        new Data.Builder()
-            .putString(Worker.KEY_WORK_TYPE, Worker.WORK_TYPE_NOTIFICATION_TRIGGER)
-            .putString(Worker.KEY_WORK_REQUEST, Worker.WORK_REQUEST_PERIODIC)
-            .putString("id", notificationModel.getId());
+    ListenableFuture<Void> insertFuture =
+        WorkDataRepository.insertTriggerNotification(
+            context, notificationModel, triggerBundle, false);
 
-    WorkDataRepository.getInstance(getApplicationContext())
-        .insertTriggerNotification(notificationModel, triggerBundle, false);
+    return Futures.transform(
+        insertFuture,
+        unused -> {
+          WorkManager workManager = WorkManager.getInstance(context);
+          Data.Builder workDataBuilder =
+              new Data.Builder()
+                  .putString(Worker.KEY_WORK_TYPE, Worker.WORK_TYPE_NOTIFICATION_TRIGGER)
+                  .putString(Worker.KEY_WORK_REQUEST, Worker.WORK_REQUEST_PERIODIC)
+                  .putString("id", notificationModel.getId());
 
-    long interval = trigger.getInterval();
-
-    PeriodicWorkRequest.Builder workRequestBuilder;
-    workRequestBuilder =
-        new PeriodicWorkRequest.Builder(Worker.class, interval, trigger.getTimeUnit())
-            .setInitialDelay(interval, trigger.getTimeUnit());
-
-    workRequestBuilder.addTag(Worker.WORK_TYPE_NOTIFICATION_TRIGGER);
-    workRequestBuilder.addTag(uniqueWorkName);
-    workRequestBuilder.setInputData(workDataBuilder.build());
-    workManager.enqueueUniquePeriodicWork(
-        uniqueWorkName, ExistingPeriodicWorkPolicy.UPDATE, workRequestBuilder.build());
+          long interval = trigger.getInterval();
+          PeriodicWorkRequest.Builder workRequestBuilder =
+              new PeriodicWorkRequest.Builder(Worker.class, interval, trigger.getTimeUnit())
+                  .setInitialDelay(interval, trigger.getTimeUnit());
+          workRequestBuilder.addTag(Worker.WORK_TYPE_NOTIFICATION_TRIGGER);
+          workRequestBuilder.addTag(uniqueWorkName);
+          workRequestBuilder.setInputData(workDataBuilder.build());
+          workManager.enqueueUniquePeriodicWork(
+              uniqueWorkName, ExistingPeriodicWorkPolicy.UPDATE, workRequestBuilder.build());
+          return null;
+        },
+        LISTENING_CACHED_THREAD_POOL);
   }
 
-  static void createTimestampTriggerNotification(
+  // Returns a future that completes only after the Room insert has persisted AND
+  // the AlarmManager / WorkManager schedule call has run. Same rationale as the
+  // interval path above. Fixes upstream invertase/notifee#549 for the timestamp
+  // trigger path (AlarmManager by default since 9.1.12).
+  static ListenableFuture<Void> createTimestampTriggerNotification(
       NotificationModel notificationModel, Bundle triggerBundle) {
     TimestampTriggerModel trigger = TimestampTriggerModel.fromBundle(triggerBundle);
 
@@ -749,52 +770,56 @@ class NotificationManager {
     long delay = trigger.getDelay();
     int interval = trigger.getInterval();
 
-    // Save in DB
     Data.Builder workDataBuilder =
         new Data.Builder()
             .putString(Worker.KEY_WORK_TYPE, Worker.WORK_TYPE_NOTIFICATION_TRIGGER)
             .putString("id", notificationModel.getId());
 
     Boolean withAlarmManager = trigger.getWithAlarmManager();
+    Context context = getApplicationContext();
 
-    WorkDataRepository.getInstance(getApplicationContext())
-        .insertTriggerNotification(notificationModel, triggerBundle, withAlarmManager);
+    ListenableFuture<Void> insertFuture =
+        WorkDataRepository.insertTriggerNotification(
+            context, notificationModel, triggerBundle, withAlarmManager);
 
-    // Schedule notification with alarm manager
-    if (withAlarmManager) {
-      NotifeeAlarmManager.scheduleTimestampTriggerNotification(notificationModel, trigger);
-      return;
-    }
+    return Futures.transform(
+        insertFuture,
+        unused -> {
+          if (withAlarmManager) {
+            NotifeeAlarmManager.scheduleTimestampTriggerNotification(notificationModel, trigger);
+            return null;
+          }
 
-    // Continue to schedule trigger notification with WorkManager
-    WorkManager workManager = WorkManager.getInstance(getApplicationContext());
+          WorkManager workManager = WorkManager.getInstance(context);
 
-    // WorkManager - One time trigger
-    if (interval == -1) {
-      OneTimeWorkRequest.Builder workRequestBuilder = new OneTimeWorkRequest.Builder(Worker.class);
-      workRequestBuilder.addTag(Worker.WORK_TYPE_NOTIFICATION_TRIGGER);
-      workRequestBuilder.addTag(uniqueWorkName);
-      workDataBuilder.putString(Worker.KEY_WORK_REQUEST, Worker.WORK_REQUEST_ONE_TIME);
-      workRequestBuilder.setInputData(workDataBuilder.build());
-      workRequestBuilder.setInitialDelay(delay, TimeUnit.SECONDS);
-      workManager.enqueueUniqueWork(
-          uniqueWorkName, ExistingWorkPolicy.REPLACE, workRequestBuilder.build());
-    } else {
-      // WorkManager - repeat trigger
-      PeriodicWorkRequest.Builder workRequestBuilder;
+          // WorkManager - One time trigger
+          if (interval == -1) {
+            OneTimeWorkRequest.Builder workRequestBuilder =
+                new OneTimeWorkRequest.Builder(Worker.class);
+            workRequestBuilder.addTag(Worker.WORK_TYPE_NOTIFICATION_TRIGGER);
+            workRequestBuilder.addTag(uniqueWorkName);
+            workDataBuilder.putString(Worker.KEY_WORK_REQUEST, Worker.WORK_REQUEST_ONE_TIME);
+            workRequestBuilder.setInputData(workDataBuilder.build());
+            workRequestBuilder.setInitialDelay(delay, TimeUnit.SECONDS);
+            workManager.enqueueUniqueWork(
+                uniqueWorkName, ExistingWorkPolicy.REPLACE, workRequestBuilder.build());
+          } else {
+            // WorkManager - repeat trigger
+            PeriodicWorkRequest.Builder workRequestBuilder =
+                new PeriodicWorkRequest.Builder(
+                    Worker.class, trigger.getInterval(), trigger.getTimeUnit());
 
-      workRequestBuilder =
-          new PeriodicWorkRequest.Builder(
-              Worker.class, trigger.getInterval(), trigger.getTimeUnit());
-
-      workRequestBuilder.addTag(Worker.WORK_TYPE_NOTIFICATION_TRIGGER);
-      workRequestBuilder.addTag(uniqueWorkName);
-      workRequestBuilder.setInitialDelay(delay, TimeUnit.SECONDS);
-      workDataBuilder.putString(Worker.KEY_WORK_REQUEST, Worker.WORK_REQUEST_PERIODIC);
-      workRequestBuilder.setInputData(workDataBuilder.build());
-      workManager.enqueueUniquePeriodicWork(
-          uniqueWorkName, ExistingPeriodicWorkPolicy.UPDATE, workRequestBuilder.build());
-    }
+            workRequestBuilder.addTag(Worker.WORK_TYPE_NOTIFICATION_TRIGGER);
+            workRequestBuilder.addTag(uniqueWorkName);
+            workRequestBuilder.setInitialDelay(delay, TimeUnit.SECONDS);
+            workDataBuilder.putString(Worker.KEY_WORK_REQUEST, Worker.WORK_REQUEST_PERIODIC);
+            workRequestBuilder.setInputData(workDataBuilder.build());
+            workManager.enqueueUniquePeriodicWork(
+                uniqueWorkName, ExistingPeriodicWorkPolicy.UPDATE, workRequestBuilder.build());
+          }
+          return null;
+        },
+        LISTENING_CACHED_THREAD_POOL);
   }
 
   static ListenableFuture<List<Bundle>> getDisplayedNotifications() {

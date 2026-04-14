@@ -104,7 +104,10 @@ public class WorkDataRepository {
   }
 
   public static @NonNull ListenableFuture<Void> insertTriggerNotification(
-      NotificationModel notificationModel, Bundle triggerBundle, Boolean withAlarmManager) {
+      @NonNull Context context,
+      NotificationModel notificationModel,
+      Bundle triggerBundle,
+      Boolean withAlarmManager) {
     WorkDataEntity workData =
         new WorkDataEntity(
             notificationModel.getId(),
@@ -112,7 +115,7 @@ public class WorkDataRepository {
             ObjectUtils.bundleToBytes(triggerBundle),
             withAlarmManager);
 
-    return mInstance.insert(workData);
+    return getInstance(context).insert(workData);
   }
 
   public @NonNull ListenableFuture<Void> update(WorkDataEntity workData) {
