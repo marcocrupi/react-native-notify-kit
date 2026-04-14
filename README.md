@@ -304,6 +304,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `getBadgeCount:` completion block never called when running in an app extension, causing JS promises to hang forever in NSE handlers | iOS | Pre-existing | 9.4.0 |
 | Notification Service Extension attachment downloads had no timeout cap (default 60-second `NSURLSession` timeout exceeds iOS's ~30-second NSE budget), causing extension process kill and notification loss on slow networks | iOS | Pre-existing | 9.4.0 |
 | `cancelTriggerNotifications()` / `createTriggerNotification()` promises resolve before Room DB write completes, causing ~3% race on cancel-then-create patterns. Also fixes a previously-undocumented reboot-recovery data-loss bug in `NotifeeAlarmManager.rescheduleNotification` and an ordering bug in `NotificationManager.doScheduledWork` | Android | [#549](https://github.com/invertase/notifee/issues/549) | 9.5.0 |
+| Scheduled trigger notifications silently lost across device reboot on OEM devices (Xiaomi MIUI, OnePlus, Huawei EMUI, Oppo ColorOS, Vivo FuntouchOS) whose vendor OS suppresses `BOOT_COMPLETED` until the user manually enables autostart. Also handles zombie non-repeating triggers whose fire time already passed (fire-once within a 24-hour grace period, then delete the Room row; delete silently beyond the grace period) and adds try/catch/finally guards to all notifee `BroadcastReceiver` async paths. | Android | [#734](https://github.com/invertase/notifee/issues/734) | Unreleased |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
@@ -364,6 +365,45 @@ Android 14 (API 34) requires all foreground services to declare an explicit `for
 Available types: `camera`, `connectedDevice`, `dataSync`, `health`, `location`, `mediaPlayback`, `mediaProjection`, `microphone`, `phoneCall`, `remoteMessaging`, `shortService`, `specialUse`, `systemExempted`. Choose the type that matches your use case — using the wrong type may cause Google Play policy violations.
 
 > **Note:** `shortService` has a 3-minute timeout on Android 14+. If your foreground service needs to run longer, use a different type. The library's `onTimeout()` handler will gracefully stop the service if the timeout fires.
+
+### OEM Background Restrictions
+
+Some Android vendors (Xiaomi/Redmi MIUI, Huawei/Honor EMUI, Oppo/Realme ColorOS, Vivo/iQOO FuntouchOS and OriginOS, Samsung OneUI) apply aggressive autostart and battery-saver restrictions that can prevent scheduled trigger notifications from firing at their exact time after a device reboot. The vendor OS suppresses the `BOOT_COMPLETED` broadcast to apps the user has not explicitly whitelisted in the vendor settings. This is a platform-level behavior imposed by the vendor — no library can make `AlarmManager` deliver an alarm to an app the OEM has explicitly paused.
+
+The fork mitigates this with two layers that work together:
+
+**1. Automatic cold-start recovery.** On every app init, the library compares `Settings.Global.BOOT_COUNT` against the value recorded on the previous run. If a reboot has occurred since the last run — whether or not `BOOT_COMPLETED` was delivered to your app — the library re-arms every persisted trigger on a background thread. This means that on an OEM device where `BOOT_COMPLETED` was suppressed, simply opening your app (or having it cold-started by any other entry point: push notification, geofence, share intent) recovers all missed and upcoming alarms. Previously, opening the app alone did not recover them. This recovery runs unconditionally — it is not gated by the `notifee_init_warmup_enabled` metadata flag, because it is a correctness fix rather than a startup optimization.
+
+**2. Vendor settings helper APIs.** The existing `getPowerManagerInfo()` and `openPowerManagerSettings()` APIs let your app guide the user directly to the correct vendor settings screen (Xiaomi Autostart, Huawei Protected Apps, Oppo Startup Manager, and 13 more vendors) to whitelist the app. Once whitelisted, `BOOT_COMPLETED` is delivered normally on every reboot and exact alarm timing is preserved without waiting for the next app cold-start.
+
+A typical integration that combines both layers looks like this:
+
+```typescript
+import notifee from 'react-native-notify-kit';
+import { Alert, Platform } from 'react-native';
+
+if (Platform.OS === 'android') {
+  const info = await notifee.getPowerManagerInfo();
+  if (info.activity) {
+    // The user is on a device with a known vendor autostart activity.
+    // Prompt them once (e.g. on first run, or after a scheduled notification
+    // fails to fire on time), explaining why exact timing depends on this
+    // permission.
+    Alert.alert(
+      'Allow background activity',
+      'Your device restricts background apps by default. To reliably receive scheduled notifications, please enable autostart for this app.',
+      [
+        { text: 'Open settings', onPress: () => notifee.openPowerManagerSettings() },
+        { text: 'Later', style: 'cancel' },
+      ],
+    );
+  }
+}
+```
+
+For the authoritative vendor-by-vendor matrix of autostart, battery optimization, and background-restriction behavior, see [dontkillmyapp.com](https://dontkillmyapp.com/).
+
+> **Scope note:** the cold-start recovery path is best-effort. It runs as soon as Android invokes `InitProvider.onCreate` (before `Application.onCreate`), but may still be delayed by minutes or hours on a device where the user never opens your app after a reboot. For use cases that require guaranteed sub-second timing (alarm clocks, medication reminders, calendar events), also declare `USE_EXACT_ALARM` in your manifest (see the [note above](#bugs-fixed-from-upstream-notifee)) and prompt the user to whitelist your app via the vendor settings helper.
 
 ### Trigger Notification Reliability
 

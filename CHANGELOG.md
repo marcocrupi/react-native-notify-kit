@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: `RebootBroadcastReceiver`, `NotificationAlarmReceiver`, and `AlarmPermissionBroadcastReceiver` now wrap their synchronous section in a try/catch/finally guard, ensuring `PendingResult.finish()` is always called even when `ContextHolder` init, `NotifeeAlarmManager` instantiation, or `displayScheduledNotification` throws before the async callback is registered. Previously, a synchronous failure would leave the broadcast unterminated and Android would kill the process after ~10s, potentially racing future reboot broadcasts and alarm deliveries. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
+
+- **Android**: Stale non-repeating trigger notifications (timestamp already in the past at reboot-recovery time) are now handled correctly instead of being re-armed as "zombie" alarms that re-fire on every reboot and never clean up from Room. Within a 24-hour grace period, the trigger fires once (matching Android's own past-alarm semantics and user expectation) and the Room row is deleted. Beyond the grace period, the row is deleted silently to avoid showing stale content. `INTERVAL`-type triggers are still not rescheduled on reboot — that is a separate, pre-existing bug with its own TODO in `NotifeeAlarmManager.rescheduleNotification` and is explicitly out of scope for this fix. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
+
 ### Added
 
+- **Android**: Cold-start self-healing for scheduled alarms on OEM devices that suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). `InitProvider` now reads `Settings.Global.BOOT_COUNT` on every app init and, when a boot delta is detected since the last known value persisted in `SharedPreferences`, triggers a full reschedule of persisted `AlarmManager` triggers on a background thread. When `BOOT_COUNT` is unavailable (custom ROMs, emulators, exotic vendors), falls back to a conservative reschedule on every app start; transient read failures never overwrite a real baseline. Paired with a process-wide `AtomicBoolean` race guard in `NotifeeAlarmManager.rescheduleNotifications` that prevents double-advancement of past-repeating triggers when both `RebootBroadcastReceiver` and the cold-start path race after a normal `BOOT_COMPLETED` delivery. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
+
 - **Android**: Regression tests for DAILY/WEEKLY/HOURLY trigger rescheduling cycle, including DST spring-forward and fall-back edge cases (upstream: [invertase/notifee#839](https://github.com/invertase/notifee/issues/839), [#875](https://github.com/invertase/notifee/issues/875)).
+
+- **Tests**: `InitProviderBootCheckTest` — 6 Robolectric unit tests exhaustively covering the pure `shouldRescheduleAfterBoot` decision helper (first run, same boot, new boot, boot-count decrease, BOOT_COUNT unavailable on subsequent run, BOOT_COUNT unavailable on first run). `RebootRecoveryTest` extended with two new instrumented cases seeding stale non-repeating rows at 1 hour and 48 hours in the past and asserting the Room row is deleted after the reschedule pass completes.
+
+- **Tooling**: `scripts/smoke-test-734.sh` and `scripts/smoke-test-734-scenarios.md` — composable manual smoke-test harness for #734. Subcommands cover build, Room DB dump, `Settings.Global.BOOT_COUNT` read, notifee `SharedPreferences` dump, filtered logcat capture, device reboot, state wipe, and running the destructive `RebootRecoveryTest` instrumented suite. Destructive subcommands require an explicit `--i-know` flag. Five scenarios are documented with expected logcat fingerprints and fail-mode triage.
+
+- **Docs**: New "OEM Background Restrictions" section in `README.md` and `packages/react-native/README.md` documenting the interaction between vendor autostart policies and scheduled notifications, and how to use the existing `getPowerManagerInfo()` / `openPowerManagerSettings()` APIs to guide users through vendor-specific settings screens.
 
 ## [9.5.0] - 2026-04-14
 
