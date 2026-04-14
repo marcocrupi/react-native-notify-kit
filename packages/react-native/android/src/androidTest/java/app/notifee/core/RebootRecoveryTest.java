@@ -38,6 +38,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import androidx.core.app.NotificationChannelCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import app.notifee.core.database.WorkDataEntity;
@@ -92,6 +94,16 @@ public class RebootRecoveryTest {
   /** 48 hours before "now" — well beyond the 24h grace period. */
   private static final long STALE_BEYOND_GRACE_OFFSET_MS = 48 * HOUR_IN_MS;
 
+  /**
+   * Channel id used by the within-grace stale-trigger test fixture. Must match a real Android
+   * notification channel created in {@link #setUp()} so {@code
+   * NotificationManager.displayNotification} can build a valid notification from the seeded Room
+   * row. Without a matching channel on Android 8+, the display path falls into the resilient
+   * catching branch (which is the subject of its own dedicated test), not the primary
+   * fire-once-then-delete path.
+   */
+  private static final String STALE_TEST_CHANNEL_ID = "reboot-recovery-stale-test-channel";
+
   private static final long POLL_DEADLINE_MS = 15_000;
   private static final long POLL_INTERVAL_MS = 100;
 
@@ -107,6 +119,15 @@ public class RebootRecoveryTest {
     ContextHolder.setApplicationContext(context.getApplicationContext());
     repo = WorkDataRepository.getInstance(context);
     repo.deleteAll().get(5, TimeUnit.SECONDS);
+
+    // Register a real notification channel the stale-trigger within-grace test can target.
+    // createNotificationChannel is idempotent — repeat calls across tests are a no-op.
+    NotificationChannelCompat channel =
+        new NotificationChannelCompat.Builder(
+                STALE_TEST_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+            .setName("Reboot Recovery Test Channel")
+            .build();
+    NotificationManagerCompat.from(context).createNotificationChannel(channel);
   }
 
   @After
@@ -120,6 +141,12 @@ public class RebootRecoveryTest {
     }
     NotifeeAlarmManager.cancelNotification(staleWithinGraceTestId());
     NotifeeAlarmManager.cancelNotification(staleBeyondGraceTestId());
+    NotifeeAlarmManager.cancelNotification(staleDisplayFailsTestId());
+    // Dismiss any notifications the within-grace tests may have posted so the device
+    // notification shade is left clean — the Room row is the test's contract, but the
+    // visible notification is a side effect we should not leave behind.
+    NotificationManagerCompat.from(context).cancel(staleWithinGraceTestId().hashCode());
+    NotificationManagerCompat.from(context).cancel(staleDisplayFailsTestId().hashCode());
     repo.deleteAll().get(5, TimeUnit.SECONDS);
   }
 
@@ -254,6 +281,46 @@ public class RebootRecoveryTest {
   }
 
   /**
+   * Regression test for upstream invertase/notifee#734 resilience path (discovered via the Step 6
+   * smoke dry-run). Seeds a deliberately malformed non-repeating trigger — missing the {@code
+   * android} sub-bundle entirely, which causes {@code NotificationAndroidModel.getChannelId} to
+   * throw {@link NullPointerException} when {@code NotificationManager.displayNotification} tries
+   * to build a notification from it. The resilience guarantee is that {@code
+   * handleStaleNonRepeatingTrigger} must STILL delete the Room row even when the late-fire fails,
+   * otherwise the zombie re-fire loop (which Bundle A of #734 is supposed to break) simply moves
+   * from "row with valid bundle" to "row with corrupt bundle" and keeps re-appearing on every
+   * reboot.
+   *
+   * <p>In production this scenario is reachable when a consumer upgrades from an older library
+   * version whose serialized Room state has a different shape than the current model expects, when
+   * a notification channel has been deleted between scheduling and recovery, when a
+   * SecurityException is thrown deep inside the display chain on a restrictive OEM device, or for
+   * any other reason a previously-validated notification payload can no longer be displayed.
+   */
+  @Test
+  public void rescheduleNotifications_staleNonRepeating_displayFails_rowStillDeleted()
+      throws Exception {
+    long now = System.currentTimeMillis();
+    long staleAnchor = now - STALE_WITHIN_GRACE_OFFSET_MS;
+    String id = staleDisplayFailsTestId();
+
+    repo.insert(buildMalformedNonRepeatingEntity(id, staleAnchor)).get(5, TimeUnit.SECONDS);
+    assertEquals(1, repo.getAll().get(5, TimeUnit.SECONDS).size());
+
+    new NotifeeAlarmManager().rescheduleNotifications(null);
+
+    // The resilient chain is:
+    //   displayNotification → CATCHING Throwable → Futures.immediateFuture(null) → deleteById
+    // So even though the first step explodes on NullPointerException, the deleteById continuation
+    // still runs. We observe the same terminal state as the happy path: the Room row is gone.
+    awaitRowDeleted(id);
+    assertTrue(
+        "malformed stale row must still be deleted after late-fire failure — the #734 resilience"
+            + " path in handleStaleNonRepeatingTrigger may be broken",
+        repo.getWorkDataById(id).get(5, TimeUnit.SECONDS) == null);
+  }
+
+  /**
    * Regression test for upstream invertase/notifee#734 beyond the 24h grace period. Seeds a stale
    * non-repeating TIMESTAMP trigger whose fire time is 48h in the past, invokes reboot recovery,
    * and asserts that the Room row is deleted WITHOUT the notification being fired (delete-silent
@@ -382,11 +449,54 @@ public class RebootRecoveryTest {
     return "reboot-recovery-daily-test-" + i;
   }
 
-  /** Build a one-shot (non-repeating) TIMESTAMP trigger entity with the given id and anchor. */
+  /**
+   * Build a one-shot (non-repeating) TIMESTAMP trigger entity with a well-formed {@code android}
+   * sub-bundle pointing at {@link #STALE_TEST_CHANNEL_ID}. Used by the within-grace and
+   * beyond-grace tests that exercise the primary decision-tree branches of {@code
+   * handleStaleNonRepeatingTrigger}.
+   */
   private static WorkDataEntity buildNonRepeatingEntity(String id, long anchorMs) {
     Bundle notificationBundle = new Bundle();
     notificationBundle.putString("id", id);
     notificationBundle.putString("title", "RebootRecoveryTest stale " + id);
+
+    // Without this, NotificationAndroidModel.getChannelId NPEs inside the display path
+    // (mNotificationAndroidBundle is null). Production notifications never reach this
+    // code path without a channelId because the TypeScript validators require it, but
+    // test fixtures that bypass the JS layer must synthesize the shape manually.
+    Bundle androidBundle = new Bundle();
+    androidBundle.putString("channelId", STALE_TEST_CHANNEL_ID);
+    notificationBundle.putBundle("android", androidBundle);
+
+    Bundle triggerBundle = new Bundle();
+    triggerBundle.putInt("type", 0); // TIMESTAMP
+    triggerBundle.putLong("timestamp", anchorMs);
+    triggerBundle.putInt("repeatFrequency", -1); // non-repeating
+    Bundle alarmManagerBundle = new Bundle();
+    alarmManagerBundle.putInt("type", 3); // SET_EXACT_AND_ALLOW_WHILE_IDLE
+    triggerBundle.putBundle("alarmManager", alarmManagerBundle);
+
+    return new WorkDataEntity(
+        id,
+        ObjectUtils.bundleToBytes(notificationBundle),
+        ObjectUtils.bundleToBytes(triggerBundle),
+        true /* withAlarmManager */);
+  }
+
+  /**
+   * Build a deliberately malformed non-repeating TIMESTAMP trigger entity that will cause {@code
+   * NotificationManager.displayNotification} to throw {@link NullPointerException} inside {@code
+   * NotificationAndroidModel.getChannelId}. Used by {@link
+   * #rescheduleNotifications_staleNonRepeating_displayFails_rowStillDeleted} to prove the {@code
+   * Futures.catchingAsync} resilience branch in {@code handleStaleNonRepeatingTrigger} deletes the
+   * Room row even when the late-fire fails. The malformation — omitting the {@code android}
+   * sub-bundle — matches the shape a corrupted-upgrade Room row could take in production.
+   */
+  private static WorkDataEntity buildMalformedNonRepeatingEntity(String id, long anchorMs) {
+    Bundle notificationBundle = new Bundle();
+    notificationBundle.putString("id", id);
+    notificationBundle.putString("title", "RebootRecoveryTest malformed " + id);
+    // INTENTIONALLY NO android sub-bundle — this is the failure shape.
 
     Bundle triggerBundle = new Bundle();
     triggerBundle.putInt("type", 0); // TIMESTAMP
@@ -409,5 +519,9 @@ public class RebootRecoveryTest {
 
   private static String staleBeyondGraceTestId() {
     return "reboot-recovery-stale-beyond-grace-test";
+  }
+
+  private static String staleDisplayFailsTestId() {
+    return "reboot-recovery-stale-display-fails-test";
   }
 }

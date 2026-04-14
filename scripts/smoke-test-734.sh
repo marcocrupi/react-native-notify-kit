@@ -188,10 +188,15 @@ cmd_instrumented_tests() {
   require_flag "--i-know" "$@"
   resolve_device
   log "running RebootRecoveryTest on $SERIAL (DESTRUCTIVE — wipes Room DB)"
+  # connectedDebugAndroidTest is a DeviceProviderInstrumentTestTask from the Android
+  # Gradle Plugin, not a JVM Test task — so the `--tests <pattern>` command-line
+  # option is not recognized. Instrumentation test filtering is done via the AGP
+  # property `android.testInstrumentationRunnerArguments.class` (and related keys
+  # for method/package/annotation). Bug surfaced in the Step 6 smoke dry-run.
   (cd "$REPO_ROOT/apps/smoke/android" && \
     ANDROID_SERIAL="$SERIAL" ./gradlew \
       :react-native-notify-kit:connectedDebugAndroidTest \
-      --tests app.notifee.core.RebootRecoveryTest)
+      -Pandroid.testInstrumentationRunnerArguments.class=app.notifee.core.RebootRecoveryTest)
 }
 
 # ─── main ──────────────────────────────────────────────────────────────────

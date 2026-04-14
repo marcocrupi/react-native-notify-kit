@@ -460,10 +460,31 @@ class NotifeeAlarmManager {
             + stalenessMs
             + "ms): "
             + id);
+
+    // Critical: even if the late-fire fails — because the target notification
+    // channel has been deleted between scheduling and recovery, because the
+    // serialized NotificationModel was written by an older library version
+    // whose shape differs, or because displayNotification throws for any other
+    // reason — we MUST still delete the Room row. Otherwise the zombie re-fire
+    // loop this helper is supposed to break persists across future reboots,
+    // exactly the scenario #734 is about. The within-grace path promises
+    // "attempt to fire, always clean"; the fire-once is best-effort, the delete
+    // is the correctness guarantee. Discovered via the Step 6 smoke dry-run,
+    // which surfaced a NullPointerException in NotificationAndroidModel.getChannelId
+    // and observed the chained deleteById never running.
+    ListenableFuture<Void> resilientDisplay =
+        Futures.catchingAsync(
+            NotificationManager.displayNotification(notificationModel, null),
+            Throwable.class,
+            t -> {
+              Logger.w(
+                  TAG, "Late-fire of stale trigger " + id + " failed, proceeding to delete row", t);
+              return Futures.immediateFuture(null);
+            },
+            alarmManagerExecutor);
+
     return Futures.transformAsync(
-        NotificationManager.displayNotification(notificationModel, null),
-        ignored -> workRepo.deleteById(id),
-        alarmManagerExecutor);
+        resilientDisplay, ignored -> workRepo.deleteById(id), alarmManagerExecutor);
   }
 
   void rescheduleNotifications(@Nullable BroadcastReceiver.PendingResult pendingResult) {
