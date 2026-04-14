@@ -86,6 +86,12 @@ public class RebootRecoveryTest {
   /** 2 days before "now" — stale DAILY anchor that must be advanced by reboot recovery. */
   private static final long OLD_DAILY_ANCHOR_OFFSET_MS = 2 * DAY_IN_MS;
 
+  /** 1 hour before "now" — well inside the 24h grace period for stale non-repeating triggers. */
+  private static final long STALE_WITHIN_GRACE_OFFSET_MS = HOUR_IN_MS;
+
+  /** 48 hours before "now" — well beyond the 24h grace period. */
+  private static final long STALE_BEYOND_GRACE_OFFSET_MS = 48 * HOUR_IN_MS;
+
   private static final long POLL_DEADLINE_MS = 15_000;
   private static final long POLL_INTERVAL_MS = 100;
 
@@ -112,6 +118,8 @@ public class RebootRecoveryTest {
     for (int i = 0; i < DAILY_SEED_COUNT; i++) {
       NotifeeAlarmManager.cancelNotification(dailyTestId(i));
     }
+    NotifeeAlarmManager.cancelNotification(staleWithinGraceTestId());
+    NotifeeAlarmManager.cancelNotification(staleBeyondGraceTestId());
     repo.deleteAll().get(5, TimeUnit.SECONDS);
   }
 
@@ -217,6 +225,78 @@ public class RebootRecoveryTest {
   }
 
   /**
+   * Regression test for upstream invertase/notifee#734 within the 24h grace period. Seeds a stale
+   * non-repeating TIMESTAMP trigger whose fire time is 1h in the past, invokes reboot recovery, and
+   * asserts that the Room row is deleted (proving the fire-once-then-delete path ran). The
+   * late-fire itself is a side effect observable only via NotificationManagerCompat; this test
+   * asserts the Room-state contract, which is the guarantee most relevant to preventing zombie
+   * re-fire loops on every subsequent reboot.
+   */
+  @Test
+  public void rescheduleNotifications_staleNonRepeating_withinGracePeriod_rowIsDeleted()
+      throws Exception {
+    long now = System.currentTimeMillis();
+    long staleAnchor = now - STALE_WITHIN_GRACE_OFFSET_MS;
+    String id = staleWithinGraceTestId();
+
+    repo.insert(buildNonRepeatingEntity(id, staleAnchor)).get(5, TimeUnit.SECONDS);
+    assertEquals(1, repo.getAll().get(5, TimeUnit.SECONDS).size());
+
+    new NotifeeAlarmManager().rescheduleNotifications(null);
+
+    // Poll until the row is gone. The reschedule path fires a transformAsync:
+    //   NotificationManager.displayNotification(...) → WorkDataRepository.deleteById(id)
+    // so we observe the deletion as the terminal side effect.
+    awaitRowDeleted(id);
+    assertTrue(
+        "stale non-repeating row must be removed from Room after reboot recovery",
+        repo.getWorkDataById(id).get(5, TimeUnit.SECONDS) == null);
+  }
+
+  /**
+   * Regression test for upstream invertase/notifee#734 beyond the 24h grace period. Seeds a stale
+   * non-repeating TIMESTAMP trigger whose fire time is 48h in the past, invokes reboot recovery,
+   * and asserts that the Room row is deleted WITHOUT the notification being fired (delete-silent
+   * path). This path avoids showing stale content to users whose devices were off or whose app was
+   * killed long enough that the original notification is no longer relevant.
+   */
+  @Test
+  public void rescheduleNotifications_staleNonRepeating_beyondGracePeriod_rowIsDeleted()
+      throws Exception {
+    long now = System.currentTimeMillis();
+    long staleAnchor = now - STALE_BEYOND_GRACE_OFFSET_MS;
+    String id = staleBeyondGraceTestId();
+
+    repo.insert(buildNonRepeatingEntity(id, staleAnchor)).get(5, TimeUnit.SECONDS);
+    assertEquals(1, repo.getAll().get(5, TimeUnit.SECONDS).size());
+
+    new NotifeeAlarmManager().rescheduleNotifications(null);
+
+    awaitRowDeleted(id);
+    assertTrue(
+        "stale non-repeating row must be removed from Room after reboot recovery",
+        repo.getWorkDataById(id).get(5, TimeUnit.SECONDS) == null);
+  }
+
+  /** Polls {@link WorkDataRepository#getWorkDataById(String)} until it returns {@code null}. */
+  private void awaitRowDeleted(String id) throws Exception {
+    long deadline = System.currentTimeMillis() + POLL_DEADLINE_MS;
+    while (System.currentTimeMillis() < deadline) {
+      WorkDataEntity row = repo.getWorkDataById(id).get(5, TimeUnit.SECONDS);
+      if (row == null) {
+        return;
+      }
+      Thread.sleep(POLL_INTERVAL_MS);
+    }
+    fail(
+        "stale non-repeating row "
+            + id
+            + " was not deleted within "
+            + POLL_DEADLINE_MS
+            + "ms — the #734 fix in rescheduleNotification may be broken");
+  }
+
+  /**
    * Polls {@link WorkDataRepository#getAll()} until every row has a timestamp at or after {@code
    * minExpectedAnchor}, or fails on timeout.
    */
@@ -300,5 +380,34 @@ public class RebootRecoveryTest {
 
   private static String dailyTestId(int i) {
     return "reboot-recovery-daily-test-" + i;
+  }
+
+  /** Build a one-shot (non-repeating) TIMESTAMP trigger entity with the given id and anchor. */
+  private static WorkDataEntity buildNonRepeatingEntity(String id, long anchorMs) {
+    Bundle notificationBundle = new Bundle();
+    notificationBundle.putString("id", id);
+    notificationBundle.putString("title", "RebootRecoveryTest stale " + id);
+
+    Bundle triggerBundle = new Bundle();
+    triggerBundle.putInt("type", 0); // TIMESTAMP
+    triggerBundle.putLong("timestamp", anchorMs);
+    triggerBundle.putInt("repeatFrequency", -1); // non-repeating
+    Bundle alarmManagerBundle = new Bundle();
+    alarmManagerBundle.putInt("type", 3); // SET_EXACT_AND_ALLOW_WHILE_IDLE
+    triggerBundle.putBundle("alarmManager", alarmManagerBundle);
+
+    return new WorkDataEntity(
+        id,
+        ObjectUtils.bundleToBytes(notificationBundle),
+        ObjectUtils.bundleToBytes(triggerBundle),
+        true /* withAlarmManager */);
+  }
+
+  private static String staleWithinGraceTestId() {
+    return "reboot-recovery-stale-within-grace-test";
+  }
+
+  private static String staleBeyondGraceTestId() {
+    return "reboot-recovery-stale-beyond-grace-test";
   }
 }

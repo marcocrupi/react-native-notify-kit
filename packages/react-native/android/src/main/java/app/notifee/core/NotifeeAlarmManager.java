@@ -57,6 +57,15 @@ class NotifeeAlarmManager {
   private static final ListeningExecutorService alarmManagerListeningExecutor =
       MoreExecutors.listeningDecorator(alarmManagerExecutor);
 
+  /**
+   * Grace period for stale non-repeating triggers discovered during reboot recovery. Within this
+   * window the trigger is fired once and the Room row is deleted; beyond it the row is deleted
+   * silently to avoid showing stale content. Fix for upstream invertase/notifee#734: on OEM devices
+   * (MIUI, ColorOS, EMUI, FuntouchOS) that suppress BOOT_COMPLETED, zombie rows would otherwise
+   * re-fire on every reboot and never be cleaned.
+   */
+  private static final long STALE_TRIGGER_GRACE_PERIOD_MS = TimeUnit.HOURS.toMillis(24);
+
   // Scheduler used only as the timeout clock for Futures.withTimeout on Room
   // writes happening inside BroadcastReceiver.goAsync() scopes. Broadcasts have
   // ~10s before Android kills the process, so we cap the Room wait at 8s and
@@ -359,6 +368,12 @@ class NotifeeAlarmManager {
           return Futures.immediateFuture(null);
         }
 
+        ListenableFuture<Void> staleResult =
+            handleStaleNonRepeatingTrigger(notificationModel, trigger);
+        if (staleResult != null) {
+          return staleResult;
+        }
+
         scheduleTimestampTriggerNotification(notificationModel, trigger);
         // Persist updated timestamp so next reboot starts from the correct anchor.
         return WorkDataRepository.getInstance(getApplicationContext())
@@ -374,6 +389,57 @@ class NotifeeAlarmManager {
       default:
         return Futures.immediateFuture(null);
     }
+  }
+
+  /**
+   * Handles a stale non-repeating TIMESTAMP trigger found during reboot recovery. A trigger is
+   * "stale" when its {@code repeatFrequency} is {@code null} (one-shot) and its {@code timestamp}
+   * has already passed. Returns a {@link ListenableFuture} describing the stale-handling action, or
+   * {@code null} if the trigger is not stale and the caller should proceed with normal re-arming.
+   *
+   * <p>Within {@link #STALE_TRIGGER_GRACE_PERIOD_MS} of the original fire time the notification is
+   * fired once (late) and the Room row is deleted; beyond the grace period the row is deleted
+   * silently. In both cases the row is removed, preventing the zombie re-fire loop described in
+   * upstream invertase/notifee#734.
+   */
+  @Nullable
+  private static ListenableFuture<Void> handleStaleNonRepeatingTrigger(
+      NotificationModel notificationModel, TimestampTriggerModel trigger) {
+    if (trigger.getRepeatFrequency() != null) {
+      return null;
+    }
+    long nowMs = System.currentTimeMillis();
+    long triggerTs = trigger.getTimestamp();
+    if (triggerTs >= nowMs) {
+      return null;
+    }
+
+    String id = notificationModel.getId();
+    WorkDataRepository workRepo = WorkDataRepository.getInstance(getApplicationContext());
+    long stalenessMs = nowMs - triggerTs;
+
+    if (stalenessMs > STALE_TRIGGER_GRACE_PERIOD_MS) {
+      Logger.i(
+          TAG,
+          "Deleting stale non-repeating trigger (age "
+              + stalenessMs
+              + "ms > "
+              + STALE_TRIGGER_GRACE_PERIOD_MS
+              + "ms grace period): "
+              + id);
+      return workRepo.deleteById(id);
+    }
+
+    Logger.i(
+        TAG,
+        "Firing stale non-repeating trigger once within grace period (age "
+            + stalenessMs
+            + "ms): "
+            + id);
+    return Futures.transformAsync(
+        NotificationManager.displayNotification(notificationModel, null),
+        ignored -> workRepo.deleteById(id),
+        alarmManagerExecutor);
   }
 
   void rescheduleNotifications(@Nullable BroadcastReceiver.PendingResult pendingResult) {
