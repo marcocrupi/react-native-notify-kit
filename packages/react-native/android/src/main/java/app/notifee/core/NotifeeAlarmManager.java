@@ -26,6 +26,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.AlarmManagerCompat;
 import app.notifee.core.database.WorkDataEntity;
@@ -40,10 +41,14 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 class NotifeeAlarmManager {
   private static final String TAG = "NotifeeAlarmManager";
@@ -51,6 +56,14 @@ class NotifeeAlarmManager {
   private static final ExecutorService alarmManagerExecutor = Executors.newCachedThreadPool();
   private static final ListeningExecutorService alarmManagerListeningExecutor =
       MoreExecutors.listeningDecorator(alarmManagerExecutor);
+
+  // Scheduler used only as the timeout clock for Futures.withTimeout on Room
+  // writes happening inside BroadcastReceiver.goAsync() scopes. Broadcasts have
+  // ~10s before Android kills the process, so we cap the Room wait at 8s and
+  // call pendingResult.finish() anyway on timeout to avoid ANRs.
+  private static final ScheduledExecutorService TIMEOUT_SCHEDULER =
+      Executors.newSingleThreadScheduledExecutor();
+  private static final long RECEIVER_WRITE_TIMEOUT_SECONDS = 8;
 
   static void displayScheduledNotification(
       Bundle alarmManagerNotification, @Nullable BroadcastReceiver.PendingResult pendingResult) {
@@ -71,72 +84,97 @@ class NotifeeAlarmManager {
 
     WorkDataRepository workDataRepository = new WorkDataRepository(getApplicationContext());
 
-    ListenableFuture<?> displayFuture =
-        new ExtendedListenableFuture<>(workDataRepository.getWorkDataById(id))
-            .continueWith(
-                workDataEntity -> {
-                  Bundle notificationBundle;
+    // Chain: read → display → persist (update for repeat / delete for one-shot).
+    // The final Room write is awaited before pendingResult.finish() so the
+    // BroadcastReceiver only tells Android "I'm done" once the next-fire anchor
+    // (or the deletion) has actually landed in Room. Without this, process death
+    // between finish() and the enqueued write could lose the updated timestamp
+    // and cause the same alarm to fire again on the next reboot. See #549 audit
+    // callers #6 and #7.
+    ListenableFuture<Void> displayAndPersistFuture =
+        Futures.transformAsync(
+            workDataRepository.getWorkDataById(id),
+            workDataEntity -> {
+              if (workDataEntity == null
+                  || workDataEntity.getNotification() == null
+                  || workDataEntity.getTrigger() == null) {
+                Logger.w(
+                    TAG,
+                    "Attempted to handle doScheduledWork but no notification data was found.");
+                return Futures.immediateFuture(null);
+              }
 
-                  Bundle triggerBundle;
+              Bundle triggerBundle = ObjectUtils.bytesToBundle(workDataEntity.getTrigger());
+              Bundle notificationBundle =
+                  ObjectUtils.bytesToBundle(workDataEntity.getNotification());
+              NotificationModel notificationModel =
+                  NotificationModel.fromBundle(notificationBundle);
 
-                  if (workDataEntity == null
-                      || workDataEntity.getNotification() == null
-                      || workDataEntity.getTrigger() == null) {
-                    // check if notification bundle is stored with Work Manager
-                    Logger.w(
-                        TAG,
-                        "Attempted to handle doScheduledWork but no notification data was found.");
-                    return Futures.immediateFuture(null);
-                  } else {
-                    triggerBundle = ObjectUtils.bytesToBundle(workDataEntity.getTrigger());
-                    notificationBundle =
-                        ObjectUtils.bytesToBundle(workDataEntity.getNotification());
-                  }
-
-                  NotificationModel notificationModel =
-                      NotificationModel.fromBundle(notificationBundle);
-
-                  return new ExtendedListenableFuture<>(
-                          NotificationManager.displayNotification(notificationModel, triggerBundle))
-                      .continueWith(
-                          voidDisplayedNotification -> {
-                            if (triggerBundle.containsKey("repeatFrequency")
-                                && ObjectUtils.getInt(triggerBundle.get("repeatFrequency")) != -1) {
-                              TimestampTriggerModel trigger =
-                                  TimestampTriggerModel.fromBundle(triggerBundle);
-                              // scheduleTimestampTriggerNotification() calls setNextTimestamp()
-                              // internally, so we must NOT call it here to avoid double-advancing
-                              scheduleTimestampTriggerNotification(notificationModel, trigger);
-                              WorkDataRepository.getInstance(getApplicationContext())
-                                  .update(
-                                      new WorkDataEntity(
-                                          id,
-                                          workDataEntity.getNotification(),
-                                          ObjectUtils.bundleToBytes(trigger.toBundle()),
-                                          true));
-                            } else {
-                              // not repeating, delete database entry if work is a one-time request
-                              WorkDataRepository.getInstance(getApplicationContext())
-                                  .deleteById(id);
-                            }
-                            return Futures.immediateFuture(null);
-                          },
-                          alarmManagerExecutor);
-                },
-                alarmManagerExecutor)
-            .addOnCompleteListener(
-                (e, result) -> {
-                  try {
-                    if (e != null) {
-                      Logger.e(TAG, "Failed to display notification", e);
+              return Futures.transformAsync(
+                  NotificationManager.displayNotification(notificationModel, triggerBundle),
+                  voidDisplayedNotification -> {
+                    if (triggerBundle.containsKey("repeatFrequency")
+                        && ObjectUtils.getInt(triggerBundle.get("repeatFrequency")) != -1) {
+                      TimestampTriggerModel trigger =
+                          TimestampTriggerModel.fromBundle(triggerBundle);
+                      // scheduleTimestampTriggerNotification() calls setNextTimestamp()
+                      // internally, so we must NOT call it here to avoid double-advancing
+                      scheduleTimestampTriggerNotification(notificationModel, trigger);
+                      return WorkDataRepository.getInstance(getApplicationContext())
+                          .update(
+                              new WorkDataEntity(
+                                  id,
+                                  workDataEntity.getNotification(),
+                                  ObjectUtils.bundleToBytes(trigger.toBundle()),
+                                  true));
                     }
-                  } finally {
-                    if (pendingResult != null) {
-                      pendingResult.finish();
-                    }
-                  }
-                },
-                alarmManagerExecutor);
+                    // not repeating, delete database entry if work is a one-time request
+                    return WorkDataRepository.getInstance(getApplicationContext())
+                        .deleteById(id);
+                  },
+                  alarmManagerExecutor);
+            },
+            alarmManagerExecutor);
+
+    // Cap the wait at RECEIVER_WRITE_TIMEOUT_SECONDS — a wedged Room must not
+    // ANR the BroadcastReceiver. On timeout we still finish() the receiver and
+    // log a warning; the missed persistence will be retried on the next fire.
+    ListenableFuture<Void> timeBoundedFuture =
+        Futures.withTimeout(
+            displayAndPersistFuture,
+            RECEIVER_WRITE_TIMEOUT_SECONDS,
+            TimeUnit.SECONDS,
+            TIMEOUT_SCHEDULER);
+
+    Futures.addCallback(
+        timeBoundedFuture,
+        new FutureCallback<Void>() {
+          @Override
+          public void onSuccess(Void unused) {
+            if (pendingResult != null) {
+              pendingResult.finish();
+            }
+          }
+
+          @Override
+          public void onFailure(@NonNull Throwable t) {
+            if (t instanceof TimeoutException) {
+              Logger.w(
+                  TAG,
+                  "Room write for scheduled notification "
+                      + id
+                      + " did not complete within "
+                      + RECEIVER_WRITE_TIMEOUT_SECONDS
+                      + "s; finishing BroadcastReceiver anyway to avoid ANR");
+            } else {
+              Logger.e(TAG, "Failed to display notification", new Exception(t));
+            }
+            if (pendingResult != null) {
+              pendingResult.finish();
+            }
+          }
+        },
+        alarmManagerExecutor);
   }
 
   public static PendingIntent getAlarmManagerIntentForNotification(String notificationId) {
