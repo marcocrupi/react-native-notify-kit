@@ -75,6 +75,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -1021,17 +1022,24 @@ class NotificationManager {
                             // completer.set fired before the delete was enqueued, leaving
                             // a zombie row that reboot recovery would resurrect as a
                             // ghost alarm. See #549 audit Part B, Caller #5.
-                            Futures.addCallback(
+                            //
+                            // Note: CallbackToFutureAdapter.Completer.set() returns
+                            // false on double-set, it does NOT throw. This is an
+                            // androidx contract. Do not refactor under the assumption
+                            // that double-set is dangerous.
+                            //
+                            // addListener + Futures.getDone is the Guava idiom for
+                            // "run this regardless of outcome, but log failures" —
+                            // simpler than a FutureCallback with duplicated
+                            // completer.set calls in both branches.
+                            ListenableFuture<Void> deleteFuture =
                                 WorkDataRepository.getInstance(getApplicationContext())
-                                    .deleteById(id),
-                                new FutureCallback<Void>() {
-                                  @Override
-                                  public void onSuccess(Void unused) {
-                                    completer.set(Result.success());
-                                  }
-
-                                  @Override
-                                  public void onFailure(@NonNull Throwable t) {
+                                    .deleteById(id);
+                            deleteFuture.addListener(
+                                () -> {
+                                  try {
+                                    Futures.getDone(deleteFuture);
+                                  } catch (ExecutionException ex) {
                                     // Notification was already displayed; a failed
                                     // delete leaves an orphan row that the next
                                     // cancelAll or app restart will clean up. Still
@@ -1041,9 +1049,9 @@ class NotificationManager {
                                         TAG,
                                         "Failed to delete one-time trigger row after"
                                             + " display",
-                                        new Exception(t));
-                                    completer.set(Result.success());
+                                        ex.getCause() != null ? ex.getCause() : ex);
                                   }
+                                  completer.set(Result.success());
                                 },
                                 LISTENING_CACHED_THREAD_POOL);
                           } else {
