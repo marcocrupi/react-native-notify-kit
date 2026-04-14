@@ -427,6 +427,62 @@ await notifee.createTriggerNotification(notification, {
 });
 ```
 
+#### AlarmType guide
+
+When `alarmManager` is enabled (the default), the `alarmManager.type` field selects which
+`android.app.AlarmManager` primitive is used to schedule the trigger. This fork supports all
+five `AlarmType` values — including `SET_ALARM_CLOCK`, which upstream Notifee tracked in
+[invertase/notifee#655](https://github.com/invertase/notifee/issues/655) and merged via
+[#749](https://github.com/invertase/notifee/pull/749).
+
+| AlarmType                          | Exact? | Wakes device? | Doze bypass? | Status bar icon | When to use                                                                    |
+| ---------------------------------- | ------ | ------------- | ------------ | --------------- | ------------------------------------------------------------------------------ |
+| `SET`                              | No     | Yes           | No           | No              | Non-critical reminders that can slip by several minutes (daily digest).        |
+| `SET_AND_ALLOW_WHILE_IDLE`         | No     | Yes           | Yes          | No              | Non-critical reminders that must still fire while the device is in Doze.       |
+| `SET_EXACT`                        | Yes    | Yes           | No           | No              | Time-sensitive reminders when the app is reasonably sure not to be in Doze.    |
+| `SET_EXACT_AND_ALLOW_WHILE_IDLE`   | Yes    | Yes           | Yes          | No              | **Fork default.** Time-sensitive reminders that must fire even in Doze.        |
+| `SET_ALARM_CLOCK`                  | Yes    | Yes           | Yes          | **Yes**         | True alarm-clock / recovery-timer use cases — highest priority, OEM-resilient. |
+
+`SET_ALARM_CLOCK` is the strongest Android guarantee available for a scheduled notification:
+
+- **Status-bar alarm-clock icon.** The system renders the alarm-clock glyph in the status bar
+  until the trigger fires, signalling to the user that an alarm is pending.
+- **Least susceptible to OEM power management.** Vendor aggressive-kill policies (Xiaomi MIUI,
+  Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS — documented in the "OEM Background Restrictions"
+  section and on [dontkillmyapp.com](https://dontkillmyapp.com/)) generally respect
+  `setAlarmClock` even when they would otherwise drop `setExactAndAllowWhileIdle`. This is the
+  same mechanism the stock Clock app uses.
+- **Intended for the same reliability problem as [invertase/notifee#734](https://github.com/invertase/notifee/issues/734).**
+  If your use case is a medication reminder, a rest-timer between gym sets, a cooking timer,
+  or any recovery-timer scenario where a missed notification is user-visible damage, prefer
+  `SET_ALARM_CLOCK` over the fork default.
+
+```typescript
+import notifee, { AlarmType, TriggerType } from 'react-native-notify-kit';
+
+await notifee.createTriggerNotification(
+  {
+    title: 'Rest complete',
+    body: 'Next set is ready.',
+    android: { channelId: 'timers' },
+  },
+  {
+    type: TriggerType.TIMESTAMP,
+    timestamp: Date.now() + 90_000,
+    alarmManager: {
+      type: AlarmType.SET_ALARM_CLOCK,
+    },
+  },
+);
+```
+
+**Required permissions on Android 12+.** `SET_EXACT`, `SET_EXACT_AND_ALLOW_WHILE_IDLE`, and
+`SET_ALARM_CLOCK` all require the `SCHEDULE_EXACT_ALARM` or `USE_EXACT_ALARM` permission.
+If the permission is not granted, Notifee falls back to `setAndAllowWhileIdle` (inexact)
+instead of crashing — see the `SecurityException` handling in `NotifeeAlarmManager`.
+For use cases that must be exact on first install, declare `USE_EXACT_ALARM` in your manifest
+and consider prompting the user with `openAlarmPermissionSettings()`.
+
 ### Android: `pressAction` defaults to opening the app on tap
 
 On Android, `pressAction` now defaults to `{ id: 'default', launchActivity: 'default' }` when omitted from the notification payload. This means tapping a notification opens the app's main activity by default — matching iOS behavior and eliminating a common footgun where trigger notifications appeared to work but tapping them did nothing after an app kill.

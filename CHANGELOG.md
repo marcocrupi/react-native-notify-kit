@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Docs**: New "OEM Background Restrictions" section in `README.md` and `packages/react-native/README.md` documenting the interaction between vendor autostart policies and scheduled notifications, and how to use the existing `getPowerManagerInfo()` / `openPowerManagerSettings()` APIs to guide users through vendor-specific settings screens.
 
+- **Docs**: New "AlarmType guide" subsection in `README.md` and `packages/react-native/README.md` (under "Trigger Notification Reliability") documenting all five `AlarmType` options — including `AlarmType.SET_ALARM_CLOCK`, which was already wired end-to-end in the TypeScript enum, validator, and `NotifeeAlarmManager` Java switch but was previously undiscoverable. `SET_ALARM_CLOCK` is the strongest reliability guarantee Android exposes for a scheduled notification: it renders the alarm-clock icon in the status bar, uses the same primitive as the stock Clock app, and is the least susceptible to OEM aggressive-kill power management policies (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS) — the same class of reliability problem tracked in [invertase/notifee#734](https://github.com/invertase/notifee/issues/734). Recommended for medication reminders, recovery timers, rest timers, and similar use cases where a missed notification is user-visible damage. (upstream: [invertase/notifee#655](https://github.com/invertase/notifee/issues/655), merged via [#749](https://github.com/invertase/notifee/pull/749))
+
 ## [9.5.0] - 2026-04-14
 
 ### Fixed
