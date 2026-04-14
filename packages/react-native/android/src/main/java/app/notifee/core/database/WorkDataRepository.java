@@ -26,7 +26,6 @@ import app.notifee.core.utility.ObjectUtils;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 public class WorkDataRepository {
   private final WorkDataDao mWorkDataDao;
@@ -55,13 +54,16 @@ public class WorkDataRepository {
     mExecutor = executor;
   }
 
+  // Submit a DAO write to the listening executor and return a future that
+  // completes when the DAO call returns (success or exception). Using the
+  // submit(Runnable, result) overload avoids the Callable<Object> inference
+  // that would otherwise require a cast at every call site.
+  private @NonNull ListenableFuture<Void> submitWrite(@NonNull Runnable work) {
+    return mExecutor.submit(work, (Void) null);
+  }
+
   public @NonNull ListenableFuture<Void> insert(WorkDataEntity workData) {
-    return mExecutor.submit(
-        (Callable<Void>)
-            () -> {
-              mWorkDataDao.insert(workData);
-              return null;
-            });
+    return submitWrite(() -> mWorkDataDao.insert(workData));
   }
 
   public ListenableFuture<WorkDataEntity> getWorkDataById(String id) {
@@ -77,30 +79,15 @@ public class WorkDataRepository {
   }
 
   public @NonNull ListenableFuture<Void> deleteById(String id) {
-    return mExecutor.submit(
-        (Callable<Void>)
-            () -> {
-              mWorkDataDao.deleteById(id);
-              return null;
-            });
+    return submitWrite(() -> mWorkDataDao.deleteById(id));
   }
 
   public @NonNull ListenableFuture<Void> deleteByIds(List<String> ids) {
-    return mExecutor.submit(
-        (Callable<Void>)
-            () -> {
-              mWorkDataDao.deleteByIds(ids);
-              return null;
-            });
+    return submitWrite(() -> mWorkDataDao.deleteByIds(ids));
   }
 
   public @NonNull ListenableFuture<Void> deleteAll() {
-    return mExecutor.submit(
-        (Callable<Void>)
-            () -> {
-              mWorkDataDao.deleteAll();
-              return null;
-            });
+    return submitWrite(() -> mWorkDataDao.deleteAll());
   }
 
   public static @NonNull ListenableFuture<Void> insertTriggerNotification(
@@ -119,11 +106,6 @@ public class WorkDataRepository {
   }
 
   public @NonNull ListenableFuture<Void> update(WorkDataEntity workData) {
-    return mExecutor.submit(
-        (Callable<Void>)
-            () -> {
-              mWorkDataDao.update(workData);
-              return null;
-            });
+    return submitWrite(() -> mWorkDataDao.update(workData));
   }
 }
