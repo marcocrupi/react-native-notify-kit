@@ -263,7 +263,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Single Android module** — the original Notifee shipped a pre-compiled AAR bundled inside the npm tarball under a frozen Maven coordinate; this fork compiles the core from source as part of the React Native bridge module on every consumer build. Eliminates the `FAIL_ON_PROJECT_REPOS` issue on RN 0.74+ and the Gradle cache staleness bug that could serve outdated bytecode after `yarn upgrade`.
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
-- **29 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
+- **30 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 - **Baseline Profile** — the library AAR ships a Baseline Profile that instructs ART to AOT-compile the foreground service notification hot path at install time, eliminating JIT penalty on first invocation
@@ -303,6 +303,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `contentByUpdatingWithProvider:` errors suppressed via `nil` error pointer in `displayNotification:` and `createTriggerNotification:` — communication notifications with malformed SiriKit intents silently fail with nil content | iOS | Pre-existing | 9.4.0 |
 | `getBadgeCount:` completion block never called when running in an app extension, causing JS promises to hang forever in NSE handlers | iOS | Pre-existing | 9.4.0 |
 | Notification Service Extension attachment downloads had no timeout cap (default 60-second `NSURLSession` timeout exceeds iOS's ~30-second NSE budget), causing extension process kill and notification loss on slow networks | iOS | Pre-existing | 9.4.0 |
+| `cancelTriggerNotifications()` / `createTriggerNotification()` promises resolve before Room DB write completes, causing ~3% race on cancel-then-create patterns. Also fixes a previously-undocumented reboot-recovery data-loss bug in `NotifeeAlarmManager.rescheduleNotification` and an ordering bug in `NotificationManager.doScheduledWork` | Android | [#549](https://github.com/invertase/notifee/issues/549) | 9.5.0 |
 
 > **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
