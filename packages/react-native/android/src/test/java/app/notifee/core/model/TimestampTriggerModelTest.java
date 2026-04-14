@@ -173,7 +173,8 @@ public class TimestampTriggerModelTest {
     windowEnd.set(2026, Calendar.OCTOBER, 24, 23, 59, 59);
     long now = System.currentTimeMillis();
     Assume.assumeTrue(
-        "spring-forward discrimination requires current time in [2026-03-30, 2026-10-24] Europe/Rome",
+        "spring-forward discrimination requires current time in [2026-03-30, 2026-10-24]"
+            + " Europe/Rome",
         now >= windowStart.getTimeInMillis() && now <= windowEnd.getTimeInMillis());
 
     TimestampTriggerModel trigger =
@@ -188,8 +189,7 @@ public class TimestampTriggerModelTest {
         "wall-clock hour must remain 4 after crossing spring-forward",
         4,
         nextCal.get(Calendar.HOUR_OF_DAY));
-    assertEquals(
-        "wall-clock minute must remain 30", 30, nextCal.get(Calendar.MINUTE));
+    assertEquals("wall-clock minute must remain 30", 30, nextCal.get(Calendar.MINUTE));
     assertEquals("wall-clock second must remain 0", 0, nextCal.get(Calendar.SECOND));
   }
 
@@ -234,8 +234,7 @@ public class TimestampTriggerModelTest {
         "wall-clock hour must remain 4 after crossing fall-back",
         4,
         nextCal.get(Calendar.HOUR_OF_DAY));
-    assertEquals(
-        "wall-clock minute must remain 30", 30, nextCal.get(Calendar.MINUTE));
+    assertEquals("wall-clock minute must remain 30", 30, nextCal.get(Calendar.MINUTE));
     assertEquals("wall-clock second must remain 0", 0, nextCal.get(Calendar.SECOND));
   }
 }

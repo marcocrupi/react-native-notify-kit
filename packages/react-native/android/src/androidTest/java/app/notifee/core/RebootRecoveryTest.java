@@ -158,10 +158,10 @@ public class RebootRecoveryTest {
   }
 
   /**
-   * Regression test for upstream invertase/notifee#839 — DAILY trigger fails to re-fire from day
-   * 2 onwards on Android. Seeds {@value DAILY_SEED_COUNT} stale DAILY anchors, invokes reboot
-   * recovery, and asserts that every row's timestamp has been advanced into the future AND that
-   * an AlarmManager PendingIntent has been registered for each row (proving the fix path
+   * Regression test for upstream invertase/notifee#839 — DAILY trigger fails to re-fire from day 2
+   * onwards on Android. Seeds {@value DAILY_SEED_COUNT} stale DAILY anchors, invokes reboot
+   * recovery, and asserts that every row's timestamp has been advanced into the future AND that an
+   * AlarmManager PendingIntent has been registered for each row (proving the fix path
    * scheduleTimestampTriggerNotification → setNextTimestamp → alarmManager.set* ran in order).
    */
   @Test
@@ -181,8 +181,7 @@ public class RebootRecoveryTest {
     List<WorkDataEntity> rows =
         awaitAllAnchorsAdvancedWithExpectedCount(minExpectedAnchor, DAILY_SEED_COUNT);
 
-    assertEquals(
-        "no DAILY rows lost during reboot recovery", DAILY_SEED_COUNT, rows.size());
+    assertEquals("no DAILY rows lost during reboot recovery", DAILY_SEED_COUNT, rows.size());
     for (WorkDataEntity row : rows) {
       Bundle triggerBundle = ObjectUtils.bytesToBundle(row.getTrigger());
       long newAnchor = ObjectUtils.getLong(triggerBundle.get("timestamp"));
