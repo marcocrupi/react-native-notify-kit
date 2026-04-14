@@ -58,6 +58,7 @@ import app.notifee.core.utility.ObjectUtils;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.lang.reflect.Field;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -145,9 +146,18 @@ public class DoScheduledWorkOrderingTest {
     CallbackToFutureAdapter.Completer<ListenableWorker.Result> completer = completerRef.get();
     assertNotNull("Completer must be populated synchronously by getFuture", completer);
 
+    // The listener records completerSetNanos AND counts down the latch, giving
+    // the test a happens-before barrier to await on. resultFuture.get() alone
+    // is insufficient — Guava only guarantees that .get() returns after the
+    // future is marked done, not after all listeners have fired, so the test
+    // could race the listener on a cached-threadpool scheduler.
     AtomicLong completerSetNanos = new AtomicLong();
+    CountDownLatch completerListenerRan = new CountDownLatch(1);
     resultFuture.addListener(
-        () -> completerSetNanos.compareAndSet(0, System.nanoTime()),
+        () -> {
+          completerSetNanos.compareAndSet(0, System.nanoTime());
+          completerListenerRan.countDown();
+        },
         MoreExecutors.directExecutor());
 
     // Build the Data payload doScheduledWork expects.
@@ -166,6 +176,12 @@ public class DoScheduledWorkOrderingTest {
     // takes <200ms on a Pixel 9 Pro XL warm.
     ListenableWorker.Result result = resultFuture.get(15, TimeUnit.SECONDS);
     assertEquals(ListenableWorker.Result.success(), result);
+
+    // Explicitly wait for the listener to have fired — see comment at the
+    // listener registration above for why resultFuture.get() alone is racy.
+    assertTrue(
+        "completer.set listener must fire within 5s of resultFuture completing",
+        completerListenerRan.await(5, TimeUnit.SECONDS));
 
     long deleteNanos = timingRepo.firstDeleteCompletionNanos.get();
     long completerNanos = completerSetNanos.get();
