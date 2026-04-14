@@ -16,8 +16,11 @@ Never on a personal phone — at least one scenario wipes the notifee Room DB.
 
 ## Log fingerprints
 
-The fix paths log at `Logger.i` with consistent TAG prefixes. All lines are
-emitted under the `NOTIFEE` Android logcat tag.
+The fix paths log at `Logger.i` / `Logger.d` / `Logger.w` / `Logger.e` with
+consistent TAG prefixes — all lines are emitted under the `NOTIFEE` Android
+logcat tag and are all visible via the smoke script's `NOTIFEE:V` filter
+(which captures Verbose and above, including Debug). If you run `adb logcat`
+manually without a priority filter, add `NOTIFEE:V` to see everything.
 
 | Path | Fingerprint |
 |------|-------------|
