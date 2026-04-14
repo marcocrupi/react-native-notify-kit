@@ -1007,17 +1007,47 @@ class NotificationManager {
                 new ExtendedListenableFuture<>(result)
                     .addOnCompleteListener(
                         (e2, _unused) -> {
-                          completer.set(Result.success());
                           if (e2 != null) {
                             Logger.e(TAG, "Failed to display notification", e2);
+                            completer.set(Result.success());
+                            return;
+                          }
+                          String workerRequestType = data.getString(Worker.KEY_WORK_REQUEST);
+                          if (workerRequestType != null
+                              && workerRequestType.equals(Worker.WORK_REQUEST_ONE_TIME)) {
+                            // DO NOT reorder — completer.set must only run after the
+                            // delete future completes, otherwise WorkManager may start
+                            // a new work instance that reads the stale row. Previously
+                            // completer.set fired before the delete was enqueued, leaving
+                            // a zombie row that reboot recovery would resurrect as a
+                            // ghost alarm. See #549 audit Part B, Caller #5.
+                            Futures.addCallback(
+                                WorkDataRepository.getInstance(getApplicationContext())
+                                    .deleteById(id),
+                                new FutureCallback<Void>() {
+                                  @Override
+                                  public void onSuccess(Void unused) {
+                                    completer.set(Result.success());
+                                  }
+
+                                  @Override
+                                  public void onFailure(@NonNull Throwable t) {
+                                    // Notification was already displayed; a failed
+                                    // delete leaves an orphan row that the next
+                                    // cancelAll or app restart will clean up. Still
+                                    // report success so WorkManager doesn't retry
+                                    // the already-displayed notification.
+                                    Logger.e(
+                                        TAG,
+                                        "Failed to delete one-time trigger row after"
+                                            + " display",
+                                        new Exception(t));
+                                    completer.set(Result.success());
+                                  }
+                                },
+                                LISTENING_CACHED_THREAD_POOL);
                           } else {
-                            String workerRequestType = data.getString(Worker.KEY_WORK_REQUEST);
-                            if (workerRequestType != null
-                                && workerRequestType.equals(Worker.WORK_REQUEST_ONE_TIME)) {
-                              // delete database entry if work is a one-time request
-                              WorkDataRepository.getInstance(getApplicationContext())
-                                  .deleteById(id);
-                            }
+                            completer.set(Result.success());
                           }
                         },
                         LISTENING_CACHED_THREAD_POOL);
