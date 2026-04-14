@@ -53,9 +53,10 @@ adb shell pm list packages | grep -q "package:$PACKAGE" \
 grep -q "const VERIFY_549_AUTO_RUN = false;" "$APP_TSX" \
     || fail "expected 'const VERIFY_549_AUTO_RUN = false;' in App.tsx — maybe the file was modified"
 
-# ---- flip the flag + always revert on exit ----
+# ---- flip the flag + single consolidated cleanup trap ----
 
 REVERT_DONE=0
+RUN_DATA=""
 revert_flag() {
   if [ "$REVERT_DONE" -eq 0 ]; then
     log "reverting VERIFY_549_AUTO_RUN to false in App.tsx"
@@ -64,7 +65,14 @@ revert_flag() {
     REVERT_DONE=1
   fi
 }
-trap revert_flag EXIT INT TERM
+cleanup() {
+  [ -n "${RUN_DATA:-}" ] && rm -f "$RUN_DATA"
+  revert_flag
+}
+# Single trap that runs all cleanup in order. bash traps are not additive:
+# `trap ... EXIT` replaces any prior EXIT handler, so we install ONCE here
+# and update $RUN_DATA inside the handler's closure (via the outer variable).
+trap cleanup EXIT INT TERM
 
 log "flipping VERIFY_549_AUTO_RUN to true"
 sed -i '' 's/const VERIFY_549_AUTO_RUN = false;/const VERIFY_549_AUTO_RUN = true;/' "$APP_TSX"
@@ -82,7 +90,6 @@ fi
 # ---- run N times, capture summaries ----
 
 RUN_DATA="$(mktemp -t verify549.XXXXXX)"
-trap 'rm -f "$RUN_DATA"; revert_flag' EXIT INT TERM
 
 declare -a RUN_TIMESTAMPS
 declare -a RUN_A_SUMMARIES
