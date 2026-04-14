@@ -28,6 +28,7 @@ import android.os.Build;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.app.AlarmManagerCompat;
 import app.notifee.core.database.WorkDataEntity;
 import app.notifee.core.database.WorkDataRepository;
@@ -44,6 +45,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -425,10 +427,31 @@ class NotifeeAlarmManager {
    * fired once (late) and the Room row is deleted; beyond the grace period the row is deleted
    * silently. In both cases the row is removed, preventing the zombie re-fire loop described in
    * upstream invertase/notifee#734.
+   *
+   * <p>Package-private (not {@code private}) so that {@code NotifeeAlarmManagerHandleStaleTest} in
+   * {@code src/test/java/app/notifee/core/} can exercise the resilient display → delete chain via
+   * the {@code (..., Executor)} overload with {@code MoreExecutors.directExecutor()}.
    */
   @Nullable
-  private static ListenableFuture<Void> handleStaleNonRepeatingTrigger(
+  static ListenableFuture<Void> handleStaleNonRepeatingTrigger(
       NotificationModel notificationModel, TimestampTriggerModel trigger) {
+    return handleStaleNonRepeatingTrigger(
+        notificationModel, trigger, alarmManagerListeningExecutor);
+  }
+
+  /**
+   * Testable overload of {@link #handleStaleNonRepeatingTrigger(NotificationModel,
+   * TimestampTriggerModel)} that accepts the {@link Executor} used for the resilient display →
+   * delete chain. Production callers use the no-executor overload which delegates with the
+   * cached-thread-pool listening executor. Unit tests pass {@code
+   * com.google.common.util.concurrent.MoreExecutors.directExecutor()} so that Mockito's
+   * thread-local {@code mockStatic} intercepts fire on the calling thread instead of a worker
+   * thread where the stubs are inactive.
+   */
+  @VisibleForTesting
+  @Nullable
+  static ListenableFuture<Void> handleStaleNonRepeatingTrigger(
+      NotificationModel notificationModel, TimestampTriggerModel trigger, Executor executor) {
     if (trigger.getRepeatFrequency() != null) {
       return null;
     }
@@ -472,19 +495,42 @@ class NotifeeAlarmManager {
     // is the correctness guarantee. Discovered via the Step 6 smoke dry-run,
     // which surfaced a NullPointerException in NotificationAndroidModel.getChannelId
     // and observed the chained deleteById never running.
+    //
+    // Post-Step-6 code review (Step 7) hardened the chain against two further
+    // failure modes the original catchingAsync missed:
+    //
+    //   1. Sync throws from NotificationManager.displayNotification (e.g. an
+    //      NPE from NotificationModel.getAndroid() before the work Callable is
+    //      even constructed) would bypass catchingAsync entirely, because the
+    //      primary input future to catchingAsync did not yet exist. Wrapping
+    //      the call in Futures.submitAsync converts any sync throw from the
+    //      AsyncCallable into a failed future that catchingAsync can observe.
+    //
+    //   2. Throwable.class was too broad — it swallowed Error subclasses
+    //      including OutOfMemoryError, VirtualMachineError, LinkageError,
+    //      AssertionError. On a memory-pressured cold boot (the exact target
+    //      scenario of #734) an OOM inside NotificationCompat.Builder.build()
+    //      would be silently absorbed and the handler would proceed to a Room
+    //      write while the JVM was seconds from termination. Narrowed to
+    //      Exception.class so Errors propagate as batch failures; the
+    //      per-entity catch in rescheduleNotifications leaves the row in Room
+    //      for a genuine retry on the next reboot pass.
+    ListenableFuture<Void> displayAttempt =
+        Futures.submitAsync(
+            () -> NotificationManager.displayNotification(notificationModel, null), executor);
+
     ListenableFuture<Void> resilientDisplay =
         Futures.catchingAsync(
-            NotificationManager.displayNotification(notificationModel, null),
-            Throwable.class,
+            displayAttempt,
+            Exception.class,
             t -> {
               Logger.w(
                   TAG, "Late-fire of stale trigger " + id + " failed, proceeding to delete row", t);
               return Futures.immediateFuture(null);
             },
-            alarmManagerExecutor);
+            executor);
 
-    return Futures.transformAsync(
-        resilientDisplay, ignored -> workRepo.deleteById(id), alarmManagerExecutor);
+    return Futures.transformAsync(resilientDisplay, ignored -> workRepo.deleteById(id), executor);
   }
 
   void rescheduleNotifications(@Nullable BroadcastReceiver.PendingResult pendingResult) {
