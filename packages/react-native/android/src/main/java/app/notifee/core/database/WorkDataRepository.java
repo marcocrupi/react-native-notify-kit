@@ -20,13 +20,17 @@ package app.notifee.core.database;
 import android.content.Context;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.utility.ObjectUtils;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import java.util.List;
+import java.util.concurrent.Callable;
 
 public class WorkDataRepository {
-  private WorkDataDao mWorkDataDao;
+  private final WorkDataDao mWorkDataDao;
+  private final ListeningExecutorService mExecutor;
   private static WorkDataRepository mInstance;
 
   public static @NonNull WorkDataRepository getInstance(@NonNull Context context) {
@@ -42,51 +46,64 @@ public class WorkDataRepository {
   public WorkDataRepository(Context context) {
     NotifeeCoreDatabase db = NotifeeCoreDatabase.getDatabase(context);
     mWorkDataDao = db.workDao();
+    mExecutor = NotifeeCoreDatabase.databaseWriteListeningExecutor;
   }
 
-  public void insert(WorkDataEntity workData) {
-    NotifeeCoreDatabase.databaseWriteListeningExecutor.execute(
-        () -> {
-          mWorkDataDao.insert(workData);
-        });
+  @VisibleForTesting
+  WorkDataRepository(@NonNull WorkDataDao dao, @NonNull ListeningExecutorService executor) {
+    mWorkDataDao = dao;
+    mExecutor = executor;
+  }
+
+  public @NonNull ListenableFuture<Void> insert(WorkDataEntity workData) {
+    return mExecutor.submit(
+        (Callable<Void>)
+            () -> {
+              mWorkDataDao.insert(workData);
+              return null;
+            });
   }
 
   public ListenableFuture<WorkDataEntity> getWorkDataById(String id) {
-    return NotifeeCoreDatabase.databaseWriteListeningExecutor.submit(
-        () -> mWorkDataDao.getWorkDataById(id));
+    return mExecutor.submit(() -> mWorkDataDao.getWorkDataById(id));
   }
 
   public ListenableFuture<List<WorkDataEntity>> getAllWithAlarmManager(Boolean withAlarmManager) {
-    return NotifeeCoreDatabase.databaseWriteListeningExecutor.submit(
-        () -> mWorkDataDao.getAllWithAlarmManager(withAlarmManager));
+    return mExecutor.submit(() -> mWorkDataDao.getAllWithAlarmManager(withAlarmManager));
   }
 
   public ListenableFuture<List<WorkDataEntity>> getAll() {
-    return NotifeeCoreDatabase.databaseWriteListeningExecutor.submit(() -> mWorkDataDao.getAll());
+    return mExecutor.submit(() -> mWorkDataDao.getAll());
   }
 
-  public void deleteById(String id) {
-    NotifeeCoreDatabase.databaseWriteListeningExecutor.execute(
-        () -> {
-          mWorkDataDao.deleteById(id);
-        });
+  public @NonNull ListenableFuture<Void> deleteById(String id) {
+    return mExecutor.submit(
+        (Callable<Void>)
+            () -> {
+              mWorkDataDao.deleteById(id);
+              return null;
+            });
   }
 
-  public void deleteByIds(List<String> ids) {
-    NotifeeCoreDatabase.databaseWriteListeningExecutor.execute(
-        () -> {
-          mWorkDataDao.deleteByIds(ids);
-        });
+  public @NonNull ListenableFuture<Void> deleteByIds(List<String> ids) {
+    return mExecutor.submit(
+        (Callable<Void>)
+            () -> {
+              mWorkDataDao.deleteByIds(ids);
+              return null;
+            });
   }
 
-  public void deleteAll() {
-    NotifeeCoreDatabase.databaseWriteListeningExecutor.execute(
-        () -> {
-          mWorkDataDao.deleteAll();
-        });
+  public @NonNull ListenableFuture<Void> deleteAll() {
+    return mExecutor.submit(
+        (Callable<Void>)
+            () -> {
+              mWorkDataDao.deleteAll();
+              return null;
+            });
   }
 
-  public static void insertTriggerNotification(
+  public static @NonNull ListenableFuture<Void> insertTriggerNotification(
       NotificationModel notificationModel, Bundle triggerBundle, Boolean withAlarmManager) {
     WorkDataEntity workData =
         new WorkDataEntity(
@@ -95,13 +112,15 @@ public class WorkDataRepository {
             ObjectUtils.bundleToBytes(triggerBundle),
             withAlarmManager);
 
-    mInstance.insert(workData);
+    return mInstance.insert(workData);
   }
 
-  public void update(WorkDataEntity workData) {
-    NotifeeCoreDatabase.databaseWriteListeningExecutor.execute(
-        () -> {
-          mWorkDataDao.update(workData);
-        });
+  public @NonNull ListenableFuture<Void> update(WorkDataEntity workData) {
+    return mExecutor.submit(
+        (Callable<Void>)
+            () -> {
+              mWorkDataDao.update(workData);
+              return null;
+            });
   }
 }
