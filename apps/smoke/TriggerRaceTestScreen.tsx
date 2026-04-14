@@ -18,7 +18,10 @@ type Props = {
 
 const CHANNEL_ID = 'default';
 const FAR_FUTURE = () => Date.now() + 24 * 60 * 60 * 1000;
-const TAG = '[RACE549]';
+// NOTE: no square brackets — verify-549-fix.sh greps logcat for this tag and
+// bracket characters would require escaping at every call site (see commit 11
+// in the PR history for the original bug this avoided).
+const TAG = 'RACE549:';
 
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
@@ -285,7 +288,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('A', async () => {
       const results = await scenarioA(20, 50);
       const summary = summarizeA(results);
-      console.log(`${TAG}-A-full ${JSON.stringify(results)}`);
+      console.log(`${TAG}Afull ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -293,7 +296,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('A-quick', async () => {
       const results = await scenarioA(5, 20);
       const summary = summarizeA(results);
-      console.log(`${TAG}-Aq-full ${JSON.stringify(results)}`);
+      console.log(`${TAG}Aqfull ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -301,7 +304,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('B', async () => {
       const results = await scenarioB(30);
       const summary = summarizeB(results);
-      console.log(`${TAG}-B-full ${JSON.stringify(results)}`);
+      console.log(`${TAG}Bfull ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -309,7 +312,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('C', async () => {
       const results = await scenarioC(30);
       const summary = summarizeC(results);
-      console.log(`${TAG}-C-full ${JSON.stringify(results)}`);
+      console.log(`${TAG}Cfull ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -325,25 +328,25 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
         // Emit one compact summary line per scenario so the verify-549-fix.sh
         // script can parse each independently without hitting logcat's per-line
         // size limit. Each line is a single-line JSON payload prefixed by a
-        // scenario-specific tag (RACE549-A-summary / -B-summary / -C-summary /
-        // -D-summary) and terminated by a -DONE signal so the script knows
-        // when the run is complete.
+        // scenario-specific tag (RACE549:A / RACE549:B / RACE549:C / RACE549:D)
+        // and terminated by a RACE549:DONE signal so the script knows when
+        // the run is complete.
         const a = await scenarioA(20, 50);
         const aSummary = summarizeA(a);
-        console.log(`${TAG}-A-summary ${JSON.stringify(aSummary)}`);
+        console.log(`${TAG}A ${JSON.stringify(aSummary)}`);
 
         const b = await scenarioB(30);
         const bSummary = summarizeB(b);
-        console.log(`${TAG}-B-summary ${JSON.stringify(bSummary)}`);
+        console.log(`${TAG}B ${JSON.stringify(bSummary)}`);
 
         const c = await scenarioC(30);
         const cSummary = summarizeC(c);
-        console.log(`${TAG}-C-summary ${JSON.stringify(cSummary)}`);
+        console.log(`${TAG}C ${JSON.stringify(cSummary)}`);
 
         const d = await scenarioD();
-        console.log(`${TAG}-D-summary ${JSON.stringify(d)}`);
+        console.log(`${TAG}D ${JSON.stringify(d)}`);
 
-        console.log(`${TAG}-DONE ${new Date().toISOString()}`);
+        console.log(`${TAG}DONE ${new Date().toISOString()}`);
 
         return {
           A: aSummary,
