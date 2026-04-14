@@ -32,6 +32,8 @@ import androidx.annotation.VisibleForTesting;
 import androidx.core.app.AlarmManagerCompat;
 import app.notifee.core.database.WorkDataEntity;
 import app.notifee.core.database.WorkDataRepository;
+import app.notifee.core.event.NotificationEvent;
+import app.notifee.core.model.NotificationAndroidModel;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.model.TimestampTriggerModel;
 import app.notifee.core.utility.AlarmUtils;
@@ -303,21 +305,23 @@ class NotifeeAlarmManager {
               pendingIntent);
           break;
         case SET_ALARM_CLOCK:
-          int mutabilityFlag = PendingIntent.FLAG_UPDATE_CURRENT;
-          if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            mutabilityFlag = PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
-          }
-
-          Context context = getApplicationContext();
-          Intent launchActivityIntent =
-              context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
-
+          // Build the "show intent" required by AlarmClockInfo — the PendingIntent Android
+          // fires when the user taps the alarm-clock icon rendered in the status bar while
+          // this alarm is pending. Reuse NotificationPendingIntent.createIntent so the tap
+          // funnels through the same NotificationReceiverActivity → onForegroundEvent path
+          // as a normal notification tap, honouring any custom pressAction.launchActivity /
+          // mainComponent the user configured. Building a getLaunchIntentForPackage ad-hoc
+          // (as the upstream PR #749 did) bypasses the pressAction fixes added in 9.1.19 /
+          // 9.3.0 and strands custom routing.
+          Bundle showIntentPressAction = buildShowIntentPressActionBundle(notificationModel);
           PendingIntent pendingLaunchIntent =
-              PendingIntent.getActivity(
-                  context,
-                  notificationModel.getId().hashCode(),
-                  launchActivityIntent,
-                  mutabilityFlag);
+              NotificationPendingIntent.createIntent(
+                  notificationModel.getHashCode(),
+                  showIntentPressAction,
+                  NotificationEvent.TYPE_PRESS,
+                  new String[] {"notification"},
+                  notificationModel.toBundle());
+
           AlarmManagerCompat.setAlarmClock(
               alarmManager, timestampTrigger.getTimestamp(), pendingLaunchIntent, pendingIntent);
           break;
@@ -333,6 +337,41 @@ class NotifeeAlarmManager {
         Logger.e(TAG, "Failed to schedule even inexact alarm", e2);
       }
     }
+  }
+
+  /**
+   * Resolve the pressAction bundle used to build the AlarmClockInfo show intent for {@link
+   * TimestampTriggerModel.AlarmType#SET_ALARM_CLOCK}. Mirrors the three-case logic in {@code
+   * NotificationManager.displayNotification} so the status-bar alarm-clock icon, when tapped, goes
+   * through the same {@code NotificationReceiverActivity} path as a normal tap:
+   *
+   * <ol>
+   *   <li>pressAction absent → synthesize default {@code { id:'default', launchActivity:'default'
+   *       }} so the tap opens the app (defense-in-depth for triggers rehydrated from Room after an
+   *       app kill, which lose their pressAction bundle).
+   *   <li>pressAction carries the {@link NotificationPendingIntent#PRESS_ACTION_OPT_OUT_ID}
+   *       sentinel (user passed {@code pressAction: null} in JS) → still synthesize the default.
+   *       Unlike a content intent, the status-bar alarm-clock icon has no "non-tappable" mode —
+   *       Android requires a non-null show intent. Opening the launcher is the least-surprising
+   *       fallback and matches stock Clock app behaviour.
+   *   <li>pressAction is a normal bundle → pass through unchanged so custom {@code launchActivity}
+   *       / {@code mainComponent} routing is honoured.
+   * </ol>
+   */
+  @VisibleForTesting
+  static Bundle buildShowIntentPressActionBundle(NotificationModel notificationModel) {
+    NotificationAndroidModel androidModel = notificationModel.getAndroid();
+    Bundle pressAction = androidModel != null ? androidModel.getPressAction() : null;
+
+    if (pressAction == null
+        || NotificationPendingIntent.PRESS_ACTION_OPT_OUT_ID.equals(pressAction.getString("id"))) {
+      Bundle defaultPressAction = new Bundle();
+      defaultPressAction.putString("id", "default");
+      defaultPressAction.putString("launchActivity", "default");
+      return defaultPressAction;
+    }
+
+    return pressAction;
   }
 
   ListenableFuture<List<WorkDataEntity>> getScheduledNotifications() {
