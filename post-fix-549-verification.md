@@ -4,7 +4,7 @@
 - **Device**: 192.168.1.4:5555 (Pixel 9 Pro XL)
 - **Android**: 16
 - **Runs**: 5
-- **Generated**: 2026-04-14T11:58:15Z
+- **Generated**: 2026-04-14T12:28:37Z
 
 ## Aggregate (across all 5 runs)
 
@@ -21,47 +21,47 @@
 
 ## Per-run summaries
 
-### Run 1 — 2026-04-14T11:45:42Z
+### Run 1 — 2026-04-14T12:16:09Z
 
 ```json
-A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"58.0","avgCreateMs":"17.3"}
+A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"59.9","avgCreateMs":"16.8"}
 B: {"total":30,"immediatelyNonZero":0,"after50NonZero":0,"after500NonZero":0,"maxImmediately":0}
-C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"25.8"}
+C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"24.8"}
 D: {"finalCount":0,"finalIds":[]}
 ```
 
-### Run 2 — 2026-04-14T11:48:15Z
+### Run 2 — 2026-04-14T12:18:39Z
 
 ```json
-A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"65.6","avgCreateMs":"20.6"}
+A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"62.6","avgCreateMs":"18.8"}
 B: {"total":30,"immediatelyNonZero":0,"after50NonZero":0,"after500NonZero":0,"maxImmediately":0}
-C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"20.2"}
+C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"24.0"}
+D: {"finalCount":1,"finalIds":["d-19"]}
+```
+
+### Run 3 — 2026-04-14T12:21:09Z
+
+```json
+A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"61.5","avgCreateMs":"17.0"}
+B: {"total":30,"immediatelyNonZero":0,"after50NonZero":0,"after500NonZero":0,"maxImmediately":0}
+C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"25.1"}
 D: {"finalCount":0,"finalIds":[]}
 ```
 
-### Run 3 — 2026-04-14T11:50:45Z
+### Run 4 — 2026-04-14T12:23:37Z
 
 ```json
-A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"63.0","avgCreateMs":"19.1"}
-B: {"total":30,"immediatelyNonZero":0,"after50NonZero":0,"after500NonZero":0,"maxImmediately":0}
-C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"24.4"}
-D: {"finalCount":0,"finalIds":[]}
-```
-
-### Run 4 — 2026-04-14T11:53:15Z
-
-```json
-A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"63.4","avgCreateMs":"19.6"}
+A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"63.7","avgCreateMs":"18.4"}
 B: {"total":30,"immediatelyNonZero":0,"after50NonZero":0,"after500NonZero":0,"maxImmediately":0}
 C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"24.1"}
 D: {"finalCount":0,"finalIds":[]}
 ```
 
-### Run 5 — 2026-04-14T11:55:45Z
+### Run 5 — 2026-04-14T12:26:07Z
 
 ```json
-A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"64.3","avgCreateMs":"18.3"}
+A: {"total":20,"canaryMissingAtZero":0,"canaryMissingAt100":0,"canaryLostPermanent":0,"avgCancelMs":"60.5","avgCreateMs":"19.6"}
 B: {"total":30,"immediatelyNonZero":0,"after50NonZero":0,"after500NonZero":0,"maxImmediately":0}
-C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"23.1"}
+C: {"total":30,"immediatelyMissing":0,"after50Missing":0,"after500Missing":0,"avgCreateMs":"23.3"}
 D: {"finalCount":0,"finalIds":[]}
 ```

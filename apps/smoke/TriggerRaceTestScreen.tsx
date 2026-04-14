@@ -288,7 +288,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('A', async () => {
       const results = await scenarioA(20, 50);
       const summary = summarizeA(results);
-      console.log(`${TAG}Afull ${JSON.stringify(results)}`);
+      console.log(`${TAG}A-full ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -296,7 +296,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('A-quick', async () => {
       const results = await scenarioA(5, 20);
       const summary = summarizeA(results);
-      console.log(`${TAG}Aqfull ${JSON.stringify(results)}`);
+      console.log(`${TAG}Aq-full ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -304,7 +304,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('B', async () => {
       const results = await scenarioB(30);
       const summary = summarizeB(results);
-      console.log(`${TAG}Bfull ${JSON.stringify(results)}`);
+      console.log(`${TAG}B-full ${JSON.stringify(results)}`);
       return summary;
     });
 
@@ -312,7 +312,7 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
     guarded('C', async () => {
       const results = await scenarioC(30);
       const summary = summarizeC(results);
-      console.log(`${TAG}Cfull ${JSON.stringify(results)}`);
+      console.log(`${TAG}C-full ${JSON.stringify(results)}`);
       return summary;
     });
 
