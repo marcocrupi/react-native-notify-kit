@@ -70,10 +70,12 @@ public class WorkDataRepositoryFutureContractTest {
 
   @Test
   public void insert_futureNotDoneUntilDaoReturns() throws Exception {
+    CountDownLatch daoEntered = new CountDownLatch(1);
     CountDownLatch daoGate = new CountDownLatch(1);
     WorkDataEntity entity = newEntity("a");
     doAnswer(
             inv -> {
+              daoEntered.countDown();
               daoGate.await();
               return null;
             })
@@ -81,9 +83,10 @@ public class WorkDataRepositoryFutureContractTest {
         .insert(entity);
 
     ListenableFuture<Void> f = repo.insert(entity);
-    // Give the executor a moment to pick up the submitted task.
-    Thread.sleep(50);
-    assertFalse("insert future must not be done before DAO returns", f.isDone());
+    assertTrue(
+        "DAO should be entered within 1s",
+        daoEntered.await(1, TimeUnit.SECONDS));
+    assertFalse("insert future must not be done while DAO is blocked", f.isDone());
 
     daoGate.countDown();
     f.get(1, TimeUnit.SECONDS);
@@ -115,9 +118,11 @@ public class WorkDataRepositoryFutureContractTest {
 
   @Test
   public void deleteById_futureNotDoneUntilDaoReturns() throws Exception {
+    CountDownLatch daoEntered = new CountDownLatch(1);
     CountDownLatch daoGate = new CountDownLatch(1);
     doAnswer(
             inv -> {
+              daoEntered.countDown();
               daoGate.await();
               return null;
             })
@@ -125,7 +130,7 @@ public class WorkDataRepositoryFutureContractTest {
         .deleteById("a");
 
     ListenableFuture<Void> f = repo.deleteById("a");
-    Thread.sleep(50);
+    assertTrue(daoEntered.await(1, TimeUnit.SECONDS));
     assertFalse(f.isDone());
 
     daoGate.countDown();
@@ -151,9 +156,11 @@ public class WorkDataRepositoryFutureContractTest {
 
   @Test
   public void deleteByIds_futureNotDoneUntilDaoReturns() throws Exception {
+    CountDownLatch daoEntered = new CountDownLatch(1);
     CountDownLatch daoGate = new CountDownLatch(1);
     doAnswer(
             inv -> {
+              daoEntered.countDown();
               daoGate.await();
               return null;
             })
@@ -161,7 +168,7 @@ public class WorkDataRepositoryFutureContractTest {
         .deleteByIds(Collections.singletonList("a"));
 
     ListenableFuture<Void> f = repo.deleteByIds(Collections.singletonList("a"));
-    Thread.sleep(50);
+    assertTrue(daoEntered.await(1, TimeUnit.SECONDS));
     assertFalse(f.isDone());
 
     daoGate.countDown();
@@ -192,9 +199,11 @@ public class WorkDataRepositoryFutureContractTest {
 
   @Test
   public void deleteAll_futureNotDoneUntilDaoReturns() throws Exception {
+    CountDownLatch daoEntered = new CountDownLatch(1);
     CountDownLatch daoGate = new CountDownLatch(1);
     doAnswer(
             inv -> {
+              daoEntered.countDown();
               daoGate.await();
               return null;
             })
@@ -202,7 +211,7 @@ public class WorkDataRepositoryFutureContractTest {
         .deleteAll();
 
     ListenableFuture<Void> f = repo.deleteAll();
-    Thread.sleep(50);
+    assertTrue(daoEntered.await(1, TimeUnit.SECONDS));
     assertFalse(f.isDone());
 
     daoGate.countDown();
@@ -228,10 +237,12 @@ public class WorkDataRepositoryFutureContractTest {
 
   @Test
   public void update_futureNotDoneUntilDaoReturns() throws Exception {
+    CountDownLatch daoEntered = new CountDownLatch(1);
     CountDownLatch daoGate = new CountDownLatch(1);
     WorkDataEntity entity = newEntity("a");
     doAnswer(
             inv -> {
+              daoEntered.countDown();
               daoGate.await();
               return null;
             })
@@ -239,7 +250,7 @@ public class WorkDataRepositoryFutureContractTest {
         .update(entity);
 
     ListenableFuture<Void> f = repo.update(entity);
-    Thread.sleep(50);
+    assertTrue(daoEntered.await(1, TimeUnit.SECONDS));
     assertFalse(f.isDone());
 
     daoGate.countDown();
