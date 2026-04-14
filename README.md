@@ -366,15 +366,49 @@ Available types: `camera`, `connectedDevice`, `dataSync`, `health`, `location`, 
 
 > **Note:** `shortService` has a 3-minute timeout on Android 14+. If your foreground service needs to run longer, use a different type. The library's `onTimeout()` handler will gracefully stop the service if the timeout fires.
 
+### Foreground service use case guide
+
+Choosing the right `foregroundServiceType` matters — the wrong choice can cause Doze-driven CPU suspension with the screen off, Google Play policy rejection, or premature kills by the Android 14+ type-specific timeouts. This matrix maps common use cases to the recommended type and calls out the caveats you need to know before shipping:
+
+| Use case | Recommended type | Doze CPU exempt? | Type timeout | Key caveat |
+| --- | --- | --- | --- | --- |
+| Silent rest / workout / cooking timer | **`SET_ALARM_CLOCK` trigger — not an FGS** | N/A | N/A | See the ["Timers: foreground service or `SET_ALARM_CLOCK`?"](#timers-foreground-service-or-set_alarm_clock) decision guide below. |
+| Timer with audio cue (metronome, guided set) | `mediaPlayback` | Yes | None | Must actually play audio — silent `mediaPlayback` is a Play Store policy violation. |
+| Short operation (< 3 min) | `shortService` | No | **3 min** | Library's `onTimeout()` stops cleanly and emits `TYPE_FG_TIMEOUT` to JS. |
+| Long-running data sync | `dataSync` | No | 6 h (API 34); stricter on API 35+ | Pair with `openBatteryOptimizationSettings()` for reliability on OEM devices. |
+| Location / navigation / fitness GPS | `location` | Yes | None | Requires `ACCESS_FINE_LOCATION` runtime permission. |
+| Music / podcast / audiobook playback | `mediaPlayback` | Yes | None | Must be real playback — see policy callout below. |
+| Bluetooth / USB device sync | `connectedDevice` | No | None | Requires companion-device or Bluetooth permission. |
+| Enterprise / DPC / system-critical | `specialUse` or `systemExempted` | Varies | None | `specialUse` requires a `<property>` element and Play Store justification review. |
+| Arbitrary deferrable background work | **None — use `WorkManager` directly, not an FGS.** | N/A | N/A | FGS is not the right abstraction for deferrable work. |
+
+> ⚠️ **`mediaPlayback` requires active audio playback.** [Google Play's Foreground Service Types policy](https://support.google.com/googleplay/android-developer/answer/13392821) explicitly prohibits declaring `mediaPlayback` for services that do not play audio. A silent timer, stopwatch, or rest-timer declared as `mediaPlayback` will be rejected during Play Store review. For silent long-running timers, prefer the `SET_ALARM_CLOCK` trigger path (see the decision guide below).
+
+### Android 15+ additional FGS restrictions
+
+Android 15 (API 35) tightens foreground service restrictions further:
+
+- **`dataSync` cumulative 6-hour limit per 24-hour window.** Apps that previously started a fresh `dataSync` FGS repeatedly will hit the new cap.
+- **`mediaProcessing` is a new dedicated type** for short media transcode / processing operations, with its own timeout.
+- **`specialUse` requires a `<property>` element** on the `<service>` tag with `android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"` and a user-visible justification string. Play Store review uses this property to evaluate the declaration.
+- **Type-specific timeouts fire `onTimeout(int startId, int fgsType)`.** This fork already implements the API 35+ overload — at timeout the service stops cleanly and the library emits `TYPE_FG_TIMEOUT` to JS with both `startId` and `fgsType` in the event payload.
+
+If you target API 35+, audit your `foregroundServiceType` choice against the matrix above before shipping. The canonical reference is the [Android 15 foreground service behavior changes](https://developer.android.com/about/versions/15/behavior-changes-15#fgs-changes) documentation.
+
 ### OEM Background Restrictions
 
-Some Android vendors (Xiaomi/Redmi MIUI, Huawei/Honor EMUI, Oppo/Realme ColorOS, Vivo/iQOO FuntouchOS and OriginOS, Samsung OneUI) apply aggressive autostart and battery-saver restrictions that can prevent scheduled trigger notifications from firing at their exact time after a device reboot. The vendor OS suppresses the `BOOT_COMPLETED` broadcast to apps the user has not explicitly whitelisted in the vendor settings. This is a platform-level behavior imposed by the vendor — no library can make `AlarmManager` deliver an alarm to an app the OEM has explicitly paused.
+Some Android vendors (Xiaomi/Redmi MIUI, Huawei/Honor EMUI, Oppo/Realme ColorOS, Vivo/iQOO FuntouchOS and OriginOS, Samsung OneUI) apply aggressive autostart and battery-saver restrictions that affect **both scheduled trigger notifications and running foreground services**:
+
+- **Trigger notifications** — the vendor OS suppresses the `BOOT_COMPLETED` broadcast to apps the user has not explicitly whitelisted, so `AlarmManager`-backed triggers never re-arm after a device reboot until the user opens the app.
+- **Foreground services** — the same vendor policy pauses or terminates a running foreground service as soon as the app is backgrounded. Symptoms reported in [invertase/notifee#410](https://github.com/invertase/notifee/issues/410) include the service pausing after ~6 seconds with the screen off on Samsung OneUI on battery, and immediate kill on Xiaomi MIUI when the app moves to the background.
+
+This is platform-level behavior imposed by the vendor — no library can make `AlarmManager` deliver an alarm to, or a foreground service survive inside, an app the OEM has explicitly paused.
 
 The fork mitigates this with two layers that work together:
 
 **1. Automatic cold-start recovery.** On every app init, the library compares `Settings.Global.BOOT_COUNT` against the value recorded on the previous run. If a reboot has occurred since the last run — whether or not `BOOT_COMPLETED` was delivered to your app — the library re-arms every persisted trigger on a background thread. This means that on an OEM device where `BOOT_COMPLETED` was suppressed, simply opening your app (or having it cold-started by any other entry point: push notification, geofence, share intent) recovers all missed and upcoming alarms. Previously, opening the app alone did not recover them. This recovery runs unconditionally — it is not gated by the `notifee_init_warmup_enabled` metadata flag, because it is a correctness fix rather than a startup optimization.
 
-**2. Vendor settings helper APIs.** The existing `getPowerManagerInfo()` and `openPowerManagerSettings()` APIs let your app guide the user directly to the correct vendor settings screen (Xiaomi Autostart, Huawei Protected Apps, Oppo Startup Manager, and 13 more vendors) to whitelist the app. Once whitelisted, `BOOT_COMPLETED` is delivered normally on every reboot and exact alarm timing is preserved without waiting for the next app cold-start.
+**2. Vendor settings helper APIs.** The existing `getPowerManagerInfo()` and `openPowerManagerSettings()` APIs let your app guide the user directly to the correct vendor settings screen (Xiaomi Autostart, Huawei Protected Apps, Oppo Startup Manager, and 13 more vendors) to whitelist the app. Once whitelisted, `BOOT_COMPLETED` is delivered normally on every reboot and exact alarm timing is preserved without waiting for the next app cold-start. The same whitelist also prevents the OS from killing your foreground service when the app is backgrounded — so this helper is the primary mitigation path for **both** trigger-notification reliability and foreground-service reliability on OEM devices.
 
 A typical integration that combines both layers looks like this:
 
@@ -482,6 +516,33 @@ If the permission is not granted, Notifee falls back to `setAndAllowWhileIdle` (
 instead of crashing — see the `SecurityException` handling in `NotifeeAlarmManager`.
 For use cases that must be exact on first install, declare `USE_EXACT_ALARM` in your manifest
 and consider prompting the user with `openAlarmPermissionSettings()`.
+
+### Timers: foreground service or `SET_ALARM_CLOCK`?
+
+A common question for this fork: **should a rest / cooking / recovery timer be a foreground service, or a scheduled trigger notification?** For most timer use cases the answer is the trigger path — and specifically `SET_ALARM_CLOCK`.
+
+| Timer characteristic | Recommended approach |
+| --- | --- |
+| Fires once at a known time, no live UI update while app is backgrounded | **`SET_ALARM_CLOCK` trigger** (see [AlarmType guide](#alarmtype-guide)) |
+| Fires repeatedly at known intervals | **`SET_ALARM_CLOCK` trigger** with app-side scheduling of the next cycle |
+| Needs a live ticking notification UI while app is backgrounded | Foreground service (`mediaPlayback` if audio, otherwise reconsider the UX) |
+| Streams audio, music, or guided voice | Foreground service with `mediaPlayback` |
+| Continuous background work (location, Bluetooth) | Foreground service with the matching type from the matrix above |
+
+**Why `SET_ALARM_CLOCK` is usually the right choice for timers:**
+
+- **OEM-resilient.** Vendor aggressive-kill policies (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS, Samsung OneUI) generally respect `setAlarmClock` even when they drop `setExactAndAllowWhileIdle` and kill foreground services. This is the same primitive the stock Clock app uses.
+- **No `foregroundServiceType` to pick.** You avoid the Doze / Play-policy / Android 15 timeout maze entirely.
+- **No risk of Play Store rejection** for misusing `mediaPlayback` on a silent timer.
+- **No wake lock to manage.** The library's foreground-service path does not acquire a wake lock on your behalf — under Doze on a non-exempt `foregroundServiceType`, the CPU can still suspend with the screen off. `SET_ALARM_CLOCK` wakes the device at fire time regardless of Doze state.
+
+**When a foreground service *is* the right choice:**
+
+- You need the notification to tick every second while the app is backgrounded (metronome with audio, VoIP call, active GPS track). A `SET_ALARM_CLOCK` trigger fires once at the scheduled time, not continuously.
+- You need actual audio playback — use `mediaPlayback`.
+- You need continuous location updates — use `location`.
+
+For the specific use case in [invertase/notifee#410](https://github.com/invertase/notifee/issues/410) (rest timer between workout sets, screen off, OEM device), `SET_ALARM_CLOCK` is the recommended path. Pair it with `openPowerManagerSettings()` for defense in depth on OEM devices — see the [OEM Background Restrictions](#oem-background-restrictions) section above.
 
 ### Android: `pressAction` defaults to opening the app on tap
 
