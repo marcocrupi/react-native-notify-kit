@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.5.0] - 2026-04-14
+
+### Fixed
+
+- **Android**: Resolved upstream issue [invertase/notifee#549](https://github.com/invertase/notifee/issues/549) — `cancelTriggerNotifications()` and `createTriggerNotification()` JS Promises resolved before the underlying Room database write completed, causing a race where a cancel-then-create pattern could leave inconsistent state. Root cause: `WorkDataRepository.insert` / `deleteAll` / `deleteById` / `deleteByIds` / `update` were fire-and-forget `void` methods that returned immediately while the actual DAO call was still enqueued on a cached thread pool. All five mutation methods now return `ListenableFuture<Void>` and are chained into the outer future at every call site. Empirical reproduction rate on a Pixel 9 Pro XL before the fix: ~3.3% per attempt, <50ms window (Scenario B/C of `repro-549-findings.md`). Post-fix: 0 inconsistencies across 150 attempts in `post-fix-549-verification.md`.
+
+- **Android**: Fixed a reboot-recovery data-loss bug not mentioned in upstream #549 (surfaced by the read-only caller audit in `pre-fix-549-audit.md`, Caller #8). `NotifeeAlarmManager.rescheduleNotification` — invoked from `RebootBroadcastReceiver` on `BOOT_COMPLETED` — fire-and-forgot the `WorkDataRepository.update(...)` that persists the next-fire timestamp for each recurring alarm. If Android killed the receiver's process before Room drained, the updated anchors were lost and the next reboot rescheduled from stale timestamps, causing recurring notifications to fire at the wrong time or be duplicated. The receiver now collects all per-entity update futures, combines them with `Futures.allAsList`, waits with an 8-second `Futures.withTimeout` ANR safety net, and only then calls `pendingResult.finish()`.
+
+- **Android**: Fixed an ordering bug in `NotificationManager.doScheduledWork` where `completer.set(Result.success())` was called before the one-time trigger row was deleted from Room. WorkManager considered the work complete while the row was still pending deletion, leaving a window where a concurrent cancelAll/read could see the zombie row, and where reboot recovery could resurrect a one-shot that had already fired. After the fix, the delete future completes first, then the Worker reports success.
+
+- **Android**: `NotifeeAlarmManager.displayScheduledNotification` now awaits the Room update (for recurring alarms) or delete (for one-shots) before calling `BroadcastReceiver.PendingResult.finish()`. Previously the writes raced against process death inside the receiver's `goAsync()` scope. Uses the same 8-second `Futures.withTimeout` safety net as the reboot-recovery fix to guarantee the receiver always finishes even if Room is wedged.
+
+- **Android**: `WorkDataRepository.insertTriggerNotification(...)` static helper cleanup — now takes an explicit `Context` parameter and calls `getInstance(context)` instead of the implicit `mInstance` field, removing a fragile dependency on `NotifeeInitProvider` having populated the singleton before the first trigger creation.
+
+### Changed
+
+- **Android**: **BEHAVIOR CHANGE** — errors from `WorkDataRepository` mutations (e.g., `SQLiteFullException` from a disk-full device, SQLite corruption, schema migration failures) now propagate as rejections on the JS Promises for `cancelTriggerNotifications`, `cancelTriggerNotification`, `createTriggerNotification`, and `cancelAllNotifications(ids)`. Previously these exceptions were silently swallowed by the fire-and-forget executor, and the JS Promise resolved successfully even when the write had failed. Apps that relied on these methods "always succeeding" may now need to add error handling. This is strictly a correctness improvement — silent write failures were never safe — but it is user-observable, which is why 9.5.0 is a minor version bump.
+
+- **Android**: **LATENCY CHANGE** — `cancelTriggerNotifications()` and `createTriggerNotification()` Promises now resolve only after the Room write has completed. On a warm database this adds roughly 5–15ms to the perceived latency on a Pixel 9 Pro XL. Apps that schedule many triggers in a tight loop may notice cumulative latency increases. A future release may add a batch API that opens a single Room transaction if this becomes a bottleneck for real apps.
+
+### Added
+
+- **Android**: `WorkDataRepositoryFutureContractTest` — JVM unit test (Mockito + `CountDownLatch`) verifying all five mutation methods return non-null futures that only complete after the underlying DAO call has returned, and that DAO exceptions propagate through `ExecutionException`. 13 tests. Runs in the existing `tests_junit.yml` CI workflow.
+
+- **Android**: `WorkDataRepositoryRaceTest` — instrumented test under `androidTest/` exercising a real Room in-memory database with 100-iteration race scenarios (post-cancel consistency, post-create persistence, delete-by-id visibility, update visibility, concurrent stress). **NOT wired into CI yet** — tracked in a follow-up issue linked from the PR description. Must be run manually via `./gradlew :react-native-notify-kit:connectedDebugAndroidTest` on a connected device before merging any change that touches the Room persistence layer.
+
+- **Tooling**: `scripts/verify-549-fix.sh` — automated 5-run harness verification script. Sed-patches `VERIFY_549_AUTO_RUN` in `apps/smoke/App.tsx`, force-stops and relaunches the smoke app five times, parses the per-scenario `[RACE549]` logcat summaries, aggregates across 100 (Scenario A) and 150 (Scenarios B & C) attempts, and writes `post-fix-549-verification.md` with a strict PASS/FAIL verdict. Exit code 0 on PASS, 1 on FAIL — wire into a pre-push hook or future CI emulator job.
+
+- **Tooling**: `TriggerRaceTestScreen.tsx` harness (originally added during the investigation phase and committed here alongside the script changes) now emits one compact JSON line per scenario plus a `-DONE` terminator, so `verify-549-fix.sh` can parse each scenario independently without hitting logcat's per-line size limit.
+
 ## [9.4.0] - 2026-04-10
 
 ### Fixed
