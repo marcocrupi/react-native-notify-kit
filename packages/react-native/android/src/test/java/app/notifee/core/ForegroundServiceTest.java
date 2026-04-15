@@ -1,11 +1,26 @@
 package app.notifee.core;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.os.Bundle;
+import androidx.core.app.NotificationCompat;
+import app.notifee.core.event.NotificationEvent;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,12 +41,15 @@ public class ForegroundServiceTest {
   }
 
   @After
-  public void tearDown() {
-    // Reset all accessible static fields to prevent cross-test pollution.
-    // mCurrentNotificationBundle, mCurrentNotification, mCurrentHashCode are private static
-    // and can only be reset via onStartCommand (the STOP path clears them).
+  public void tearDown() throws Exception {
+    // Reset public and private static fields to prevent cross-test pollution. The three private
+    // statics are cleared via reflection here so that tests which seed them directly (to exercise
+    // onTimeout without running the full START path) cannot leak state into neighbouring tests.
     ForegroundService.mCurrentNotificationId = null;
     ForegroundService.mCurrentForegroundServiceType = -1;
+    setPrivateStatic("mCurrentNotificationBundle", null);
+    setPrivateStatic("mCurrentNotification", null);
+    setPrivateStatic("mCurrentHashCode", 0);
   }
 
   /**
@@ -178,5 +196,233 @@ public class ForegroundServiceTest {
     // Second STOP — helper should be no-op since mStartForegroundCalled is now true
     int result = service.onStartCommand(stopIntent, 0, 2);
     assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // START path and onTimeout event emission (regression guards for 9.1.13)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  private static final String TEST_CHANNEL_ID = "fgs-test-channel";
+
+  /**
+   * START happy path: a valid intent with a notification payload must drive the service through
+   * {@code startForeground()} and leave {@code mCurrentNotificationId} populated so a subsequent
+   * STOP/onTimeout can reference it. Runs on SDK 33 to avoid the API 34+ manifest-type check, which
+   * would require a test-specific {@code foregroundServiceType} declaration.
+   */
+  @Test
+  @Config(sdk = 33)
+  public void onStartCommand_startIntent_setsCurrentNotificationIdAndCallsStartForeground()
+      throws Exception {
+    createChannel();
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    String id = "fgs-start-happy";
+    int result =
+        service.onStartCommand(
+            buildStartIntent(id, id.hashCode()), /* flags= */ 0, /* startId= */ 1);
+
+    assertEquals(Service.START_NOT_STICKY, result);
+    assertEquals(id, ForegroundService.mCurrentNotificationId);
+    // Robolectric's ShadowService records the most recent Notification passed to
+    // startForeground(); a non-null result proves the 3-arg startForeground() overload on the
+    // API 33 branch of onStartCommand was exercised and Android's contract was satisfied.
+    Notification posted = org.robolectric.Shadows.shadowOf(service).getLastForegroundNotification();
+    assertNotNull("startForeground() must have been called during the START path", posted);
+    // The private static mCurrentHashCode tracks the caller-supplied hash; verifying it via
+    // reflection proves the START branch fully ran (not just the early-return path).
+    Field hashField = ForegroundService.class.getDeclaredField("mCurrentHashCode");
+    hashField.setAccessible(true);
+    assertEquals(id.hashCode(), hashField.getInt(null));
+  }
+
+  /**
+   * Regression guard for the 9.1.13 {@code onTimeout(int)} fix (upstream invertase/notifee#703). On
+   * API 34, Android's single-argument {@code onTimeout} fires when a {@code shortService} FGS
+   * exceeds its 3-minute budget. The handler must:
+   *
+   * <ol>
+   *   <li>emit a {@link NotificationEvent} with type {@link NotificationEvent#TYPE_FG_TIMEOUT},
+   *   <li>carry the originating notification model so JS can correlate the event,
+   *   <li>populate {@code startId} and {@code fgsType} extras (the latter is {@code -1} as a
+   *       sentinel on the single-argument variant), and
+   *   <li>reset the service's static tracking state.
+   * </ol>
+   */
+  @Test
+  @Config(sdk = 34)
+  public void onTimeout_api34_emitsFgTimeoutEventWithStartIdAndSentinelFgsType() throws Exception {
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    String id = "fgs-timeout-api34";
+    seedActiveForegroundServiceState(id);
+
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      int startId = 42;
+      service.onTimeout(startId);
+
+      assertEquals(
+          "exactly one NotificationEvent should be emitted on timeout", 1, capture.events.size());
+      NotificationEvent event = capture.events.get(0);
+      assertEquals(NotificationEvent.TYPE_FG_TIMEOUT, event.getType());
+      assertNotNull(
+          "timeout event must carry the originating notification", event.getNotification());
+      assertEquals(id, event.getNotification().getId());
+      assertNotNull("timeout event must carry startId/fgsType extras", event.getExtras());
+      assertEquals(startId, event.getExtras().getInt("startId"));
+      // handleTimeout is called with -1 as the fgsType sentinel from the single-argument overload.
+      assertEquals(-1, event.getExtras().getInt("fgsType"));
+    } finally {
+      EventBus.unregister(capture);
+    }
+
+    assertNull(
+        "mCurrentNotificationId must be cleared after onTimeout",
+        ForegroundService.mCurrentNotificationId);
+    assertEquals(-1, ForegroundService.mCurrentForegroundServiceType);
+  }
+
+  /**
+   * Regression guard for the API 35+ {@code onTimeout(int, int)} overload, which supersedes the
+   * single-argument variant and surfaces the type-specific timeout cause (e.g. {@code
+   * FOREGROUND_SERVICE_TYPE_DATA_SYNC}'s new Android 15 cumulative cap). The emitted event must
+   * carry the explicit {@code fgsType} value, not the sentinel.
+   */
+  @Test
+  @Config(sdk = 35)
+  public void onTimeout_api35_emitsFgTimeoutEventWithExplicitFgsType() throws Exception {
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    String id = "fgs-timeout-api35";
+    seedActiveForegroundServiceState(id);
+
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      int startId = 7;
+      int fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC;
+      service.onTimeout(startId, fgsType);
+
+      assertEquals(1, capture.events.size());
+      NotificationEvent event = capture.events.get(0);
+      assertEquals(NotificationEvent.TYPE_FG_TIMEOUT, event.getType());
+      assertEquals(id, event.getNotification().getId());
+      assertNotNull(event.getExtras());
+      assertEquals(startId, event.getExtras().getInt("startId"));
+      assertEquals(fgsType, event.getExtras().getInt("fgsType"));
+    } finally {
+      EventBus.unregister(capture);
+    }
+
+    assertNull(ForegroundService.mCurrentNotificationId);
+  }
+
+  /**
+   * Defensive behaviour: if onTimeout fires on a service instance whose static state has already
+   * been cleared (a race between STOP and the Android system delivering a delayed timeout), the
+   * handler must not crash and must not post a stray event.
+   */
+  @Test
+  @Config(sdk = 34)
+  public void onTimeout_withNoActiveState_doesNotCrashOrEmitEvent() {
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      service.onTimeout(/* startId= */ 99);
+      assertEquals(0, capture.events.size());
+    } finally {
+      EventBus.unregister(capture);
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ──────────────────────────────────────────────────────────────────────────
+
+  private static void createChannel() {
+    Context context = RuntimeEnvironment.getApplication();
+    NotificationManager nm =
+        (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+    if (nm != null && nm.getNotificationChannel(TEST_CHANNEL_ID) == null) {
+      NotificationChannel channel =
+          new NotificationChannel(
+              TEST_CHANNEL_ID, "FGS test channel", NotificationManager.IMPORTANCE_LOW);
+      nm.createNotificationChannel(channel);
+    }
+  }
+
+  private static Bundle buildNotificationBundle(String id) {
+    Bundle bundle = new Bundle();
+    bundle.putString("id", id);
+    bundle.putString("title", "FGS test " + id);
+    Bundle androidBundle = new Bundle();
+    androidBundle.putString("channelId", TEST_CHANNEL_ID);
+    bundle.putBundle("android", androidBundle);
+    return bundle;
+  }
+
+  private static Notification buildNotification() {
+    Context context = RuntimeEnvironment.getApplication();
+    return new NotificationCompat.Builder(context, TEST_CHANNEL_ID)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("FGS test")
+        .build();
+  }
+
+  private static Intent buildStartIntent(String id, int hashCode) {
+    Intent intent = new Intent();
+    intent.setAction(ForegroundService.START_FOREGROUND_SERVICE_ACTION);
+    intent.putExtra("hashCode", hashCode);
+    intent.putExtra("notification", buildNotification());
+    intent.putExtra("notificationBundle", buildNotificationBundle(id));
+    return intent;
+  }
+
+  /**
+   * Populates the service's private static tracking fields directly, simulating the post-START
+   * state that onTimeout expects to observe. Using reflection here (rather than running a full
+   * START first) keeps the onTimeout tests SDK-independent — the START path would trip the API 34+
+   * manifest-type check, but onTimeout itself is sdk-agnostic because its body only uses pre-API-34
+   * primitives.
+   */
+  private static void seedActiveForegroundServiceState(String id) throws Exception {
+    ForegroundService.mCurrentNotificationId = id;
+    ForegroundService.mCurrentForegroundServiceType = 1;
+    setPrivateStatic("mCurrentNotificationBundle", buildNotificationBundle(id));
+    setPrivateStatic("mCurrentNotification", buildNotification());
+    setPrivateStatic("mCurrentHashCode", id.hashCode());
+  }
+
+  private static void setPrivateStatic(String name, Object value) throws Exception {
+    Field field = ForegroundService.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(null, value);
+  }
+
+  /**
+   * greenrobot EventBus subscriber that records every {@link NotificationEvent} posted during a
+   * test. {@link ThreadMode#POSTING} fires the subscriber synchronously on the caller thread, so
+   * the test can inspect {@code events} immediately after {@code post()} returns without any looper
+   * advancement.
+   */
+  public static class FgsEventCapture {
+    final List<NotificationEvent> events = new ArrayList<>();
+
+    @Subscribe(threadMode = ThreadMode.POSTING)
+    public void onNotificationEvent(NotificationEvent event) {
+      events.add(event);
+    }
   }
 }
