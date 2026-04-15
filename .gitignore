@@ -561,6 +561,9 @@ Pods/*
 typedoc.raw.json
 tests/ios/Firebase
 notifee-admin.json
+# Firebase Admin SDK service account keys (canonical Google naming:
+# `<project>-firebase-adminsdk-<hash>.json`). Contains private_key — NEVER commit.
+*-firebase-adminsdk-*.json
 .tmp
 
 
