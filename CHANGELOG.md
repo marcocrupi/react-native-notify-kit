@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.6.0] - 2026-04-15
+
 ### Fixed
 
 - **Android**: Fixed `ObjectAlreadyConsumedException: Map already consumed` crash in `HeadlessTask.TaskConfig` when the same `WritableMap` instance is reused across headless events or when the `taskConfig` accessor is read more than once. Root cause: `TaskConfig.init` mutated the caller's `WritableMap` directly with `putInt("taskId", ...)` without copying it first. `WritableNativeMap` is a consume-once JNI object; once React Native internally called `.copy()` on it inside `HeadlessJsTaskConfig`, any further access crashed. Latent in most apps (single events with fresh maps), but observed in production by upstream users with high-frequency headless events. The fix copies the map before mutating, matching upstream `@notifee/react-native@9.1.8`. Also eliminates a silent side-effect where the caller's map was polluted with the injected `taskId` key. (upstream: [invertase/notifee#266](https://github.com/invertase/notifee/issues/266))
