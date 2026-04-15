@@ -177,6 +177,29 @@ function App() {
       });
     });
 
+  // Regression check for #393: notifications created via notifee.displayNotification()
+  // hit the Notifee-owned branch of getDisplayedNotifications() on Android, which was
+  // NOT touched by the fix. This button exists to verify the `data` field still
+  // round-trips through that branch after the fix to the non-Notifee (system-FCM)
+  // branch. Flow: press this button → press "getDisplayedNotifications" → the
+  // resulting notification's `data` field must equal `{ foo: 'bar', baz: 'qux' }`.
+  const displayNotificationWithData = () =>
+    run('displayNotificationWithData', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.displayNotification({
+        title: 'Local test',
+        body: 'Regression check for Notifee-owned branch',
+        data: { foo: 'bar', baz: 'qux' },
+        android: { channelId: 'default' },
+      });
+    });
+
   const cancelAll = () => run('cancelAllNotifications', () => notifee.cancelAllNotifications());
 
   const requestPermission = () => run('requestPermission', () => notifee.requestPermission());
@@ -185,7 +208,9 @@ function App() {
     run('getFCMToken', async () => {
       const messaging = getMessaging();
       const token = await getToken(messaging);
-      console.log('FCM Token:', token);
+      // Prefixed log for easy grep in `adb logcat` when running the #393
+      // manual verification flow.
+      console.log('[FCM TOKEN]', token);
       Alert.alert('FCM Token', token);
       return token;
     });
@@ -217,7 +242,14 @@ function App() {
   };
 
   const getDisplayed = () =>
-    run('getDisplayedNotifications', () => notifee.getDisplayedNotifications());
+    run('getDisplayedNotifications', async () => {
+      const result = await notifee.getDisplayedNotifications();
+      // Pretty-printed console.log so the full notification list (including
+      // the `data` field populated by the #393 fix on Android) is legible in
+      // `adb logcat` without manual JSON reformatting.
+      console.log('[DISPLAYED]', JSON.stringify(result, null, 2));
+      return result;
+    });
 
   const createTrigger = () =>
     run('createTriggerNotification', async () => {
@@ -477,6 +509,7 @@ function App() {
       title: 'Notifications',
       buttons: [
         { label: 'displayNotification', onPress: displayNotification },
+        { label: 'displayNotification (with data) [#393]', onPress: displayNotificationWithData },
         { label: 'cancelAllNotifications', onPress: cancelAll },
         { label: 'getDisplayedNotifications', onPress: getDisplayed },
         { label: 'getNotificationSettings', onPress: getSettings },
