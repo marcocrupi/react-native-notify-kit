@@ -9,6 +9,7 @@
     "build:core": "yarn build:core:ios",
     "build:all:clean": "rimraf ios/build && lerna run build:clean",
     "build:rn": "cd packages/react-native && yarn build",
+    "build:rn:server": "cd packages/react-native && yarn build:server",
     "build:rn:watch": "cd packages/react-native && yarn build:watch",
     "build:core:ios": "./build_ios_core.sh",
     "format:all": "yarn format:core && yarn format:rn",
@@ -38,6 +39,8 @@
     "tests_rn:test": "cd packages/react-native && npx jest --config jest.config.js",
     "tests_rn:test-watch": "cd packages/react-native && npx jest --config jest.config.js --watch",
     "tests_rn:test-coverage": "cd packages/react-native && npx jest --config jest.config.js --coverage",
+    "tests_rn:test-server": "cd packages/react-native && npx jest --config jest.config.server.js",
+    "verify:consumer-resolution": "bash scripts/verify-consumer-resolution.sh",
     "smoke:android": "cd apps/smoke && npx react-native run-android",
     "smoke:ios": "cd apps/smoke && npx react-native run-ios",
     "smoke:start": "cd apps/smoke && npx react-native start"

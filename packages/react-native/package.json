@@ -5,11 +5,28 @@
   "description": "Maintained Notifee-compatible fork for React Native — advanced local notifications for Android & iOS.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./server/dist/index.d.ts",
+      "default": "./server/dist/index.js"
+    },
+    "./jest-mock": "./jest-mock.js",
+    "./react-native.config.js": "./react-native.config.js",
+    "./package.json": "./package.json",
+    "./src/*": "./src/*",
+    "./dist/*": "./dist/*"
+  },
   "scripts": {
     "validate:all:ts": "tsc --project ./",
     "build": "genversion --es6 --semi src/version.ts && tsc",
-    "build:clean": "rimraf android/build && rimraf ios/build && rimraf dist",
+    "build:server": "tsc -p server/tsconfig.json",
+    "build:clean": "rimraf android/build && rimraf ios/build && rimraf dist && rimraf server/dist",
     "build:watch": "tsc --watch",
+    "test:server": "jest --config jest.config.server.js",
     "prepare": "yarn run build",
     "prepublishOnly": "cd ../.. && yarn run build:core",
     "format:android": "google-java-format --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",
@@ -79,6 +96,12 @@
     "/*.podspec",
     "/jest-mock.js",
     "/react-native.config.js",
-    "tsconfig.json"
+    "tsconfig.json",
+    "/server/dist",
+    "/server/src",
+    "!/server/src/__tests__",
+    "/server/README.md",
+    "/server/tsconfig.json",
+    "/server/package.json"
   ]
 }

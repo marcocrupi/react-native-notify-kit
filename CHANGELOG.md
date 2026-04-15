@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Server SDK**: new `react-native-notify-kit/server` subpath export. A zero-runtime-dependency Node.js / Firebase Cloud Functions helper that builds FCM HTTP v1 message payloads ready for `admin.messaging().send()`. Android messages are emitted data-only so the FCM SDK never auto-displays; iOS messages use alert-style APNs with `mutable-content: 1` so the Notification Service Extension always activates. Both platforms carry an identical `notifee_options` blob (`_v: 1`) that the upcoming Phase 2 client handler will consume. Issue #129, Phase 1 of 4.
+
+  Public API: `buildNotifyKitPayload`, `buildIosApnsPayload`, `buildAndroidPayload`, `serializeNotifeeOptions`, and all `NotifyKit*` types. Shared wire-contract types live in [packages/react-native/src/internal/fcmContract.d.ts](packages/react-native/src/internal/fcmContract.d.ts) — an internal, non-public path that both the server SDK and the future client handler import from to stay in lock-step.
+
+  Validation rejects: zero or multiple routing fields (`token` / `topic` / `condition`), non-string values in `notification.data`, the reserved keys `notifee_options` / `notifee_data` in user data, empty-string `notification.id`, non-integer or non-positive `options.ttl`, and non-https iOS attachment URLs. A `console.warn` fires when the serialized payload exceeds ~3500 UTF-8 bytes (measured with `Buffer.byteLength`, not JS code units, to correctly account for emoji / CJK content).
+
+- **Tests**: 104 Jest tests for the server SDK — 100 % statement / branch / line / function coverage across `buildPayload.ts`, `ios.ts`, `android.ts`, `serialize.ts`, `validation.ts`. Includes a kitchen-sink snapshot asserting the canonical FCM v1 wire shape.
+
+### Changed
+
+- **Package exports**: [packages/react-native/package.json](packages/react-native/package.json) now declares a formal `exports` map (previously absent). Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`. For backward compatibility with any consumer that was importing internal paths before 9.8.x, `./src/*` and `./dist/*` are also exposed — **these are deprecated and will be removed in a future major**. Migrate to the public exports (`react-native-notify-kit` for the client, `react-native-notify-kit/server` for the server SDK).
+
 ## [9.7.0] - 2026-04-15
 
 ### Added

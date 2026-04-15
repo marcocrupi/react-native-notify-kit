@@ -96,6 +96,24 @@ export default tseslint.config(
     },
   },
 
+  // Server SDK — Node.js target, not React Native
+  {
+    files: ['packages/react-native/server/**/*.ts'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', caughtErrors: 'none' },
+      ],
+    },
+  },
+
   // TurboModule spec files intentionally use Object in the codegen surface.
   {
     files: ['packages/react-native/src/specs/**/*.ts'],
