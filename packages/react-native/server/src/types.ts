@@ -21,5 +21,4 @@ export type {
   NotifyKitApnsOutput,
   NotifyKitPayloadOutput,
   SerializedNotifeeOptions,
-  _AssertAndroidHasNoNotification,
 } from '../../src/internal/fcmContract';

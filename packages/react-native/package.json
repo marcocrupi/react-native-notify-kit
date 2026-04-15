@@ -17,6 +17,7 @@
     "./jest-mock": "./jest-mock.js",
     "./react-native.config.js": "./react-native.config.js",
     "./package.json": "./package.json",
+    "./src/internal/*": null,
     "./src/*": "./src/*",
     "./dist/*": "./dist/*"
   },

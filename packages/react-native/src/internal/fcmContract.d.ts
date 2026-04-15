@@ -127,10 +127,8 @@ export type SerializedNotifeeOptions = {
   ios?: NotifyKitIosConfig;
 };
 
-// Compile-time guard: Android output must never carry a `notification` field
-// (the server enforces data-only delivery for Android).
-export type _AssertAndroidHasNoNotification = NotifyKitAndroidOutput extends {
-  notification: unknown;
-}
-  ? never
-  : true;
+// Android output must never carry a `notification` field (the server enforces
+// data-only delivery for Android to prevent FCM from auto-displaying). This
+// invariant is exercised at runtime by the `never includes a notification
+// field` test in buildPayload.test.ts and is enforced structurally by the
+// shape of NotifyKitAndroidOutput above.
