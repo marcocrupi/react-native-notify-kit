@@ -323,6 +323,7 @@ public class ForegroundServiceTest {
     }
 
     assertNull(ForegroundService.mCurrentNotificationId);
+    assertEquals(-1, ForegroundService.mCurrentForegroundServiceType);
   }
 
   /**
