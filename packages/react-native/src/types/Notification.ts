@@ -46,10 +46,41 @@ export interface Notification {
   body?: string | undefined;
 
   /**
-   * Additional data to store on the notification.
+   * Additional data to associate with the notification.
    *
-   * Data can be used to provide additional context to your notification which can be retrieved
-   * at a later point in time (e.g. via an event).
+   * On Android, when populated by `getDisplayedNotifications()`, the `data`
+   * field reflects custom keys present in the underlying `Notification.extras`,
+   * with the following keys filtered out: prefixes `android.`, `google.`,
+   * `gcm.`, `fcm.` (with trailing dot — `fcmRegion` survives), and `notifee`
+   * (no trailing dot — library's reserved namespace, `notifeeFoo` is also
+   * filtered), plus exact keys `from`, `collapse_key`, `message_type`,
+   * `message_id`, `aps`, `fcm_options`.
+   *
+   * **Important FCM platform limitation on Android**: when the FCM Android SDK
+   * auto-displays a `notification`+`data` push while the app is in background
+   * or killed, custom `data` fields are placed only on the tap-action
+   * `PendingIntent` and never on `Notification.extras`. This is FCM's design
+   * (see `CommonNotificationBuilder.createContentIntent` in the firebase-android-sdk
+   * source) and cannot be worked around from any library — the PendingIntent's
+   * extras are sealed by Android's security model. Tracked in
+   * firebase-android-sdk#2639 (open since 2021).
+   *
+   * The `data` field DOES surface custom keys for: notifications created via
+   * `notifee.displayNotification({ data })`, FCM data-only messages handled
+   * in `onMessageReceived` followed by an explicit `displayNotification()`,
+   * custom `FirebaseMessagingService.handleIntent` overrides that inject
+   * extras before display, and notifications posted by other libraries that
+   * call `NotificationCompat.Builder.addExtras(bundle)`.
+   *
+   * Recommended pattern for full control over FCM push notifications on Android:
+   * send FCM data-only messages (no `notification` field server-side), handle
+   * them in `onMessageReceived`, and render the notification via
+   * `notifee.displayNotification()`.
+   *
+   * Note: the `fcm` filter diverges from iOS, which uses a broader bare-`fcm*`
+   * prefix filter (deliberately, to catch `fcm_options`). On Android, only
+   * `fcm.` (with dot) and the exact key `fcm_options` are filtered — custom
+   * keys like `fcmRegion` are preserved on Android but filtered on iOS.
    */
   data?: { [key: string]: string | object | number };
 

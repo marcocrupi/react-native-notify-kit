@@ -26,6 +26,7 @@ export const testNotification = {
   id: 'test-id',
   title: 'test-title',
   body: 'test-body',
+  data: { event: 'test_event', userId: '42' },
   android: {
     channelId: 'default',
   },

@@ -72,8 +72,11 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -84,6 +87,43 @@ class NotificationManager {
   private static final String TAG = "NotificationManager";
   private static final String EXTRA_NOTIFEE_NOTIFICATION = "notifee.notification";
   private static final String EXTRA_NOTIFEE_TRIGGER = "notifee.trigger";
+
+  // Denylist for getDisplayedNotifications() data extraction — pairs with
+  // EXCLUDED_DATA_KEY_PREFIXES below. `fcm_options` is the Firebase HTTP v1
+  // `Message.fcm_options` analytics label; on iOS it is caught by the bare
+  // `hasPrefix:@"fcm"` filter in NotifeeCoreUtil.m:627, and we match that
+  // filter exactly on Android via this set so the analytics label never
+  // leaks into `notification.data`.
+  private static final Set<String> EXCLUDED_DATA_KEYS =
+      new HashSet<>(
+          Arrays.asList(
+              "from", "collapse_key", "message_type", "message_id", "aps", "fcm_options"));
+
+  // Prefixes that denote system or internal keys.
+  // - `android.`, `gcm.`, `google.`, `fcm.` include the trailing dot so
+  //   legitimate custom keys like `androidify`, `googleish`, or `fcmRegion`
+  //   survive the filter.
+  // - `notifee` is intentionally without dot: it's the library's own namespace
+  //   and we reserve it entirely (matches the internal constants
+  //   `notifee.notification` / `notifee.trigger`, plus `notifee_options` and
+  //   any future addition — mirrors iOS NotifeeCoreUtil.m:626 which uses
+  //   hasPrefix:@"notifee" for the same reason).
+  //
+  // Note: `fcm.` with the dot on Android diverges from iOS, which uses bare
+  // `hasPrefix:@"fcm"` (NotifeeCoreUtil.m:627-628). The iOS filter exists
+  // specifically to drop `fcm_options` (the Firebase HTTP v1 analytics
+  // label, documented inline in that iOS source as `// fcm_options`) — it
+  // is NOT a historical/broad match. We handle `fcm_options` via the
+  // EXCLUDED_DATA_KEYS exact-match set above, which gives us parity on the
+  // Firebase-reserved key while preserving realistic user keys like
+  // `fcmRegion` and `fcmToken` that iOS's broader filter would also drop.
+  // Apps that need strict cross-platform consistency for custom data keys
+  // should avoid names starting with `fcm` entirely (iOS drops them, Android
+  // preserves everything except the exact `fcm_options` label).
+  private static final String[] EXCLUDED_DATA_KEY_PREFIXES = {
+    "android.", "gcm.", "google.", "notifee", "fcm."
+  };
+
   private static final ExecutorService CACHED_THREAD_POOL = Executors.newCachedThreadPool();
   private static final ListeningExecutorService LISTENING_CACHED_THREAD_POOL =
       MoreExecutors.listeningDecorator(CACHED_THREAD_POOL);
@@ -866,6 +906,8 @@ class NotificationManager {
                 notificationBundle.putString("subtitle", subtitle.toString());
               }
 
+              notificationBundle.putBundle("data", extractDataFromExtras(extras));
+
               Bundle androidBundle = new Bundle();
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 androidBundle.putString("channelId", original.getChannelId());
@@ -892,6 +934,62 @@ class NotificationManager {
 
           return notifications;
         });
+  }
+
+  /**
+   * Builds a {@link Bundle} of custom data keys from a {@link StatusBarNotification} extras bundle,
+   * filtering out Android system keys, FCM/Firebase internals, and Notifee-reserved keys via {@link
+   * #shouldIncludeInData(String)}. Mirrors iOS {@code parseDataFromUserInfo:} in {@code
+   * NotifeeCoreUtil.m} on the Firebase-reserved keys ({@code fcm_options}, {@code gcm.*}, {@code
+   * google.*}, {@code aps}, etc.), with a deliberate divergence: Android uses {@code fcm.} (with
+   * dot) plus an exact-match on {@code fcm_options} to preserve realistic user keys like {@code
+   * fcmRegion} and {@code fcmToken} that iOS's broader bare-{@code fcm} prefix would also drop. See
+   * {@link #EXCLUDED_DATA_KEY_PREFIXES} and {@link #EXCLUDED_DATA_KEYS} for the full rationale.
+   *
+   * <p>Values are coerced to {@code String} via {@code toString()}. FCM {@code data} payloads are
+   * {@code Map<String, String>} by contract, so the coercion is a no-op in practice; the defensive
+   * {@code toString()} call only matters for the rare non-String extra that might survive the
+   * denylist (e.g. a numeric value added via {@code Bundle.putInt}).
+   *
+   * <p>Always returns a non-null {@code Bundle} (possibly empty) so that JS consumers can
+   * dereference {@code notification.data.foo} without null-checking {@code data} itself — matching
+   * iOS, which always returns a dictionary.
+   */
+  static Bundle extractDataFromExtras(Bundle extras) {
+    Bundle dataBundle = new Bundle();
+    if (extras == null) {
+      return dataBundle;
+    }
+    for (String key : extras.keySet()) {
+      if (!shouldIncludeInData(key)) {
+        continue;
+      }
+      Object value = extras.get(key);
+      if (value != null) {
+        dataBundle.putString(key, value.toString());
+      }
+    }
+    return dataBundle;
+  }
+
+  /**
+   * Pure denylist predicate used by {@link #extractDataFromExtras(Bundle)}. Extracted for direct
+   * unit testing without having to construct a {@link Bundle}. See the {@link
+   * #EXCLUDED_DATA_KEY_PREFIXES} docs for the reasoning behind each prefix choice.
+   */
+  static boolean shouldIncludeInData(String key) {
+    if (key == null) {
+      return false;
+    }
+    if (EXCLUDED_DATA_KEYS.contains(key)) {
+      return false;
+    }
+    for (String prefix : EXCLUDED_DATA_KEY_PREFIXES) {
+      if (key.startsWith(prefix)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static void getTriggerNotifications(MethodCallResult<List<Bundle>> result) {

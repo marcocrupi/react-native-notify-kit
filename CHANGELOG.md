@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [9.7.0] - 2026-04-15
+
+### Added
+
+- **Android**: `getDisplayedNotifications()` now exposes custom keys from `Notification.extras` as a top-level `data` field on the result, matching the iOS shape produced by `parseDataFromUserInfo:` in `NotifeeCoreUtil.m`. The non-Notifee branch (notifications not created via `displayNotification()`) iterates `extras.keySet()` and copies every key not matching a system-prefix denylist (`android.`, `notifee`, `gcm.`, `google.`, `fcm.`) or an exact-key denylist (`from`, `collapse_key`, `message_type`, `message_id`, `aps`, `fcm_options`) into a `data` sub-bundle. Values are coerced to `String` via `toString()`. The `data` bundle is always present (possibly empty) so JS consumers can access `notification.data.foo` without null-checking `data` itself.
+
+  **Important platform limitation — read carefully before relying on this for FCM push notifications.** When the FCM Android SDK auto-displays a `notification`+`data` push while the app is in background or killed, custom `data` fields are routed exclusively to the tap-action `PendingIntent` and are never written to `Notification.extras`. This is FCM's original architectural design (verified against `firebase-android-sdk` source: `CommonNotificationBuilder.createContentIntent` builds the launch Intent with `intent.putExtras(params.paramsWithReservedKeysRemoved())` but never calls `builder.addExtras()` on the notification itself), not a Notifee or library limitation. The PendingIntent is opaque by Android security design — there is no public API to read its extras without firing it. As a result, this fix **cannot** make custom FCM data fields appear in `getDisplayedNotifications()` for the FCM auto-display path. Firebase issue [firebase-android-sdk#2639](https://github.com/firebase/firebase-android-sdk/issues/2639) (open since 2021, no resolution as of April 2026) tracks Google's awareness of this gap.
+
+  **Scenarios where the fix does surface custom `data` on Android:**
+  - Notifications created via `notifee.displayNotification({ data: {...} })` — round-trip through the existing Notifee-owned serialization path (this branch was already correct; the fix doesn't change it, but the JSDoc clarification documents the contract)
+  - FCM data-only messages handled in `onMessageReceived` where the app calls `notifee.displayNotification()` itself with the data payload
+  - Notifications posted by other libraries via `NotificationCompat.Builder.addExtras(bundle)` (rare in React Native apps but supported)
+  - Custom `FirebaseMessagingService.handleIntent` overrides that inject extras into the notification before display (the workaround documented in the upstream issue's comments)
+
+  **Recommended pattern for full control over FCM push notifications on Android**: send FCM data-only messages (no `notification` field server-side), handle them in `onMessageReceived` or a headless task, and call `notifee.displayNotification()` to render the notification with full control over `data`, channel, styling, and tap behavior. This is also Firebase's official recommendation per the [2018 FCM blog post by Jingyu Shi](https://firebase.blog/posts/2018/09/handle-fcm-messages-on-android/) and the current [FCM message types documentation](https://firebase.google.com/docs/cloud-messaging/concept-options).
+
+  Reserved top-level keys filtered from `data` (any value matching these is dropped): prefixes `android.`, `google.`, `gcm.`, `fcm.` (with trailing dot — `fcmRegion`, `googleish`, etc. survive), `notifee` (no trailing dot — the library's reserved namespace, `notifeeFoo` is also filtered), plus exact keys `from`, `collapse_key`, `message_type`, `message_id`, `aps`, `fcm_options`. The `fcm_options` exact-match achieves parity with iOS on the Firebase analytics-label key while preserving realistic custom keys. Cross-platform divergence: bare-`fcm` keys other than `fcm_options` (e.g. `fcmRegion`, `fcmToken`) are preserved on Android but filtered on iOS — rename server-side if you need strict parity. (upstream: [invertase/notifee#393](https://github.com/invertase/notifee/issues/393))
+
+- **Tests**: `GetDisplayedNotificationsDataTest` — 17 Robolectric unit tests covering the `shouldIncludeInData` denylist filter and the `extractDataFromExtras` bundle-to-bundle helper, including edge cases for prefix precision (`androidify`, `googleish`, `fcmlike`), non-String value coercion via `toString()`, empty-extras stability, and the `fcm_options` exact-match parity.
+
 ## [9.6.0] - 2026-04-15
 
 ### Fixed
