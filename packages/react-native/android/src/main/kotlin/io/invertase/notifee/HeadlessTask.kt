@@ -204,8 +204,9 @@ class HeadlessTask {
         private val params: WritableMap
 
         init {
-            params.putInt("taskId", taskId)
-            this.params = params
+            val copied = params.copy()
+            copied.putInt("taskId", taskId)
+            this.params = copied
         }
 
         val taskConfig: HeadlessJsTaskConfig
