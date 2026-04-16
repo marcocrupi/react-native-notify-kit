@@ -28,3 +28,41 @@ try {
 - To quickly view Android logs in the terminal:
 
 `adb logcat '*:S' NOTIFEE:D`
+
+## CLI (`init-nse`)
+
+The `npx react-native-notify-kit init-nse` command scaffolds an iOS Notification Service Extension. When it fails, the CLI rolls back `.pbxproj` and `Podfile` edits atomically. Common failure modes:
+
+- **"Could not locate the main app target's closing `end` in Podfile"** — the Podfile has non-standard indentation or was edited by another tool. Inspect the Podfile manually and retry, or point the CLI at a clean copy with `--ios-path`.
+- **"Invalid `--bundle-suffix`"** — the flag must match `/^\.[A-Za-z0-9\-.]+$/` (starts with a dot, alphanumerics/dots/hyphens only). Spaces and other special characters are rejected to prevent `.pbxproj` corruption.
+- **Bundle ID contains unresolved Xcode variable** — if your parent bundle ID uses `$(PRODUCT_BUNDLE_PREFIX)` or a similar variable the CLI cannot expand, the CLI logs a warning and proceeds with a placeholder. Fix the NSE bundle ID manually in Xcode after generation.
+- **Host target build cycle after adding the NSE** — the CLI automatically strips RNFB-style `INFOPLIST_FILE` input paths from the host target to prevent this, but if incremental builds still hang look for other `INFOPLIST_FILE` references in the host target's build settings.
+
+Run with `--dry-run` to preview the file changes without writing anything, or `--force` to overwrite an existing NSE target. See the [FCM Mode guide](/fcm-mode) for the full CLI reference.
+
+## FCM Mode logs
+
+When you use the FCM Mode integration (see [Firebase Cloud Messaging](/react-native/integrations/fcm)), a handful of diagnostic messages are emitted that are useful when troubleshooting missing attachments, missing payloads, or unexpected fallback behavior.
+
+Client-side `console.warn` (from `parseFcmPayload` and `reconstructNotification`):
+
+- `Failed to parse notifee_options` — the server payload is malformed JSON.
+- `notifee_options parsed to a non-object value` — the blob decoded but isn't an object.
+- `notifee_options version X is newer than supported version 1` — the client is older than the server SDK that produced the payload.
+- `Failed to parse notifee_data` — the `notifee_data` sibling is malformed.
+- `android.style.type '<type>' present but required '<field>' field missing` — e.g. `BIG_PICTURE` without `picture`, or `BIG_TEXT` without `text`. The style is dropped.
+- `Unknown android.style.type '<type>'` — the style isn't in `AndroidStyle`. The style is dropped.
+- `Unknown ios.interruptionLevel '<level>'` — the iOS interruption level isn't in the supported set.
+- `ios.attachments entry has missing or empty url` — the attachment is filtered out.
+
+Server-side `console.warn` (from `buildNotifyKitPayload`):
+
+- `Payload size X bytes approaches FCM 4KB limit. Consider reducing notifee_options.` — fires when the serialized payload exceeds ~3500 UTF-8 bytes.
+
+iOS NSE logs (generated Swift template — visible in **Console.app** by filtering on the `NotifyKitNSE` process):
+
+- `[NotifyKitNSE] didReceive id=...` — the NSE received a push.
+- `[NotifyKitNSE] contentHandler id=...` — the NSE finished enriching and handed the content back to the OS.
+- `[NotifyKitNSE] serviceExtensionTimeWillExpire` — the NSE ran out of its ~30 s budget (typical cause: slow attachment download on a weak network). The OS displays the un-enriched fallback.
+
+One normal invocation emits two log lines (`didReceive` + `contentHandler`). The `serviceExtensionTimeWillExpire` line appears only on the timeout path.

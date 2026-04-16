@@ -3,9 +3,11 @@ title: OneSignal
 description: Integrate the OneSignal platform to display custom local notifications with Notifee.
 ---
 
-[OneSignal](https://onesignal.com) is a platform for sending cloud messages to mobile devices
+[OneSignal](https://onesignal.com) is a platform for sending cloud messages to mobile devices.
 
-In [their react-native documentation](https://documentation.onesignal.com/docs/react-native-sdk-setup) they describe several things you must do, but [users here have noticed incompatibilities](https://github.com/notifee/react-native-notifee/issues/124#issuecomment-690383445) (and [also here](https://github.com/notifee/react-native-notifee/issues/145#issuecomment-690372202)) when following the documentation because the One Signal libraries appear to be a bit out of date.
+> **Version scope:** this guide targets `react-native-onesignal` versions **prior to 4.0.0**. Modern versions (4.x and later) restructured their native dependencies and no longer require the Firebase-module excludes described below — follow [OneSignal's current React Native setup documentation](https://documentation.onesignal.com/docs/react-native-sdk-setup) instead.
+
+In [their react-native documentation](https://documentation.onesignal.com/docs/react-native-sdk-setup) they describe several things you must do, but [users here have noticed incompatibilities](https://github.com/notifee/react-native-notifee/issues/124#issuecomment-690383445) (and [also here](https://github.com/notifee/react-native-notifee/issues/145#issuecomment-690372202)) when following the documentation because the older OneSignal libraries pulled in conflicting Firebase modules.
 
 With special thanks to users [Ashok Kumar](https://github.com/ashokkumar88) and [burhanDebug](https://github.com/burhanDebug) and [zaweisise](https://github.com/zaweiswise) for helping us figure it out and confirm a solution, this is how to integrate notifee with OneSignal:
 

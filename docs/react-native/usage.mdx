@@ -33,3 +33,13 @@ Using TypeScript in React Native is entirely optional and is not required to use
 Notifee supports both Android & iOS using the same interface. The API has been designed to function on both platforms,
 even in situations whereby functionality may not exist on one platform. In those cases, the API will "noop" or instantly
 resolve.
+
+## Remote notifications (FCM)
+
+To render FCM push notifications with full Notifee control on both platforms, use **FCM Mode** — a layered opt-in on top of the core library:
+
+- A server SDK at `react-native-notify-kit/server` that builds the correct FCM HTTP v1 payload per platform (data-only on Android, alert + `mutable-content: 1` on iOS).
+- A one-liner client handler: `notifee.handleFcmMessage(remoteMessage)`.
+- A CLI that scaffolds the iOS Notification Service Extension automatically: `npx react-native-notify-kit init-nse`.
+
+See the [FCM Mode guide](/fcm-mode) for the full architecture, payload schema, and quick-start, or the [FCM integration](/react-native/integrations/fcm) page for a compact summary. FCM Mode is entirely optional — local notifications, trigger notifications, and channels/categories work without it.
