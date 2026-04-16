@@ -1,6 +1,6 @@
 import type { NotifyKitAndroidOutput, NotifyKitOptions, NotifyKitPayloadInput } from './types';
 
-export type BuildAndroidContext = {
+type BuildAndroidContext = {
   collapseKey?: string;
   ttlSeconds?: number;
 };

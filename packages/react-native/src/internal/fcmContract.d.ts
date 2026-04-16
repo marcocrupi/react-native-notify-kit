@@ -119,6 +119,7 @@ export type NotifyKitPayloadOutput = {
   data: Record<string, string>;
   android: NotifyKitAndroidOutput;
   apns: NotifyKitApnsOutput;
+  sizeBytes: number;
 };
 
 export type SerializedNotifeeOptions = {

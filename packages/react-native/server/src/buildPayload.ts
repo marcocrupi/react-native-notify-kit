@@ -48,29 +48,32 @@ export function buildNotifyKitPayload(input: NotifyKitPayloadInput): NotifyKitPa
     ...(expiration !== undefined ? { expiration } : {}),
   });
 
-  const output: NotifyKitPayloadOutput = {
+  // Build the FCM-bound payload first (without sizeBytes — that's metadata for
+  // the caller, not part of the wire format).
+  const fcmPayload: Omit<NotifyKitPayloadOutput, 'sizeBytes'> = {
     data,
     android,
     apns,
   };
   if (input.token !== undefined) {
-    output.token = input.token;
+    (fcmPayload as NotifyKitPayloadOutput).token = input.token;
   } else if (input.topic !== undefined) {
-    output.topic = input.topic;
+    (fcmPayload as NotifyKitPayloadOutput).topic = input.topic;
   } else if (input.condition !== undefined) {
-    output.condition = input.condition;
+    (fcmPayload as NotifyKitPayloadOutput).condition = input.condition;
   }
 
   // FCM's 4 KB limit is measured in UTF-8 bytes, not JS code units, so emoji
   // and non-ASCII characters consume more than one byte each. Deviation from
   // the spec's literal `JSON.stringify(output).length` to avoid underestimating
-  // payload size under such characters.
-  const sizeBytes = Buffer.byteLength(JSON.stringify(output), 'utf8');
+  // payload size under such characters. sizeBytes measures the FCM-relevant
+  // fields only (excludes the sizeBytes field itself).
+  const sizeBytes = Buffer.byteLength(JSON.stringify(fcmPayload), 'utf8');
   if (sizeBytes > SIZE_WARN_THRESHOLD_BYTES) {
     console.warn(
       `${PREFIX} Payload size ${sizeBytes} bytes approaches FCM 4KB limit. Consider reducing notifee_options.`,
     );
   }
 
-  return output;
+  return { ...fcmPayload, sizeBytes } as NotifyKitPayloadOutput;
 }

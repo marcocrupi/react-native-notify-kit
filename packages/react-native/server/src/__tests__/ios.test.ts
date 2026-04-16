@@ -78,6 +78,12 @@ describe('buildIosApnsPayload — interruption level translation (Rule 9)', () =
     const out = buildIosApnsPayload(base({ ios: { interruptionLevel: input } }), minimalCtx);
     expect(out.payload.aps['interruption-level']).toBe(expected);
   });
+
+  it('throws on invalid interruptionLevel at runtime (JS consumers)', () => {
+    expect(() => toApnsInterruptionLevel('timesensitive' as never)).toThrow(
+      "[react-native-notify-kit/server] Validation: invalid interruptionLevel 'timesensitive'. Expected one of: passive, active, timeSensitive, critical",
+    );
+  });
 });
 
 describe('buildIosApnsPayload — collapse id and expiration', () => {

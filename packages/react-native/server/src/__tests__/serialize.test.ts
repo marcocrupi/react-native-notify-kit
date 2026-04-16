@@ -61,3 +61,13 @@ describe('serializeData', () => {
     expect(serializeData({ a: '1', b: '2' })).toBe('{"a":"1","b":"2"}');
   });
 });
+
+describe('serializeNotifeeOptions — circular reference guard', () => {
+  it('throws a clear error on circular android config', () => {
+    const circular: Record<string, unknown> = { channelId: 'orders' };
+    circular.self = circular;
+    expect(() => serializeNotifeeOptions({ android: circular as never })).toThrow(
+      /\[react-native-notify-kit\/server\] Serialization: notifee_options contains circular references/,
+    );
+  });
+});

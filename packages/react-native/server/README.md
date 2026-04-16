@@ -45,6 +45,10 @@ await admin.messaging().send(message);
 - Android messages are delivered **data-only** — the FCM SDK never auto-displays them. The client handler owns rendering.
 - iOS messages use APNs alert delivery with `mutable-content: 1`, so the Notification Service Extension always activates and reads `notifee_options`.
 - All payloads carry a `_v: 1` version field in `notifee_options` for forward compatibility.
-- If the serialized payload approaches FCM's 4 KB limit, a `console.warn` is emitted (non-fatal).
+- If the serialized payload approaches FCM's 4 KB limit, a `console.warn` is emitted (non-fatal). The exact byte count is also available via `output.sizeBytes` so callers can act programmatically.
+
+## Limitations
+
+- **No deep runtime validation of `notification.android` / `notification.ios` sub-objects.** Nested fields like `channelId`, `smallIcon`, `color`, `pressAction`, `actions`, `style`, `sound`, `categoryId`, etc. are structurally validated by TypeScript at compile time but not checked at runtime. JavaScript consumers bypassing TypeScript should validate inputs themselves. Deep runtime validation is planned for a future release.
 
 See the top-level [CHANGELOG](../../../CHANGELOG.md) and [README](../README.md) for full context.

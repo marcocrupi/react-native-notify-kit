@@ -1,9 +1,11 @@
 import type { NotifyKitAndroidConfig, NotifyKitIosConfig, SerializedNotifeeOptions } from './types';
 
-export type SerializeInput = {
+type SerializeInput = {
   android?: NotifyKitAndroidConfig;
   ios?: NotifyKitIosConfig;
 };
+
+const PREFIX = '[react-native-notify-kit/server]';
 
 export function serializeNotifeeOptions(input: SerializeInput = {}): string {
   const payload: SerializedNotifeeOptions = { _v: 1 };
@@ -13,7 +15,14 @@ export function serializeNotifeeOptions(input: SerializeInput = {}): string {
   if (input.ios !== undefined) {
     payload.ios = input.ios;
   }
-  return JSON.stringify(payload);
+  try {
+    return JSON.stringify(payload);
+  } catch (e: unknown) {
+    const detail = e instanceof Error ? `: ${e.message}` : '';
+    throw new Error(
+      `${PREFIX} Serialization: notifee_options contains circular references or non-serializable values. Check for circular object references in android/ios config${detail}`,
+    );
+  }
 }
 
 export function serializeData(data?: Record<string, string>): string | undefined {

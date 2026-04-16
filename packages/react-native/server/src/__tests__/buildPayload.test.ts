@@ -101,6 +101,15 @@ describe('buildNotifyKitPayload — iOS rules', () => {
     });
     expect(out.apns.payload.aps.badge).toBe(5);
   });
+
+  it('propagates iosBadgeCount: 0 to aps.badge (clears badge)', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b' },
+      options: { iosBadgeCount: 0 },
+    });
+    expect(out.apns.payload.aps.badge).toBe(0);
+  });
 });
 
 describe('buildNotifyKitPayload — TTL formatting (Rule 8)', () => {
@@ -324,5 +333,79 @@ describe('buildNotifyKitPayload — payload size warning (Rule 10)', () => {
     // Sanity: reported size should reflect UTF-8 expansion, not code-unit count.
     expect(reportedBytes).toBeGreaterThan(3600);
     spy.mockRestore();
+  });
+});
+
+describe('buildNotifyKitPayload — sizeBytes field', () => {
+  it('includes sizeBytes as a positive integer', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b' },
+    });
+    expect(typeof out.sizeBytes).toBe('number');
+    expect(out.sizeBytes).toBeGreaterThan(0);
+    expect(Number.isInteger(out.sizeBytes)).toBe(true);
+  });
+
+  it('sizeBytes reflects FCM payload bytes (excludes sizeBytes itself)', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b' },
+    });
+    // Reconstruct the FCM-only payload and measure independently
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { sizeBytes: _sb, ...fcmPayload } = out;
+    const expected = Buffer.byteLength(JSON.stringify(fcmPayload), 'utf8');
+    expect(out.sizeBytes).toBe(expected);
+  });
+});
+
+describe('buildNotifyKitPayload — empty arrays in notifee_options', () => {
+  it('preserves empty android.actions array in notifee_options', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: {
+        title: 'a',
+        body: 'b',
+        android: { actions: [] },
+      },
+    });
+    const parsed = JSON.parse(out.data.notifee_options as string);
+    expect(parsed.android.actions).toEqual([]);
+  });
+
+  it('preserves empty ios.attachments array in notifee_options', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: {
+        title: 'a',
+        body: 'b',
+        ios: { attachments: [] },
+      },
+    });
+    const parsed = JSON.parse(out.data.notifee_options as string);
+    expect(parsed.ios.attachments).toEqual([]);
+  });
+});
+
+describe('buildNotifyKitPayload — apns.payload strict key set', () => {
+  it('apns.payload contains only aps + notifee_options when data is absent', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b' },
+    });
+    expect(Object.keys(out.apns.payload).sort()).toEqual(['aps', 'notifee_options']);
+  });
+
+  it('apns.payload contains only aps + notifee_data + notifee_options when data is present', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b', data: { k: 'v' } },
+    });
+    expect(Object.keys(out.apns.payload).sort()).toEqual([
+      'aps',
+      'notifee_data',
+      'notifee_options',
+    ]);
   });
 });

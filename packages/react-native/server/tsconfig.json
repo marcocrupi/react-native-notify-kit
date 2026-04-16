@@ -11,7 +11,6 @@
     "target": "ES2020",
     "lib": ["ES2020"],
     "types": ["node"],
-    "jsx": "preserve",
     "allowJs": false,
     "isolatedModules": true,
     "strict": true,
@@ -19,8 +18,7 @@
     "exactOptionalPropertyTypes": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "listEmittedFiles": false,
-    "paths": {}
+    "listEmittedFiles": false
   },
   "include": ["src/**/*"],
   "exclude": ["src/__tests__/**/*", "dist", "node_modules"]

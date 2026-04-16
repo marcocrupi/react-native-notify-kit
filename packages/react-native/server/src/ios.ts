@@ -16,13 +16,21 @@ const INTERRUPTION_LEVEL_MAP: Record<NotifyKitIosInterruptionLevel, ApnsInterrup
   critical: 'critical',
 };
 
+const PREFIX = '[react-native-notify-kit/server]';
+
 export function toApnsInterruptionLevel(
   level: NotifyKitIosInterruptionLevel,
 ): ApnsInterruptionLevel {
-  return INTERRUPTION_LEVEL_MAP[level];
+  const mapped = INTERRUPTION_LEVEL_MAP[level as NotifyKitIosInterruptionLevel];
+  if (mapped === undefined) {
+    throw new Error(
+      `${PREFIX} Validation: invalid interruptionLevel '${String(level)}'. Expected one of: passive, active, timeSensitive, critical`,
+    );
+  }
+  return mapped;
 }
 
-export type BuildIosContext = {
+type BuildIosContext = {
   notifeeOptions: string;
   notifeeData?: string;
   collapseKey?: string;
