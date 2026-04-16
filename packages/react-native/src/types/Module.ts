@@ -17,6 +17,7 @@ import {
 } from './NotificationIOS';
 import { PowerManagerInfo } from './PowerManagerInfo';
 import { DisplayedNotification, NotificationSettings, TriggerNotification } from '..';
+import type { FcmConfig, FcmRemoteMessage } from '../fcm/types';
 
 export interface Module {
   /**
@@ -660,6 +661,28 @@ export interface Module {
    * @platform android
    */
   hideNotificationDrawer(): void;
+
+  /**
+   * Processes an FCM remote message produced by the NotifyKit server SDK and
+   * displays a Notifee notification according to the embedded `notifee_options`.
+   *
+   * Safe to call from both `setBackgroundMessageHandler` and `onMessage`.
+   *
+   * @returns The displayed notification ID, or `null` if the call was an
+   *          intentional no-op (iOS background, `fallbackBehavior: 'ignore'`,
+   *          `suppressForegroundBanner`).
+   */
+  handleFcmMessage(remoteMessage: FcmRemoteMessage): Promise<string | null>;
+
+  /**
+   * Configures defaults for {@link handleFcmMessage}. Call once at app startup,
+   * typically in `index.js` before `registerComponent`.
+   *
+   * Returns Promise for forward compatibility — a future version may persist
+   * config across cold starts, which would be async. Currently resolves
+   * synchronously.
+   */
+  setFcmConfig(config: FcmConfig): Promise<void>;
 }
 
 /**

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Client FCM handler**: `notifee.handleFcmMessage(remoteMessage)` — one-liner client handler for FCM messages with `notifee_options` payloads. Parses the server SDK's serialized blob, reconstructs a `Notification` object, and dispatches per platform: Android always displays (data-only), iOS foreground displays, iOS background/killed is a no-op (NSE handles it). Fallback path for non-NotifyKit payloads configurable via `setFcmConfig`. Issue #129, Phase 2 of 4.
+
+- **Client FCM config**: `notifee.setFcmConfig(config)` — optional startup configuration for `handleFcmMessage`. Covers: `defaultChannelId`, `defaultPressAction`, `fallbackBehavior` (`'display'` or `'ignore'`), and `ios.suppressForegroundBanner`.
+
 - **Server SDK**: new `react-native-notify-kit/server` subpath export. A zero-runtime-dependency Node.js / Firebase Cloud Functions helper that builds FCM HTTP v1 message payloads ready for `admin.messaging().send()`. Android messages are emitted data-only so the FCM SDK never auto-displays; iOS messages use alert-style APNs with `mutable-content: 1` so the Notification Service Extension always activates. Both platforms carry an identical `notifee_options` blob (`_v: 1`) that the upcoming Phase 2 client handler will consume. Issue #129, Phase 1 of 4.
 
   Public API: `buildNotifyKitPayload`, `buildIosApnsPayload`, `buildAndroidPayload`, `serializeNotifeeOptions`, and all `NotifyKit*` types. Shared wire-contract types live in [packages/react-native/src/internal/fcmContract.d.ts](packages/react-native/src/internal/fcmContract.d.ts) — an internal, non-public path that both the server SDK and the future client handler import from to stay in lock-step.

@@ -2,7 +2,7 @@
  * Copyright (c) 2016-present Invertase Limited
  */
 
-import { AppRegistry, Platform } from 'react-native';
+import { AppRegistry, AppState, Platform } from 'react-native';
 import { Module } from './types/Module';
 import {
   AndroidChannel,
@@ -48,8 +48,12 @@ import {
 } from './types/NotificationIOS';
 import validateIOSCategory from './validators/validateIOSCategory';
 import validateIOSPermissions from './validators/validateIOSPermissions';
+import type { FcmConfig, FcmRemoteMessage } from './fcm/types';
+import { parseFcmPayload } from './fcm/parseFcmPayload';
+import { reconstructNotification } from './fcm/reconstructNotification';
 
 let backgroundEventHandler: (event: Event) => Promise<void>;
+let fcmConfig: FcmConfig = {};
 
 let registeredForegroundServiceTask: (notification: Notification) => Promise<void>;
 
@@ -838,5 +842,57 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       return;
     }
     return this.native.hideNotificationDrawer();
+  };
+
+  /**
+   * Processes an FCM remote message produced by the NotifyKit server SDK and
+   * displays a Notifee notification according to the embedded `notifee_options`.
+   *
+   * Safe to call from both `setBackgroundMessageHandler` and `onMessage`.
+   */
+  public handleFcmMessage = async (remoteMessage: FcmRemoteMessage): Promise<string | null> => {
+    if (remoteMessage == null || typeof remoteMessage !== 'object') {
+      throw new Error("notifee.handleFcmMessage(*) 'remoteMessage' expected an object.");
+    }
+
+    // Snapshot config at entry — Rule C10 (mid-flight setFcmConfig won't affect this call)
+    const config: FcmConfig = { ...fcmConfig };
+
+    const parsed = parseFcmPayload(remoteMessage.data);
+
+    // Fallback path — no notifee_options present
+    if (parsed === null && config.fallbackBehavior === 'ignore') {
+      return null;
+    }
+
+    const notification = reconstructNotification(parsed, remoteMessage, config);
+
+    // iOS background/killed no-op — Rule C3 (NSE already displayed)
+    if (isIOS) {
+      const state = AppState.currentState;
+      if (state !== 'active') {
+        return null;
+      }
+      // iOS foreground suppress — Rule C2 exception
+      if (config.ios?.suppressForegroundBanner === true) {
+        return null;
+      }
+    }
+
+    // Android always displays (Rule C1), iOS foreground displays (Rule C2)
+    return this.displayNotification(notification);
+  };
+
+  /**
+   * Configures defaults for {@link handleFcmMessage}. Call once at app startup,
+   * typically in `index.js` before `registerComponent`.
+   *
+   * Returns Promise for forward compatibility — a future version may persist
+   * config across cold starts (AsyncStorage / MMKV), which would be async.
+   * Currently resolves synchronously.
+   */
+  public setFcmConfig = (config: FcmConfig): Promise<void> => {
+    fcmConfig = { ...config };
+    return Promise.resolve();
   };
 }
