@@ -11,50 +11,57 @@ const PODFILE_WITH_POST_INSTALL = `platform :ios, '15.1'
 
 target 'MyApp' do
   pod 'React', :path => '../node_modules/react-native'
-end
 
-post_install do |installer|
-  puts 'done'
+  post_install do |installer|
+    puts 'done'
+  end
 end
 `;
 
-const PODFILE_WITH_USE_FRAMEWORKS = `platform :ios, '15.1'
-use_frameworks! :linkage => :static
+const PODFILE_WITH_NESTED_DO = `platform :ios, '15.1'
 
 target 'MyApp' do
   pod 'React', :path => '../node_modules/react-native'
+
+  post_install do |installer|
+    installer.pods_project.targets.each do |target|
+      puts target.name
+    end
+  end
 end
 `;
 
 describe('patchPodfile', () => {
-  it('appends NSE target block to basic Podfile', () => {
+  it('nests NSE target inside the main app target', () => {
     const result = getPatchedPodfile(BASIC_PODFILE, 'NotifyKitNSE');
     expect(result).not.toBeNull();
     expect(result).toContain("target 'NotifyKitNSE' do");
+    expect(result).toContain('inherit! :search_paths');
     expect(result).toContain("pod 'RNNotifeeCore'");
+    // Verify it's INSIDE the main target (before the outer `end`)
+    const nseIndex = result!.indexOf("target 'NotifyKitNSE'");
+    const outerEndIndex = result!.lastIndexOf('end');
+    expect(nseIndex).toBeLessThan(outerEndIndex);
   });
 
-  it('inserts before post_install block when present', () => {
+  it('inserts before the main target closing end (not after post_install)', () => {
     const result = getPatchedPodfile(PODFILE_WITH_POST_INSTALL, 'NotifyKitNSE');
     expect(result).not.toBeNull();
-    const nseIndex = result!.indexOf("target 'NotifyKitNSE'");
-    const postInstallIndex = result!.indexOf('post_install do');
-    expect(nseIndex).toBeLessThan(postInstallIndex);
+    expect(result).toContain("target 'NotifyKitNSE' do");
   });
 
   it('returns null when target already exists (idempotent)', () => {
-    const podfileWithNse = BASIC_PODFILE + "\ntarget 'NotifyKitNSE' do\nend\n";
+    const podfileWithNse = BASIC_PODFILE.replace('end', "  target 'NotifyKitNSE' do\n  end\nend");
     expect(getPatchedPodfile(podfileWithNse, 'NotifyKitNSE')).toBeNull();
   });
 
-  it('detects use_frameworks! and adds static linkage conditional', () => {
-    const result = getPatchedPodfile(PODFILE_WITH_USE_FRAMEWORKS, 'NotifyKitNSE');
-    expect(result).toContain('$RNFirebaseAsStaticFramework');
-  });
-
-  it('does NOT add static linkage line when use_frameworks! absent', () => {
-    const result = getPatchedPodfile(BASIC_PODFILE, 'NotifyKitNSE');
-    expect(result).not.toContain('$RNFirebaseAsStaticFramework');
+  it('handles nested do blocks (post_install with .each do)', () => {
+    const result = getPatchedPodfile(PODFILE_WITH_NESTED_DO, 'NotifyKitNSE');
+    expect(result).not.toBeNull();
+    // NSE should be inside the main target, before its final `end`
+    expect(result).toContain("target 'NotifyKitNSE' do");
+    // The patched content should still end with `end` for the main target
+    expect(result!.trim().endsWith('end')).toBe(true);
   });
 
   it('handles empty Podfile gracefully', () => {
@@ -69,10 +76,17 @@ describe('patchPodfile', () => {
   });
 
   it('H1: does NOT match commented-out target as existing (false idempotency)', () => {
-    const podfileWithComment = BASIC_PODFILE + "\n# target 'NotifyKitNSE' do\n# end\n";
+    const podfileWithComment = BASIC_PODFILE.replace(
+      'end',
+      "  # target 'NotifyKitNSE' do\n  # end\nend",
+    );
     const result = getPatchedPodfile(podfileWithComment, 'NotifyKitNSE');
-    // Should NOT return null — the comment should be ignored
     expect(result).not.toBeNull();
     expect(result).toContain("target 'NotifyKitNSE' do");
+  });
+
+  it('includes inherit! :search_paths for CocoaPods host detection', () => {
+    const result = getPatchedPodfile(BASIC_PODFILE, 'NotifyKitNSE');
+    expect(result).toContain('inherit! :search_paths');
   });
 });

@@ -2,6 +2,8 @@ import * as fs from 'fs';
 
 /**
  * Patches the Podfile to add the NSE target with RNNotifeeCore pod.
+ * The NSE target is nested inside the main app target so CocoaPods can
+ * detect the host→extension relationship. Uses `inherit! :search_paths`.
  * Idempotent: if the target already exists, returns false.
  */
 export function patchPodfile(podfilePath: string, targetName: string, dryRun: boolean): boolean {
@@ -12,8 +14,10 @@ export function patchPodfile(podfilePath: string, targetName: string, dryRun: bo
     return false; // Already present
   }
 
-  const block = buildNseTargetBlock(targetName, content);
-  const patched = insertBeforePostInstall(content, block);
+  const patched = insertNseTarget(content, targetName);
+  if (patched === null) {
+    return false; // Could not find insertion point
+  }
 
   if (!dryRun) {
     fs.writeFileSync(podfilePath, patched, 'utf-8');
@@ -30,39 +34,64 @@ export function getPatchedPodfile(content: string, targetName: string): string |
   if (hasUncommentedTarget(content, targetName)) {
     return null; // Already present
   }
-  const block = buildNseTargetBlock(targetName, content);
-  return insertBeforePostInstall(content, block);
+  return insertNseTarget(content, targetName);
 }
 
-function buildNseTargetBlock(targetName: string, podfileContent: string): string {
-  const hasUseFrameworks = /^\s*use_frameworks!/m.test(podfileContent);
+/**
+ * Inserts the NSE target block inside the main app target, just before
+ * the target's closing `end`. CocoaPods requires extension targets to be
+ * nested inside their host target for proper dependency resolution.
+ */
+function insertNseTarget(content: string, targetName: string): string | null {
+  // Build the NSE block (indented since it's inside the parent target)
+  let block = `\n  target '${targetName}' do\n`;
+  block += `    inherit! :search_paths\n`;
+  block += `    pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'\n`;
+  block += `  end\n`;
 
-  let block = `\ntarget '${targetName}' do\n`;
-  if (hasUseFrameworks) {
-    block += `  use_frameworks! :linkage => :static if $RNFirebaseAsStaticFramework\n`;
-  }
-  block += `  pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'\n`;
-  block += `end\n`;
-
-  return block;
-}
-
-function insertBeforePostInstall(content: string, block: string): string {
-  // Find the top-level post_install block (not nested inside a target)
-  // Strategy: look for `post_install do |installer|` that's NOT indented (top-level)
-  const postInstallMatch = content.match(/^post_install\s+do\s+\|/m);
-
-  if (postInstallMatch && postInstallMatch.index !== undefined) {
-    return (
-      content.slice(0, postInstallMatch.index) +
-      block +
-      '\n' +
-      content.slice(postInstallMatch.index)
-    );
+  // Find the main app target's closing `end`.
+  // Strategy: find the first `target '...' do` and then its matching `end`.
+  // We insert just before that `end`.
+  const targetMatch = content.match(/^target\s+['"][^'"]+['"]\s+do/m);
+  if (!targetMatch || targetMatch.index === undefined) {
+    // No target found — append at top level (unusual Podfile)
+    return content + '\n' + block;
   }
 
-  // No post_install found — append at end
-  return content + '\n' + block;
+  // Find the matching `end` for this target block.
+  // Simple approach: find the last top-level `end` after the target declaration.
+  // We look for `end` at the start of a line (possibly with leading whitespace)
+  // that closes the main target block.
+  const afterTarget = content.slice(targetMatch.index);
+  let depth = 0;
+  let insertIndex = -1;
+  const lines = afterTarget.split('\n');
+  let charIndex = targetMatch.index;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Count block openers: `do` at end of line (target ... do, post_install do |...|)
+    if (/\bdo\b(\s*\|[^|]*\|)?\s*$/.test(trimmed) && !trimmed.startsWith('#')) {
+      depth++;
+    }
+    // Count block closers
+    if (trimmed === 'end') {
+      depth--;
+      if (depth === 0) {
+        // This is the closing `end` of the main target — insert before it
+        insertIndex = charIndex;
+        break;
+      }
+    }
+    charIndex += line.length + 1; // +1 for newline
+  }
+
+  if (insertIndex === -1) {
+    // Could not find matching end — append at file end
+    return content + '\n' + block;
+  }
+
+  return content.slice(0, insertIndex) + block + content.slice(insertIndex);
 }
 
 function hasUncommentedTarget(content: string, targetName: string): boolean {

@@ -3,7 +3,13 @@ declare module 'xcode' {
     parseSync(): void;
     writeSync(): string;
     addTarget(name: string, type: string, subfolder: string): { uuid: string } | null;
-    addBuildPhase(files: string[], buildPhaseType: string, comment: string, target?: string): void;
+    addBuildPhase(
+      files: string[],
+      buildPhaseType: string,
+      comment: string,
+      target?: string,
+      optionOrFolderType?: string,
+    ): void;
     addSourceFile(path: string, opts?: Record<string, unknown>, group?: string): void;
     addResourceFile(path: string, opts?: Record<string, unknown>, group?: string): void;
     addPbxGroup(
@@ -11,6 +17,7 @@ declare module 'xcode' {
       name: string,
       path: string,
     ): { uuid: string; pbxGroup: Record<string, unknown> };
+    addTargetDependency(target: string, dependencyTargets: string[]): void;
     pbxNativeTargetSection(): Record<string, unknown>;
     pbxXCBuildConfigurationSection(): Record<string, unknown>;
     findPBXGroupKey(criteria: Record<string, string>): string | null;
