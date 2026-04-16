@@ -2,6 +2,10 @@
   "$schema": "https://docs.page/schema.json",
   "name": "Notifee",
   "description": "A powerful notification library for React Native",
+  "logo": {
+    "light": "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+    "dark": "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+  },
   "theme": {
     "primary": "#553D9A"
   },
