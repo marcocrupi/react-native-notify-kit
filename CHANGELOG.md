@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.0.0] - 2026-04-17
+
 ### Added
 
 - **CLI bin wiring**: `npx react-native-notify-kit init-nse` now works out-of-the-box after `npm install react-native-notify-kit`. CLI is prepacked into the main package at publish time. CLI deps (`xcode`, `commander`, `chalk`, `plist`) ship as `optionalDependencies`. E2E tarball regression script validates the full consumer flow. Issue #129, Phase 4 of 4.
