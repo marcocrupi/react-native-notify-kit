@@ -1,5 +1,24 @@
+import Foundation
 import UserNotifications
 import RNNotifeeCore
+
+private func nseLog(_ message: String) {
+  NSLog("[NotifyKitNSE] %@", message)
+}
+
+private func requestedAttachmentURLs(from userInfo: [AnyHashable: Any]) -> [String] {
+  guard let serializedOptions = userInfo["notifee_options"] as? String,
+        let data = serializedOptions.data(using: .utf8),
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let ios = json["ios"] as? [String: Any],
+        let attachments = ios["attachments"] as? [[String: Any]] else {
+    return []
+  }
+
+  return attachments.compactMap { attachment in
+    attachment["url"] as? String
+  }
+}
 
 class NotificationService: UNNotificationServiceExtension {
   var contentHandler: ((UNNotificationContent) -> Void)?
@@ -11,21 +30,43 @@ class NotificationService: UNNotificationServiceExtension {
   ) {
     self.contentHandler = contentHandler
     self.bestAttemptContent = request.content.mutableCopy() as? UNMutableNotificationContent
+    let requestedAttachmentUrls = requestedAttachmentURLs(from: request.content.userInfo)
+
+    nseLog(
+      "didReceive id=\(request.identifier) title=\(request.content.title) " +
+        "hasNotifeeOptions=\(request.content.userInfo["notifee_options"] != nil) " +
+        "requestedAttachments=\(requestedAttachmentUrls.count) " +
+        "urls=\(requestedAttachmentUrls.joined(separator: ","))"
+    )
 
     guard let bestAttemptContent = bestAttemptContent else {
+      nseLog("mutableCopy failed for id=\(request.identifier); delivering original content")
       contentHandler(request.content)
       return
     }
 
     NotifeeExtensionHelper.populateNotificationContent(
       request,
-      withContent: bestAttemptContent,
-      withContentHandler: contentHandler
+      with: bestAttemptContent,
+      withContentHandler: { [weak self] content in
+        let deliveredAttachmentIds = content.attachments.map(\.identifier).joined(separator: ",")
+        nseLog(
+          "contentHandler id=\(request.identifier) title=\(content.title) " +
+            "deliveredAttachments=\(content.attachments.count) " +
+            "identifiers=\(deliveredAttachmentIds)"
+        )
+        self?.contentHandler?(content)
+      }
     )
   }
 
   override func serviceExtensionTimeWillExpire() {
     if let contentHandler = contentHandler, let bestAttemptContent = bestAttemptContent {
+      nseLog(
+        "serviceExtensionTimeWillExpire id=\(bestAttemptContent.userInfo["gcm.message_id"] ?? "n/a") " +
+          "title=\(bestAttemptContent.title) " +
+          "deliveredAttachments=\(bestAttemptContent.attachments.count)"
+      )
       contentHandler(bestAttemptContent)
     }
   }

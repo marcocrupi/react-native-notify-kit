@@ -31,13 +31,13 @@ describe('Check 1 — Template ↔ ObjC API contract', () => {
     expect(template).toMatch(/populateNotificationContent\(\s*\n?\s*request/);
   });
 
-  it('Swift template uses withContent: label (not with:)', () => {
-    expect(template).toContain('withContent: bestAttemptContent');
-    expect(template).not.toContain('with: bestAttemptContent');
+  it('Swift template uses with: label (not withContent:)', () => {
+    expect(template).toContain('with: bestAttemptContent');
+    expect(template).not.toContain('withContent: bestAttemptContent');
   });
 
   it('Swift template uses withContentHandler: label', () => {
-    expect(template).toContain('withContentHandler: contentHandler');
+    expect(template).toContain('withContentHandler:');
   });
 
   it('Swift template imports RNNotifeeCore module', () => {

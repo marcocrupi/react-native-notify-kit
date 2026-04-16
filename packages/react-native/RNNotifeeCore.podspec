@@ -16,6 +16,8 @@ Pod::Spec.new do |s|
 
   s.cocoapods_version        = '>= 1.10.0'
   s.ios.deployment_target   = '15.1'
+  s.module_name            = 'RNNotifeeCore'
+  s.pod_target_xcconfig    = { 'DEFINES_MODULE' => 'YES' }
     
   if defined?($NotifeeCoreFromSources) && $NotifeeCoreFromSources == true
     # internal dev flag used by Notifee devs, ignore

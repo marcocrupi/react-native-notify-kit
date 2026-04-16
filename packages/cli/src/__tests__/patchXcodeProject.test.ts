@@ -52,6 +52,24 @@ function getBuildSetting(
   return undefined;
 }
 
+function getShellScriptPhase(
+  proj: ReturnType<typeof xcode.project>,
+  phaseName: string,
+): Record<string, unknown> | undefined {
+  const phases = (proj as any).hash.project.objects.PBXShellScriptBuildPhase as
+    | Record<string, unknown>
+    | undefined;
+  if (!phases) return undefined;
+  for (const [, value] of Object.entries(phases)) {
+    if (typeof value !== 'object') continue;
+    const phase = value as Record<string, unknown>;
+    if (String(phase.name ?? '').replace(/"/g, '') === phaseName) {
+      return phase;
+    }
+  }
+  return undefined;
+}
+
 describe('patchXcodeProject', () => {
   let ctx: ReturnType<typeof setupTmpProject>;
 
@@ -173,7 +191,21 @@ describe('patchXcodeProject', () => {
       .filter(([, v]) => {
         const s = (v as Record<string, unknown>).buildSettings as Record<string, string>;
         return s?.PRODUCT_NAME === '"NotifyKitNSE"';
-      });
+    });
     expect(nseConfigs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('removes the RNFB Info.plist input path to avoid host-extension build cycles', () => {
+    patchXcodeProject({
+      pbxprojPath: ctx.pbxprojPath,
+      targetName: 'NotifyKitNSE',
+      bundleId: 'com.test.nse',
+      iosDir: ctx.iosDir,
+      dryRun: false,
+    });
+    const proj = parseProject(ctx.pbxprojPath);
+    const rnfbPhase = getShellScriptPhase(proj, '[CP-User] [RNFB] Core Configuration');
+    expect(rnfbPhase).toBeDefined();
+    expect(rnfbPhase?.inputPaths).toBeUndefined();
   });
 });

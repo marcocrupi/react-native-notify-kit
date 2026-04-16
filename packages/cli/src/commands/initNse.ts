@@ -57,8 +57,15 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
   logger.success(`Detected iOS project at ${projectInfo.xcodeProjectPath}`);
 
   // 2. Derive bundle ID
-  const bundleId = deriveBundleId(projectInfo.parentBundleId, bundleSuffix);
-  if (projectInfo.parentBundleId?.includes('$(')) {
+  const bundleId = deriveBundleId(
+    projectInfo.parentBundleId,
+    bundleSuffix,
+    projectInfo.parentTargetName,
+  );
+  if (
+    projectInfo.parentBundleId?.includes('$(') &&
+    (bundleId.includes('$(') || bundleId.includes('${'))
+  ) {
     logger.warn(
       `Parent bundle ID uses a variable: ${projectInfo.parentBundleId}\n` +
         '  The NSE bundle ID will need to be set manually in Xcode.',

@@ -87,8 +87,8 @@ describe('writeTemplates', () => {
       path.join(tmp, 'NotifyKitNSE', 'NotificationService.swift'),
       'utf-8',
     );
-    // Must match the ObjC selector populateNotificationContent:withContent:withContentHandler:
-    expect(swift).toContain('withContent: bestAttemptContent');
-    expect(swift).not.toContain('with: bestAttemptContent');
+    // Swift imports the second selector piece as `with:`.
+    expect(swift).toContain('with: bestAttemptContent');
+    expect(swift).not.toContain('withContent: bestAttemptContent');
   });
 });

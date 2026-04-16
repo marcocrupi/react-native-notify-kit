@@ -90,8 +90,17 @@ describe('deriveBundleId', () => {
     expect(deriveBundleId('com.example.app', '.NotifyKitNSE')).toBe('com.example.app.NotifyKitNSE');
   });
 
+  it('expands PRODUCT_NAME:rfc1034identifier when target name is known', () => {
+    const result = deriveBundleId(
+      'org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)',
+      '.NotifyKitNSE',
+      'NotifeeExample',
+    );
+    expect(result).toBe('org.reactjs.native.example.NotifeeExample.NotifyKitNSE');
+  });
+
   it('returns placeholder when bundle ID uses variable', () => {
-    const result = deriveBundleId('$(PRODUCT_BUNDLE_IDENTIFIER)', '.NotifyKitNSE');
+    const result = deriveBundleId('$(PRODUCT_BUNDLE_IDENTIFIER)', '.NotifyKitNSE', 'MyApp');
     expect(result).toContain('$(');
   });
 

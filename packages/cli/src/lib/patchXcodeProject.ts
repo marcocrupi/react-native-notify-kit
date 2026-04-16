@@ -82,6 +82,7 @@ export function patchXcodeProject(opts: PatchXcodeOptions): boolean {
   const hostUuid = findHostTarget(proj);
   if (hostUuid) {
     addTargetDependencyManual(proj, hostUuid, target.uuid, opts.targetName);
+    stripRnfbInfoPlistInputPath(proj, hostUuid);
   }
 
   // 5. Set build settings for all configurations
@@ -204,5 +205,42 @@ function addTargetDependencyManual(
   const hostTarget = objects.PBXNativeTarget[hostUuid];
   if (hostTarget && Array.isArray(hostTarget.dependencies)) {
     hostTarget.dependencies.push({ value: depUuid, comment: 'PBXTargetDependency' });
+  }
+}
+
+function stripRnfbInfoPlistInputPath(
+  proj: ReturnType<typeof xcode.project>,
+  hostUuid: string,
+): void {
+  const objects = (proj as any).hash.project.objects;
+  const hostTarget = objects.PBXNativeTarget?.[hostUuid];
+  const shellPhases = objects.PBXShellScriptBuildPhase;
+
+  if (!hostTarget || !Array.isArray(hostTarget.buildPhases) || !shellPhases) {
+    return;
+  }
+
+  for (const phaseRef of hostTarget.buildPhases) {
+    const phaseUuid = phaseRef?.value;
+    if (!phaseUuid) continue;
+
+    const phase = shellPhases[phaseUuid] as Record<string, unknown> | undefined;
+    if (!phase) continue;
+
+    const phaseName = String(phase.name ?? '').replace(/"/g, '');
+    if (phaseName !== '[CP-User] [RNFB] Core Configuration') {
+      continue;
+    }
+
+    const inputPaths = Array.isArray(phase.inputPaths) ? phase.inputPaths : [];
+    const filteredInputPaths = inputPaths.filter(
+      entry => String(entry) !== '"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)"',
+    );
+
+    if (filteredInputPaths.length > 0) {
+      phase.inputPaths = filteredInputPaths;
+    } else {
+      delete phase.inputPaths;
+    }
   }
 }
