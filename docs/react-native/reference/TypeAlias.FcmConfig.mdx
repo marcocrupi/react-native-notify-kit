@@ -1,0 +1,75 @@
+[**react-native-notify-kit**](react-native/reference/index)
+
+***
+
+[react-native-notify-kit](react-native/reference/index) / FcmConfig
+
+# Type Alias: FcmConfig
+
+> **FcmConfig**: `object`
+
+Defined in: [packages/react-native/src/fcm/types.ts:23](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L23)
+
+Configuration for `handleFcmMessage`. Call `setFcmConfig` once
+at app startup (typically in `index.js` before `registerComponent`).
+
+## Type declaration
+
+### defaultChannelId?
+
+> `optional` **defaultChannelId**: `string`
+
+Default channelId used when `notifee_options.android.channelId` is absent.
+If this is also absent and the payload has no channelId,
+`displayNotification` will throw on Android — same behavior as calling
+`displayNotification` without a channel.
+
+### defaultPressAction?
+
+> `optional` **defaultPressAction**: `object`
+
+Default pressAction when `notifee_options.android.pressAction` is absent.
+Mirrors the existing behavior: `{ id: 'default', launchActivity: 'default' }`.
+
+#### defaultPressAction.id
+
+> **id**: `string`
+
+#### defaultPressAction.launchActivity?
+
+> `optional` **launchActivity**: `string`
+
+### fallbackBehavior?
+
+> `optional` **fallbackBehavior**: `"display"` | `"ignore"`
+
+What to do when `remoteMessage.data.notifee_options` is absent entirely.
+
+* `'display'`: build a minimal notification from `remoteMessage.notification`
+  title/body (or `data.title`/`data.body` as a fallback). Uses `defaultChannelId`.
+* `'ignore'`: return `null` without displaying anything.
+
+#### Default
+
+```ts
+'display'
+```
+
+### ios?
+
+> `optional` **ios**: `object`
+
+iOS-specific options.
+
+#### ios.suppressForegroundBanner?
+
+> `optional` **suppressForegroundBanner**: `boolean`
+
+When `true`, foreground notifications delivered via `handleFcmMessage`
+are NOT displayed (only events are emitted).
+
+##### Default
+
+```ts
+false
+```

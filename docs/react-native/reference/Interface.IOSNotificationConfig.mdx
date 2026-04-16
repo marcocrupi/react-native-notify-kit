@@ -1,0 +1,33 @@
+[**react-native-notify-kit**](react-native/reference/index)
+
+***
+
+[react-native-notify-kit](react-native/reference/index) / IOSNotificationConfig
+
+# Interface: IOSNotificationConfig
+
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:690](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L690)
+
+Interface for configuring iOS notification handling behavior.
+
+## Platform
+
+ios
+
+## Properties
+
+### handleRemoteNotifications?
+
+> `optional` **handleRemoteNotifications**: `boolean`
+
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:702](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L702)
+
+Whether Notifee should handle remote (push) notifications on iOS.
+
+When set to `false`, remote notifications (e.g. from Firebase Cloud Messaging)
+will be forwarded to the original notification delegate instead of being
+processed by Notifee. This allows libraries like React Native Firebase
+Messaging to receive tap events via `onNotificationOpenedApp()` and
+`getInitialNotification()`.
+
+Defaults to `true` for backward compatibility.

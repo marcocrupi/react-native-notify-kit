@@ -6,7 +6,7 @@
 
 # Interface: NotificationSettings
 
-Defined in: [packages/react-native/src/types/Notification.ts:497](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L497)
+Defined in: [packages/react-native/src/types/Notification.ts:530](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L530)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [packages/react-native/src/types/Notification.ts:497](https://github
 
 > **android**: [`AndroidNotificationSettings`](react-native/reference/Interface.AndroidNotificationSettings)
 
-Defined in: [packages/react-native/src/types/Notification.ts:512](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L512)
+Defined in: [packages/react-native/src/types/Notification.ts:547](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L547)
 
 Overall notification settings for the application in android.
 On non-Android platforms, this will be populated with default values
@@ -25,10 +25,12 @@ On non-Android platforms, this will be populated with default values
 
 > **authorizationStatus**: [`AuthorizationStatus`](react-native/reference/Enumeration.AuthorizationStatus)
 
-Defined in: [packages/react-native/src/types/Notification.ts:502](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L502)
+Defined in: [packages/react-native/src/types/Notification.ts:537](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L537)
 
 Overall notification authorization status for the application.
-On Android, `authorizationStatus` will return only either `AuthorizationStatus.DENIED` or `AuthorizationStatus.AUTHORIZED`.
+On Android 13+ (API 33+), `authorizationStatus` returns `AuthorizationStatus.NOT_DETERMINED` before
+`requestPermission()` is called, `AuthorizationStatus.DENIED` if the user denied the permission,
+or `AuthorizationStatus.AUTHORIZED` if granted. On Android \< 13, returns `AUTHORIZED` or `DENIED`.
 
 ***
 
@@ -36,7 +38,7 @@ On Android, `authorizationStatus` will return only either `AuthorizationStatus.D
 
 > **ios**: [`IOSNotificationSettings`](react-native/reference/Interface.IOSNotificationSettings)
 
-Defined in: [packages/react-native/src/types/Notification.ts:507](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L507)
+Defined in: [packages/react-native/src/types/Notification.ts:542](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L542)
 
 Overall notification settings for the application in iOS.
 On non-iOS platforms, this will be populated with default values
@@ -47,7 +49,7 @@ On non-iOS platforms, this will be populated with default values
 
 > **web**: `WebNotificationSettings`
 
-Defined in: [packages/react-native/src/types/Notification.ts:517](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L517)
+Defined in: [packages/react-native/src/types/Notification.ts:552](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L552)
 
 Overall notification settings for the application in web.
 On non-Web platforms, this will be populated with default values

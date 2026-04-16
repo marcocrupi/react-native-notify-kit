@@ -6,7 +6,7 @@
 
 # Enumeration: EventType
 
-Defined in: [packages/react-native/src/types/Notification.ts:310](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L310)
+Defined in: [packages/react-native/src/types/Notification.ts:341](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L341)
 
 An enum representing an event type, defined on [`Event`](/react-native/reference/event).
 
@@ -19,7 +19,7 @@ background events.
 
 > **ACTION\_PRESS**: `2`
 
-Defined in: [packages/react-native/src/types/Notification.ts:341](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L341)
+Defined in: [packages/react-native/src/types/Notification.ts:372](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L372)
 
 Event type is sent when a user presses a notification action.
 
@@ -29,7 +29,7 @@ Event type is sent when a user presses a notification action.
 
 > **APP\_BLOCKED**: `4`
 
-Defined in: [packages/react-native/src/types/Notification.ts:358](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L358)
+Defined in: [packages/react-native/src/types/Notification.ts:389](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L389)
 
 Event is sent when the user changes the notification blocked state for the entire application or
 when the user opens the application settings.
@@ -44,7 +44,7 @@ android API Level >= 28
 
 > **CHANNEL\_BLOCKED**: `5`
 
-Defined in: [packages/react-native/src/types/Notification.ts:365](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L365)
+Defined in: [packages/react-native/src/types/Notification.ts:396](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L396)
 
 Event type is sent when the user changes the notification blocked state for a channel in the application.
 
@@ -58,7 +58,7 @@ android API Level >= 28
 
 > **CHANNEL\_GROUP\_BLOCKED**: `6`
 
-Defined in: [packages/react-native/src/types/Notification.ts:372](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L372)
+Defined in: [packages/react-native/src/types/Notification.ts:403](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L403)
 
 Event type is sent when the user changes the notification blocked state for a channel group in the application.
 
@@ -72,7 +72,7 @@ android API Level >= 28
 
 > **DELIVERED**: `3`
 
-Defined in: [packages/react-native/src/types/Notification.ts:350](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L350)
+Defined in: [packages/react-native/src/types/Notification.ts:381](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L381)
 
 Event type sent when a notification has been delivered to the device. For trigger notifications,
 this event is sent at the point when the trigger executes, not when a the trigger notification is created.
@@ -86,7 +86,7 @@ user. For example, they may have notifications disabled on the device/channel/ap
 
 > **DISMISSED**: `0`
 
-Defined in: [packages/react-native/src/types/Notification.ts:327](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L327)
+Defined in: [packages/react-native/src/types/Notification.ts:358](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L358)
 
 Event type is sent when the user dismisses a notification. This is triggered via the user swiping
 the notification from the notification shade.
@@ -101,7 +101,7 @@ This event is **not** sent when a notification is cancelled or times out.
 
 > **FG\_ALREADY\_EXIST**: `8`
 
-Defined in: [packages/react-native/src/types/Notification.ts:384](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L384)
+Defined in: [packages/react-native/src/types/Notification.ts:415](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L415)
 
 **ANDROID ONLY**
 
@@ -113,7 +113,7 @@ Event type is sent when a notification wants to start a foreground service but a
 
 > **PRESS**: `1`
 
-Defined in: [packages/react-native/src/types/Notification.ts:336](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L336)
+Defined in: [packages/react-native/src/types/Notification.ts:367](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L367)
 
 Event type is sent when a notification has been pressed by the user.
 
@@ -127,7 +127,7 @@ On iOS, this event is always sent when the user presses a notification.
 
 > **TRIGGER\_NOTIFICATION\_CREATED**: `7`
 
-Defined in: [packages/react-native/src/types/Notification.ts:377](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L377)
+Defined in: [packages/react-native/src/types/Notification.ts:408](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L408)
 
 Event type is sent when a notification trigger is created.
 
@@ -137,7 +137,7 @@ Event type is sent when a notification trigger is created.
 
 > **UNKNOWN**: `-1`
 
-Defined in: [packages/react-native/src/types/Notification.ts:317](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L317)
+Defined in: [packages/react-native/src/types/Notification.ts:348](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Notification.ts#L348)
 
 An unknown event was received.
 

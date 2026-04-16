@@ -1,0 +1,68 @@
+[**react-native-notify-kit**](react-native/reference/index)
+
+***
+
+[react-native-notify-kit](react-native/reference/index) / PowerManagerInfo
+
+# Interface: PowerManagerInfo
+
+Defined in: [packages/react-native/src/types/PowerManagerInfo.ts:12](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/PowerManagerInfo.ts#L12)
+
+The interface that represents the information returned from `getPowerManagerInfo()`.
+
+View the [Background Restrictions](/react-native/android/background-restrictions) documentation to learn more.
+
+## Platform
+
+android
+
+## Properties
+
+### activity?
+
+> `optional` **activity**: `null` | `string`
+
+Defined in: [packages/react-native/src/types/PowerManagerInfo.ts:42](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/PowerManagerInfo.ts#L42)
+
+The activity that the user will be navigated to if `openPowerManagerSettings()` is called.
+
+Use this as an indicator of what steps the user may have to perform,
+in-order to prevent your app from being killed.
+
+If no activity can be found, value will be null.
+
+***
+
+### manufacturer?
+
+> `optional` **manufacturer**: `string`
+
+Defined in: [packages/react-native/src/types/PowerManagerInfo.ts:18](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/PowerManagerInfo.ts#L18)
+
+The device manufacturer.
+
+For example, Samsung.
+
+***
+
+### model?
+
+> `optional` **model**: `string`
+
+Defined in: [packages/react-native/src/types/PowerManagerInfo.ts:25](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/PowerManagerInfo.ts#L25)
+
+The device model.
+
+For example, Galaxy S8
+
+***
+
+### version?
+
+> `optional` **version**: `string`
+
+Defined in: [packages/react-native/src/types/PowerManagerInfo.ts:32](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/PowerManagerInfo.ts#L32)
+
+The Android version
+
+For example, Android 10

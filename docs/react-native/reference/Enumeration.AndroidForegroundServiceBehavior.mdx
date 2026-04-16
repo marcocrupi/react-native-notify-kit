@@ -1,0 +1,68 @@
+[**react-native-notify-kit**](react-native/reference/index)
+
+***
+
+[react-native-notify-kit](react-native/reference/index) / AndroidForegroundServiceBehavior
+
+# Enumeration: AndroidForegroundServiceBehavior
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1514](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1514)
+
+Controls the display behavior of foreground service notifications on Android 12+.
+
+Values are aligned with androidx.core.app.NotificationCompat constants:
+DEFAULT   = NotificationCompat.FOREGROUND\_SERVICE\_DEFAULT   (0)
+IMMEDIATE = NotificationCompat.FOREGROUND\_SERVICE\_IMMEDIATE (1)
+DEFERRED  = NotificationCompat.FOREGROUND\_SERVICE\_DEFERRED  (2)
+
+Do not change these numeric values without updating the native getter in
+NotificationAndroidModel.java.
+
+## Platform
+
+android
+
+## Enumeration Members
+
+### DEFAULT
+
+> **DEFAULT**: `0`
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1522](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1522)
+
+Framework default. Equivalent to not calling `setForegroundServiceBehavior()` at all.
+On Android 12+, the system may defer display of the foreground service notification
+by up to 10 seconds unless an exemption applies.
+
+Corresponds to `NotificationCompat.FOREGROUND_SERVICE_DEFAULT`.
+
+***
+
+### DEFERRED
+
+> **DEFERRED**: `2`
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1543](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1543)
+
+The foreground service notification display may be deferred by up to 10 seconds by the
+system. This matches the default Android 12+ behavior and the (unintended) behavior of
+upstream `@notifee/react-native`.
+
+Corresponds to `NotificationCompat.FOREGROUND_SERVICE_DEFERRED`.
+
+***
+
+### IMMEDIATE
+
+> **IMMEDIATE**: `1`
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1534](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1534)
+
+The foreground service notification is shown immediately after the service starts.
+Eliminates the 10-second display delay imposed by Android 12+ on foreground service
+notifications.
+
+This is the library default when `asForegroundService` is `true` and
+`foregroundServiceBehavior` is not explicitly set.
+
+Corresponds to `NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE`.

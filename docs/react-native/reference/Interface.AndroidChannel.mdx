@@ -6,7 +6,7 @@
 
 # Interface: AndroidChannel
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:858](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L858)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:879](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L879)
 
 An interface for describing an Android Channel.
 
@@ -29,7 +29,7 @@ android
 
 > `optional` **badge**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:881](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L881)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:902](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L902)
 
 Sets whether badges are enabled for the channel.
 
@@ -45,7 +45,7 @@ This setting cannot be overridden once the channel is created.
 
 > `optional` **bypassDnd**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:893](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L893)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:914](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L914)
 
 Sets whether or not notifications posted to this channel can interrupt the user in
 'Do Not Disturb' mode.
@@ -64,7 +64,7 @@ android API Level >= 29
 
 > `optional` **description**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:904](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L904)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:925](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L925)
 
 Sets the user visible description of this channel.
 
@@ -82,7 +82,7 @@ android API Level >= 28
 
 > `optional` **groupId**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:931](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L931)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:952](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L952)
 
 Sets what group this channel belongs to. Group information is only used for presentation, not for behavior.
 
@@ -96,7 +96,7 @@ This setting cannot be overridden once the channel is created.
 
 > **id**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:862](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L862)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:883](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L883)
 
 The unique channel ID.
 
@@ -106,7 +106,7 @@ The unique channel ID.
 
 > `optional` **importance**: [`AndroidImportance`](react-native/reference/Enumeration.AndroidImportance)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:940](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L940)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:961](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L961)
 
 Sets the level of interruption of this notification channel.
 
@@ -120,7 +120,7 @@ This setting can only be set to a lower importance level once set.
 
 > `optional` **lightColor**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:948](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L948)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:969](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L969)
 
 If lights are enabled (via `lights`), sets/overrides the light color for notifications
 posted to this channel.
@@ -133,7 +133,7 @@ This setting cannot be overridden once the channel is created.
 
 > `optional` **lights**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:913](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L913)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:934](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L934)
 
 Sets whether notifications posted to this channel should display notification lights, on devices that support that feature.
 
@@ -147,7 +147,7 @@ This setting cannot be overridden once the channel is created.
 
 > **name**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:870](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L870)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:891](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L891)
 
 The channel name. This is shown to the user so must be descriptive and relate to the notifications
 which will be delivered under this channel.
@@ -160,7 +160,7 @@ This setting can be updated after creation.
 
 > `optional` **sound**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:976](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L976)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:997](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L997)
 
 Overrides the sound the notification is displayed with.
 
@@ -174,7 +174,7 @@ This setting cannot be overridden once the channel is created.
 
 > `optional` **soundURI**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:983](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L983)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:1004](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L1004)
 
 The URI of the notification sound associated with the channel, if any.
 
@@ -186,7 +186,7 @@ This is a read-only value, and is under user control after the channel is create
 
 > `optional` **vibration**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:922](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L922)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:943](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L943)
 
 Sets whether notification posted to this channel should vibrate.
 
@@ -200,7 +200,7 @@ This setting cannot be overridden once the channel is created.
 
 > `optional` **vibrationPattern**: `number`\[]
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:967](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L967)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:988](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L988)
 
 Sets/overrides the vibration pattern for notifications posted to this channel.
 
@@ -214,7 +214,7 @@ This setting cannot be overridden once the channel is created.
 
 > `optional` **visibility**: [`AndroidVisibility`](react-native/reference/Enumeration.AndroidVisibility)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:958](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L958)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:979](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L979)
 
 Sets whether notifications posted to this channel appear on the lockscreen or not,
 and if so, whether they appear in a redacted form.
