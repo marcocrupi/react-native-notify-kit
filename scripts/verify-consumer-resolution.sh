@@ -150,7 +150,7 @@ const input: NotifyKitPayloadInput = {
 const out: NotifyKitPayloadOutput = buildNotifyKitPayload(input);
 const apns = buildIosApnsPayload(input, { notifeeOptions: '{"_v":1}' });
 const android = buildAndroidPayload(input, { collapseKey: 'k', ttlSeconds: 60 });
-const merged: string = serializeNotifeeOptions({ android: androidCfg, ios: iosCfg });
+const merged: string = serializeNotifeeOptions({ title: 'a', body: 'b', android: androidCfg, ios: iosCfg });
 
 const priority: 'HIGH' | 'NORMAL' = out.android.priority;
 const pushType: 'alert' = out.apns.headers['apns-push-type'];

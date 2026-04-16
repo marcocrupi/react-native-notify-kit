@@ -137,6 +137,8 @@ export type NotifyKitPayloadOutput = {
 
 export type SerializedNotifeeOptions = {
   _v: 1;
+  title: string;
+  body: string;
   android?: NotifyKitAndroidConfig;
   ios?: NotifyKitIosConfig;
 };
