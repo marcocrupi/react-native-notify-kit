@@ -1,32 +1,26 @@
 ---
 title: Overview
-description: Overview of Notifee, the documentation guides and reference API.
+description: Overview of react-native-notify-kit, the documentation guides and reference API.
 ---
 
-Notifee is a library for React Native, bringing local notification support to both Android &
-iOS applications.
+**`react-native-notify-kit`** is a feature-rich local notification library for React Native (Android + iOS). It is a maintained fork of [`invertase/notifee`](https://github.com/invertase/notifee), published as [`react-native-notify-kit` on npm](https://www.npmjs.com/package/react-native-notify-kit). The fork is **React Native only** (Flutter support has been removed) and targets the **New Architecture** exclusively (React Native 0.73+).
+
+In addition to the original local-notification API surface, the fork adds a first-class FCM integration ([FCM Mode](/fcm-mode)), a zero-dependency server SDK (`react-native-notify-kit/server`), and a CLI (`npx react-native-notify-kit init-nse`) that scaffolds the iOS Notification Service Extension automatically.
 
 ## The library
 
-Notifee is a local notifications library and does not integrate with any 3rd party messaging services. This provides
-developers greater flexibility on how notifications are managed and integrated with new and existing applications.
+Notifee is a local notifications library and does not integrate with any 3rd party messaging services out of the box — FCM Mode is a layered opt-in on top of that core. This gives you flexibility in how notifications are managed and integrated with new and existing applications.
 
-The library is a successor to the notifications module in [React Native Firebase v5](https://v5.rnfirebase.io/docs/v5.x.x/notifications/introduction).
-The entire library has been reworked from the ground up focusing on new features, testing, documentation and device
-compatibility.
+The library is a successor to the notifications module in [React Native Firebase v5](https://v5.rnfirebase.io/docs/v5.x.x/notifications/introduction). The entire library has been reworked from the ground up focusing on new features, testing, documentation and device compatibility.
 
-# Documentation
+## Documentation
 
-Our documentation aims to provide a walkthrough guide to integrating notifee with your app on both Android & iOS platforms.
+Our documentation aims to provide a walkthrough guide to integrating `react-native-notify-kit` with your app on both Android and iOS.
 
-## Android vs iOS
+### Android vs iOS
 
-A lot of the Notifee documentation is broken out into Android Concepts vs iOS Concepts. The underlying APIs & features provided by Android & iOS are very different. Notifee aims to provide first-class
-support for both platforms which is why there are separate guides for [iOS](https://notifee.app/react-native/docs/ios/introduction) & [Android](https://notifee.app/react-native/docs/android/introduction).
+A lot of the documentation is broken out into Android concepts vs iOS concepts. The underlying APIs and features provided by Android & iOS are very different. The library aims to provide first-class support for both platforms — see the separate guides for [iOS](/react-native/ios/introduction) and [Android](/react-native/android/introduction).
 
-# Reference API
+## Reference API
 
-The Notifee [reference API](/react-native/reference) provides developers with a deep dive into each of the methods
-& properties which the API exposes. The reference is generated from [TypeScript](https://www.typescriptlang.org/) & is
-Open Source - if you wish to improve any of the types, feel free to submit a [Pull Request](https://github.com/marcocrupi/react-native-notify-kit/pulls)
-or file an [Issue](https://github.com/marcocrupi/react-native-notify-kit/issues).
+The [reference API](/react-native/reference) provides developers with a deep dive into each method and property the library exposes. The reference is generated from [TypeScript](https://www.typescriptlang.org/) and is open source — if you wish to improve any of the types, feel free to submit a [Pull Request](https://github.com/marcocrupi/react-native-notify-kit/pulls) or file an [Issue](https://github.com/marcocrupi/react-native-notify-kit/issues).

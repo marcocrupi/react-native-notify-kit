@@ -5,8 +5,7 @@ description: Quick start guide for installing and running on React Native.
 
 ## 1. Install from npmjs.com
 
-Install Notifee to the root of your React Native project with [npm](https://www.npmjs.com/) or
-[Yarn](https://yarnpkg.com/lang/en/)
+Install the package at the root of your React Native project with [npm](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/):
 
 ```bash
 # Using npm
@@ -20,30 +19,49 @@ yarn add react-native-notify-kit
 
 ### 2a. Android API versions
 
-The values of the compileSdkVersion & targetSdkVersion might need to be changed. compileSdkVersion needs to be at least 34. In addition, if your app is going to request permission on Android 13 via requestPermission, targetSdkVersion needs to be at least 33, as well. These setting are in the file `/android/build.gradle`. 
+The library requires modern Android SDK levels. Update your `android/build.gradle` so that:
+
+- `compileSdkVersion` = **35**
+- `targetSdkVersion` = **35**
+- `minSdkVersion` = **24** (Android 7.0)
 
 ```gradle
 buildscript {
   ext {
-    compileSdkVersion = 34 // at least 34
-    targetSdkVersion = 33 // If requesting permission on Android 13 via requestPermission, at least 33 
-    ... 
- } 
- ... 
+    compileSdkVersion = 35
+    targetSdkVersion = 35
+    minSdkVersion = 24
+    ...
+  }
+  ...
 }
 ```
 
-Your android project will fail to build with missing symbols if you do not alter these settings, as we require API33 symbols to support Android 13 notification permissions.
+Your Android project will fail to build with missing symbols if you use older values, because the library is compiled against API 35.
 
 ### 2b. Gradle versions
 
-The minimum version of gradle is 7.2.x, and the mimimum version of the android gradle plugin is 7.1.x.
+- **Android Gradle Plugin**: 8.2.2 or higher
+- **Gradle**: 8.x
 
-Your android project will fail to build with errors related to resource compilation / packaging if you do not use a new enough android gradle plugin / gradle combination.
+These match the versions the library is built with (see [packages/react-native/android/build.gradle](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/android/build.gradle)). Older Gradle/AGP combinations will fail with resource-packaging errors.
+
+### 2c. Java version
+
+The library is compiled with Java 17 (`sourceCompatibility = VERSION_17`, `targetCompatibility = VERSION_17`). JDK 17 (LTS) or 21 (LTS) is required to build on Android. JDK 8 and 11 are **not** supported.
+
+### 2d. React Native and New Architecture
+
+- **React Native**: `>=0.73` (peer dependency).
+- **New Architecture**: required. The bridge is a TurboModule; the library does not support the old bridge. Ensure `newArchEnabled=true` in `android/gradle.properties` and `RCT_NEW_ARCH_ENABLED=1` in your iOS build environment (enabled by default in RN 0.76+).
+
+### 2e. iOS deployment target
+
+The iOS pod targets **iOS 15.1+** (`RNNotifee.podspec`). Make sure your app's iOS deployment target is 15.1 or higher.
 
 ## 3. Autolinking with React Native
-Users on React Native 0.60+ automatically have access to "[autolinking](https://github.com/react-native-community/cli/blob/master/docs/autolinking.md)",
-requiring no further manual installation steps. To automatically link the package, rebuild your project:
+
+React Native 0.60+ provides [autolinking](https://github.com/react-native-community/cli/blob/master/docs/autolinking.md), so no further manual linking is required. Rebuild your project after install:
 
 ```bash
 # For iOS
@@ -54,47 +72,66 @@ npx react-native run-ios
 npx react-native run-android
 ```
 
+## 4. Optional: iOS Notification Service Extension
+
+If you plan to use FCM with remote push, you'll also want a Notification Service Extension (NSE) on iOS so rich payloads (attachments, interruption level, custom actions) render correctly when the app is in the background or killed.
+
+The library ships a CLI command that scaffolds the target for you:
+
+```bash
+npx react-native-notify-kit init-nse
+```
+
+This patches your `.pbxproj` and `Podfile` automatically and generates a `NotifyKitNSE` target using `NotifeeExtensionHelper` for push enrichment. See [FCM Mode](/fcm-mode) for the full setup and server payload details.
+
 ## Miscellaneous
 
 ### Expo Support
 
-To be able to run Notifee, it is necessary to compile your Android app with `compileSdkVersion` of 33. As of Expo SDK 48, this is a default, so unless you're overriding the `compileSdkVersion`, there's no additional actions you need to take. 
+The library works with Expo via the bare workflow or custom-dev-client (not Expo Go — notifications require native code).
 
-If, however, you're currently compiling your app for SDK version lower than 33, please utilize the `expo-build-properties` config plugin to bump the `compileSdkVersion` to 33. First, install `expo-build-properties`:
+Override the Android SDK versions through `expo-build-properties`:
 
-`npx expo install expo-build-properties`
+```bash
+npx expo install expo-build-properties
+```
 
-Then, add `react-native-notify-kit` to the list of plugins in your app's Expo config (`app.json` or `app.config.js`):
+Then in your `app.json` / `app.config.js`:
+
 ```js
 {
   "name": "my app",
   "plugins": [
     [
-        "expo-build-properties",
-        {
-          "android": {
-            "compileSdkVersion": 34, // at least 34
-            "targetSdkVersion": 33 // Only needed if requesting permission on Android 13 via requestPermission, at least 33 
-          },
-        },
-      ],
+      "expo-build-properties",
+      {
+        "android": {
+          "compileSdkVersion": 35,
+          "targetSdkVersion": 35,
+          "minSdkVersion": 24
+        }
+      }
+    ]
   ]
 }
 ```
 
-Finally, ensure you run `npx expo prebuild` and rebuild your app as described in the ["Adding custom native code"](https://docs.expo.io/workflow/customizing/) guide.
+Run `npx expo prebuild` and rebuild your app as described in the ["Adding custom native code"](https://docs.expo.dev/workflow/customizing/) guide.
 
-Please note that Notifee needs Java JDK 11+ to build on Android. If you are building the app with EAS, you need to change the image used for the build. You will have to use `image` as `ubuntu-18.04-jdk-11-ndk-r19c` or another image that has jdk 11 as in the following configuration. ([EAS Build Server Configuration](https://docs.expo.dev/build-reference/infrastructure/#image--ubuntu-1804-jdk-8-ndk-r19c--alias--default))
+For EAS Build, use an image that ships JDK 17. In `eas.json`:
 
-```json title="eas.json"
+```json
 {
   "build": {
-    "dev": {
+    "development": {
       "developmentClient": true,
       "distribution": "internal",
       "android": {
-        "image": "ubuntu-18.04-jdk-11-ndk-r19c"
+        "image": "latest"
       }
     }
+  }
 }
 ```
+
+`"image": "latest"` resolves to the current Ubuntu image with JDK 17 as of Expo SDK 50+. See the [EAS Build server infrastructure docs](https://docs.expo.dev/build-reference/infrastructure/) for the full list of images.
