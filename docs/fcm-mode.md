@@ -55,7 +55,7 @@ Stick with a simpler pattern when:
 
 ## Architecture
 
-```
+```text
   ┌──────────────────┐
   │ Your backend     │
   │ (Node.js / CFns) │
@@ -381,7 +381,7 @@ Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages
 
 FCM has a **4 KB hard limit** per message (the HTTP v1 `Message` JSON, not just your `data` map). The server SDK emits a `console.warn` when the serialized payload exceeds ~3500 bytes — enough headroom for FCM's own wrapping. Size is measured with `Buffer.byteLength(json, 'utf8')`, so emoji and CJK characters are counted correctly.
 
-```
+```text
 [react-native-notify-kit/server] Payload size 3612 bytes approaches FCM 4KB limit. Consider reducing data keys or notification.body length.
 ```
 
@@ -455,7 +455,7 @@ Processes an FCM remote message produced by the server SDK and displays a Notife
 | Android | foreground | with `notifee_options` | `displayNotification(...)` — notification appears |
 | Android | background | with `notifee_options` | `displayNotification(...)` — notification appears |
 | Android | killed | with `notifee_options` | headless task runs, `displayNotification(...)` — notification appears |
-| Android | any | no `notifee_options` and `fallbackBehavior: 'display'` (default) | minimal notification built from `remoteMessage.notification` / `remoteMessage.data.title|body` |
+| Android | any | no `notifee_options` and `fallbackBehavior: 'display'` (default) | minimal notification built from `remoteMessage.notification` / `remoteMessage.data.title` / `remoteMessage.data.body` |
 | Android | any | no `notifee_options` and `fallbackBehavior: 'ignore'` | returns `null`, no display |
 | iOS | foreground | with `notifee_options` | `displayNotification(...)` — in-app banner (skipped if `suppressForegroundBanner`) |
 | iOS | background | with `notifee_options` | returns `null` — NSE already displayed |
@@ -611,7 +611,7 @@ npx react-native-notify-kit init-nse [options]
 
 **Parent bundle ID with variables.** If your main app target sets `PRODUCT_BUNDLE_IDENTIFIER` via an Xcode build variable (e.g. `$(PRODUCT_BUNDLE_PREFIX).$(PRODUCT_NAME)`), the CLI logs a warning and writes the literal variable into the NSE bundle ID — you'll need to set the NSE's bundle ID manually in Xcode. This shows up as:
 
-```
+```text
 Parent bundle ID uses a variable: $(PRODUCT_BUNDLE_PREFIX).MyApp
   The NSE bundle ID will need to be set manually in Xcode.
 ```
@@ -647,7 +647,7 @@ Attach to the running NSE process from Xcode:
 
 You can also read NSE logs in **Console.app** — filter by subsystem `NotifyKitNSE` or by process `NotifyKitNSE`. The template emits three log lines per invocation:
 
-```
+```text
 [NotifyKitNSE] didReceive id=... title=... hasNotifeeOptions=true requestedAttachments=1 urls=https://...
 [NotifyKitNSE] contentHandler id=... title=... deliveredAttachments=1 identifiers=notifee-attachment-0
 ```
@@ -773,7 +773,7 @@ messaging().onMessage(async (remoteMessage) => {
 
 Every blob carries `_v: 1`. When a future client encounters `_v > 1`, it parses what it understands and logs:
 
-```
+```text
 [react-native-notify-kit] notifee_options version 2 is newer than supported version 1. Display may be incomplete.
 ```
 
