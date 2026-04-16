@@ -53,6 +53,19 @@ export type NotifyKitIosConfig = {
 };
 
 export type NotifyKitNotification = {
+  /**
+   * Optional notification identifier. When provided, it is also used as the
+   * FCM collapse key (Android `collapse_key`, iOS `apns-collapse-id`) unless
+   * `options.collapseKey` is explicitly set. Collapse key precedence (Rule 7):
+   *   1. `options.collapseKey` if set
+   *   2. `notification.id` if set
+   *   3. Omitted (no collapse behaviour)
+   *
+   * This means setting `id` implicitly enables notification replacement on the
+   * device: a new notification with the same `id` replaces the previous one.
+   * If you need `id` for local deduplication without collapse behaviour, set a
+   * distinct `options.collapseKey` or leave both unset.
+   */
   id?: string;
   title: string;
   body: string;

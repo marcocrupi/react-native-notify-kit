@@ -18,7 +18,7 @@ export function serializeNotifeeOptions(input: SerializeInput = {}): string {
   try {
     return JSON.stringify(payload);
   } catch (e: unknown) {
-    const detail = e instanceof Error ? `: ${e.message}` : '';
+    const detail = e instanceof Error ? `: ${e.message}` : `: ${String(e)}`;
     throw new Error(
       `${PREFIX} Serialization: notifee_options contains circular references or non-serializable values. Check for circular object references in android/ios config${detail}`,
     );

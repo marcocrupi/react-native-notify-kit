@@ -75,5 +75,15 @@ export function buildNotifyKitPayload(input: NotifyKitPayloadInput): NotifyKitPa
     );
   }
 
-  return { ...fcmPayload, sizeBytes } as NotifyKitPayloadOutput;
+  // Attach sizeBytes as non-enumerable so JSON.stringify and object spread
+  // never include it — consumers can safely pass the output directly to
+  // admin.messaging().send() without stripping metadata fields.
+  const output = { ...fcmPayload } as NotifyKitPayloadOutput;
+  Object.defineProperty(output, 'sizeBytes', {
+    value: sizeBytes,
+    enumerable: false,
+    writable: false,
+    configurable: false,
+  });
+  return output;
 }

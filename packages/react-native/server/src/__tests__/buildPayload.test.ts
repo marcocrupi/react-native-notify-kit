@@ -352,11 +352,30 @@ describe('buildNotifyKitPayload — sizeBytes field', () => {
       token: 't',
       notification: { title: 'a', body: 'b' },
     });
-    // Reconstruct the FCM-only payload and measure independently
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { sizeBytes: _sb, ...fcmPayload } = out;
-    const expected = Buffer.byteLength(JSON.stringify(fcmPayload), 'utf8');
+    // JSON.stringify(out) should NOT include sizeBytes (non-enumerable),
+    // so its byte length should equal sizeBytes exactly.
+    const expected = Buffer.byteLength(JSON.stringify(out), 'utf8');
     expect(out.sizeBytes).toBe(expected);
+  });
+
+  it('sizeBytes is NOT included in JSON.stringify (non-enumerable)', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b' },
+    });
+    const json = JSON.stringify(out);
+    expect(json).not.toContain('sizeBytes');
+  });
+
+  it('sizeBytes is NOT copied by object spread (non-enumerable)', () => {
+    const out = buildNotifyKitPayload({
+      token: 't',
+      notification: { title: 'a', body: 'b' },
+    });
+    const copy = { ...out };
+    expect('sizeBytes' in copy).toBe(false);
+    // But the original still has it via direct property access
+    expect(out.sizeBytes).toBeGreaterThan(0);
   });
 });
 
