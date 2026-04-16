@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **CLI `init-nse`**: `npx react-native-notify-kit init-nse` scaffolds an iOS Notification Service Extension target, patching `.pbxproj` and Podfile automatically. Generates Swift + `NotifyKitNSE` target using `NotifeeExtensionHelper` for push enrichment. Supports `--dry-run`, `--force`, `--target-name`, `--ios-path` options. Atomic writes with backup/restore on failure. Issue #129, Phase 3 of 4.
+
 - **Client FCM handler**: `notifee.handleFcmMessage(remoteMessage)` — one-liner client handler for FCM messages with `notifee_options` payloads. Parses the server SDK's serialized blob, reconstructs a `Notification` object, and dispatches per platform: Android always displays (data-only), iOS foreground displays, iOS background/killed is a no-op (NSE handles it). Fallback path for non-NotifyKit payloads configurable via `setFcmConfig`. Issue #129, Phase 2 of 4.
 
 - **Client FCM config**: `notifee.setFcmConfig(config)` — optional startup configuration for `handleFcmMessage`. Covers: `defaultChannelId`, `defaultPressAction`, `fallbackBehavior` (`'display'` or `'ignore'`), and `ios.suppressForegroundBanner`.
