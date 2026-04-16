@@ -5,6 +5,8 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.0.0] (2026-04-17)
+
 ### Added
 
 * **FCM Mode**: end-to-end Firebase Cloud Messaging integration — a data-only Android payload plus an iOS alert + Notification Service Extension payload, built from a single server call. Introduces `notifee.handleFcmMessage(remoteMessage)` (one-liner client handler), `notifee.setFcmConfig(config)` (optional startup config with `defaultChannelId`, `defaultPressAction`, `fallbackBehavior`, and `ios.suppressForegroundBanner`). See the [FCM Mode guide](/fcm-mode) for the full architecture.
