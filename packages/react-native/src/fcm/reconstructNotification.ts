@@ -89,6 +89,11 @@ function rebuildData(rawData: Record<string, string> | undefined): Record<string
     }
   }
 
+  // Post-merge strip: notifee_data blob could contain reserved keys
+  for (const key of RESERVED_DATA_KEYS) {
+    delete result[key];
+  }
+
   return result;
 }
 

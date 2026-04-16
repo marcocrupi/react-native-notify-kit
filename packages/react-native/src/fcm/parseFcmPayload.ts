@@ -43,11 +43,12 @@ export function parseFcmPayload(data: Record<string, string> | undefined): Parse
     return null;
   }
 
-  // Version check (Rule C5)
-  const version = parsed._v;
-  if (typeof version === 'number' && version > 1) {
+  // Version check (Rule C5) — coerce to number to handle string _v from
+  // intermediaries that stringify FCM data values.
+  const versionNum = Number(parsed._v);
+  if (!Number.isNaN(versionNum) && versionNum > 1) {
     console.warn(
-      `${PREFIX} notifee_options version ${version} is newer than supported version 1. Display may be incomplete.`,
+      `${PREFIX} notifee_options version ${versionNum} is newer than supported version 1. Display may be incomplete.`,
     );
   }
 

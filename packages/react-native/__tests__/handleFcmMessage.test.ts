@@ -202,6 +202,18 @@ describe('handleFcmMessage — payload parsing', () => {
     warn.mockRestore();
   });
 
+  it('_v as string "2" also triggers version warn (M2 fix)', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const result = parseFcmPayload({
+      notifee_options: JSON.stringify({ _v: '2', title: 'x', body: 'y' }),
+    });
+    expect(result).not.toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('version 2 is newer than supported version 1'),
+    );
+    warn.mockRestore();
+  });
+
   it('_v missing: proceeds as legacy', () => {
     const result = parseFcmPayload({
       notifee_options: JSON.stringify({ title: 'x', body: 'y' }),
@@ -256,6 +268,23 @@ describe('reconstructNotification — data handling', () => {
       {},
     );
     expect(n.data).toEqual({ safe: 'yes' });
+  });
+
+  it('reserved keys stripped even if injected via notifee_data blob (M1 fix)', () => {
+    const n = reconstructNotification(
+      { _v: 1, title: 'a', body: 'b' },
+      {
+        data: {
+          notifee_options: '{}',
+          notifee_data: JSON.stringify({ notifee_options: 'leaked', safe: 'yes' }),
+          safe: 'top',
+        },
+      },
+      {},
+    );
+    expect(n.data).toEqual({ safe: 'yes' }); // notifee_data wins on 'safe', 'notifee_options' stripped
+    expect(n.data?.notifee_options).toBeUndefined();
+    expect(n.data?.notifee_data).toBeUndefined();
   });
 
   it('title/body precedence: notifee_options > notification > data', () => {
