@@ -28,10 +28,9 @@ If you are using a custom sound file, it must be less than 30 seconds in length,
 
 ## Interruption Levels
 
-With iOS 15’s new Focus Mode, users are more in control over when app notifications can “interrupt” them with a sound or vibration. We can make use of the new `interruptionLevel` [API]([url](https://developer.apple.com/documentation/usernotifications/unnotificationcontent/3747256-interruptionlevel)) to control the notification’s importance and required delivery timing.
+With iOS 15's Focus Mode, users are more in control of when app notifications can "interrupt" them with a sound or vibration. The [`interruptionLevel`](https://developer.apple.com/documentation/usernotifications/unnotificationcontent/3747256-interruptionlevel) property controls the notification's importance and delivery timing. Accepted values: `'passive'`, `'active'` (default), `'timeSensitive'`, `'critical'`.
 
 ```js
-// iOS > 15
 notifee.displayNotification({
   title: 'ALERT!',
   body: 'This is a critical notification!',
@@ -40,6 +39,12 @@ notifee.displayNotification({
   },
 });
 ```
+
+## Foreground delivery events
+
+On iOS, an `EventType.DELIVERED` event is emitted to `onForegroundEvent` when a Notifee-owned notification is presented to the user while the app is in the foreground (immediate `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays). Use this for analytics, read-state tracking, or badge maintenance.
+
+Trigger notifications that fire while the app is in **background or killed** do not emit DELIVERED on iOS — `willPresentNotification:` is only invoked in the foreground and the platform exposes no equivalent callback for background-presented local notifications. Android emits DELIVERED unconditionally in both cases. If you need delivery confirmation for background trigger notifications on iOS, query `getDisplayedNotifications()` after the app returns to foreground. See the [events](/react-native/events) documentation for the full event shape.
 
 ## Critical Notifications
 

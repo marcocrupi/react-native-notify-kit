@@ -1,56 +1,79 @@
 ---
 title: Remote Notification support
-description:  Utilise the power of Notifee with remote notifications.
+description: Display remote (APNs / FCM) notifications with full Notifee control via a Notification Service Extension.
 ---
 
-It's possible to display a notification with Notifee features from outside the app using remote notifications (a.k.a push notifications) in two ways:
- - using APNs keys
- - using `notifee_options` with our notification service extension helper
+`react-native-notify-kit` supports remote (push) notifications through Apple Push Notification service (APNs). Because iOS displays alert-style APNs pushes through the OS itself, any client-side rewriting (attachments, category, interruption level, custom sound from a bundled resource, …) must happen inside a **Notification Service Extension** (NSE) — a separate bundle that the OS runs when the push arrives. This page explains how to set one up.
 
-It is recommended to only use a notification service extension if you require an image or need to modify the contents of the notification before its displayed.
+> **The recommended path is [FCM Mode](/fcm-mode).** It ships an automated CLI (`npx react-native-notify-kit init-nse`) that scaffolds a Swift NSE target using `NotifeeExtensionHelper`, patches your `.pbxproj` and `Podfile`, and pairs with a server SDK (`react-native-notify-kit/server`) that builds the correct APNs payload for you. The manual Objective-C pattern documented further down is kept for apps that need custom NSE logic or have an existing integration that is not yet migrated.
 
-## Using APNs keys
+## Recommended: FCM Mode
 
-Notification messages sent through APNs follow the APNs payload format which allows us to be able to specify a category or a custom sound with no extra configuration on the client:
+The CLI + server SDK combination is a full, tested replacement for the manual setup below:
 
-```json
-// FCM
-{
-    notification: {
-      title: 'A notification title!',
-      body: 'A notification body',
-    },
-    apns: {
-        payload: {
-            aps: {
-                category: 'post', // A category that's already been created by your app
-                sound: 'media/kick.wav', // A local sound file you have inside your app's bundle
-                 ... // any other properties
-            },
-        },
-    },
-    ...
-};
+```bash
+npx react-native-notify-kit init-nse
 ```
 
-## Using `notifee_options`
+This generates a `NotifyKitNSE` target with a Swift `NotificationService.swift` that calls `NotifeeExtensionHelper.populateNotificationContent` on every incoming push, plus `[NotifyKitNSE]` NSLog diagnostics visible in Console.app. On the server side:
 
-By adding a custom key `notifee_options` in the message payload, the notification will be modified by Notifee before it is finally displayed to the end user.
+```ts
+import { buildNotifyKitPayload } from 'react-native-notify-kit/server';
+import * as admin from 'firebase-admin';
 
-To get started, you will need to implement a [Notification Service Extension](https://developer.apple.com/documentation/usernotifications/unnotificationserviceextension) for your iOS app, the following steps will guide you through how to set it up.
+const message = buildNotifyKitPayload({
+  token: deviceToken,
+  notification: {
+    id: 'order-42',
+    title: 'Your order is on the way',
+    body: 'Tap to see live tracking.',
+    ios: {
+      categoryId: 'ORDER_UPDATE',
+      sound: 'default',
+      interruptionLevel: 'timeSensitive',
+      attachments: [{ url: 'https://cdn.example.com/orders/42.png' }],
+    },
+  },
+});
+await admin.messaging().send(message);
+```
 
-### Add the notification service extension
+The server SDK sets `mutable-content: 1` automatically so the NSE always fires, duplicates title/body into `aps.alert` so the OS can display a banner before the NSE finishes, and writes the `notifee_options` blob into `apns.payload`.
 
-* From Xcode top menu go to: File > New > Target...
-* A modal will present a list of possible targets, scroll down or use the filter to select Notification Service Extension. Press Next.
-* Add a product name (use `NotifeeNotificationService` to follow along) and click Finish
-* Make sure that the **deployment target** of your newly added extension (e.g. `NotifeeNotificationService`) matches the **deployment target** of your app. You can check it by selecting you app's target -> `Build Settings` -> `Deployment`
+On the client, `notifee.handleFcmMessage(remoteMessage)` is a no-op on iOS in background/killed (the NSE already displayed the notification) and a foreground banner otherwise. See the full [FCM Mode guide](/fcm-mode) for architecture, payload schema, and troubleshooting.
 
-### Add target to the Podfile
+## Using APNs keys only (no Notifee-side rewriting)
 
-Ensure that your new extension has access to `NotifeeExtensionHelper` by adding it in the Podfile:
-* From the Navigator open the Podfile: Pods > Podfile
-* Scroll down to the bottom of the file and add
+If you don't need attachment, category, sound-file, or interruption-level rewriting on the client, you can send a plain APNs payload and iOS will display it directly — no NSE required:
+
+```json
+{
+  "notification": { "title": "A notification title!", "body": "A notification body" },
+  "apns": {
+    "payload": {
+      "aps": {
+        "category": "post",
+        "sound": "media/kick.wav"
+      }
+    }
+  }
+}
+```
+
+This works, but you cannot use Notifee's iOS-specific features (attachments from arbitrary URLs, `categoryId` routing to a library-registered category, custom `interruptionLevel`, `foregroundPresentationOptions`) on the alert itself without an NSE.
+
+## Manual NSE setup (legacy)
+
+For apps that need custom NSE logic — or an existing integration that can't adopt the CLI — you can still wire up the NSE by hand. The steps below produce an NSE target that invokes the same `NotifeeExtensionHelper` that FCM Mode uses.
+
+### 1. Add the Notification Service Extension target
+
+- Xcode → **File → New → Target…**
+- Select **Notification Service Extension**, click **Next**
+- Product name: e.g. `NotifeeNotificationService`
+- Make sure the new target's **deployment target** matches your app's (at least **iOS 15.1**, matching `RNNotifee.podspec`)
+
+### 2. Wire the Podfile
 
 ```ruby
 $NotifeeExtension = true
@@ -58,142 +81,138 @@ $NotifeeExtension = true
 target 'NotifeeNotificationService' do
   pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit/RNNotifeeCore.podspec'
 end
-
 ```
 
-* Install or update your pods using pod install from the ios folder
+`$NotifeeExtension = true` tells the main `RNNotifee` pod to exclude `NotifeeExtensionHelper.{h,m}` so the extension target owns them (avoids the v9.1.22 duplicate-symbols linker error with `use_frameworks! :linkage => :static`).
 
-`pod install --repo-update`
+```bash
+cd ios && pod install --repo-update
+```
 
-### Use the extension helper
+### 3. Hook the helper into `NotificationService.m`
 
-At this point everything should still be running normally. This is the final step which is invoking the extension helper.
-
-* From the navigator select your extension
-* Open the NotificationService.m file
-* At the top of the file import NotifeeExtensionHelper.h right after the NotificationService.h as shown below
+In the generated `NotificationService.m`:
 
 ```objectivec
 #import "NotificationService.h"
-+ #import "NotifeeExtensionHelper.h"
+#import "NotifeeExtensionHelper.h"
+
+@implementation NotificationService
+
+- (void)didReceiveNotificationRequest:(UNNotificationRequest *)request
+                   withContentHandler:(void (^)(UNNotificationContent * _Nonnull))contentHandler {
+  self.contentHandler = contentHandler;
+  self.bestAttemptContent = [request.content mutableCopy];
+
+  [NotifeeExtensionHelper populateNotificationContent:request
+                                          withContent:self.bestAttemptContent
+                                   withContentHandler:contentHandler];
+}
+
+- (void)serviceExtensionTimeWillExpire {
+  // Safety net: hand back whatever we have if we ran out of time.
+  if (self.contentHandler && self.bestAttemptContent) {
+    self.contentHandler(self.bestAttemptContent);
+  }
+}
+
+@end
 ```
 
-* then replace everything from line 25 to 28 with the extension helper
-```objectivec
-- // Modify the notification content here...
-- self.bestAttemptContent.title = [NSString stringWithFormat:@"%@ [modified]", self.bestAttemptContent.title];
-    
-- self.contentHandler(self.bestAttemptContent);
-+ [NotifeeExtensionHelper populateNotificationContent:request
-                                withContent: self.bestAttemptContent
-                                withContentHandler:contentHandler];
-```
+Build the app once and confirm it still compiles with the NSE target selected.
 
-Before, moving to the next step, run the app and check it builds successfully – make sure you have the correct target selected. 
+> The CLI-generated Swift NSE also caps the `NSURLSession` request and resource timeouts at 25 s (per v9.4.0) to leave a ~5 s margin before iOS's 30 s NSE budget expires. If you use the manual Objective-C pattern above, consider setting the same cap on your own `NSURLSession` if you fetch large attachments.
 
-### Edit the payload
+### 4. Choose the payload
 
-Now everything is setup in your app, you can alter your notification payload in two ways:
+Notifee reads `notifee_options` from `apns.payload` (not from `aps`) and reshapes the notification before the OS displays it.
 
-1. Update the message payload, sent via your backend
-2. In a Notification Service Extension in your app when a device receives a remote message
-
-> Make sure that you will set `mutable-content: 1` (mutableContent if you are using firebase admin sdk) when sending notification otherwise Notification Service Extension will NOT be triggered
-
-> Make sure that you will set `content-available: 1` (contentAvailable if you are using firebase admin sdk) if you want to receive notification when your app is in foreground
-
-
-#### 1. Update the message payload, sent via your backend
+> `mutable-content: 1` (`mutableContent` in Firebase Admin SDK) is **required** on every payload that should trigger the NSE. Without it, iOS will not invoke the extension.
+>
+> `content-available: 1` (`contentAvailable`) is required if you also want the JS `onMessage` handler to fire while the app is in the foreground.
 
 ```json
-// FCM
 {
-    notification: {
-      title: 'A notification title!',
-      body: 'A notification body',
-    },
-    apns: {
-        payload: {
-            aps: {
-                // Payloads coming from Admin SDK should specify params in camelCase. 
-                // Payloads from REST API should specify in kebab-case
-                // see their respective reference documentation
-                'contentAvailable': 1, // Important, to receive `onMessage` event in the foreground when message is incoming
-                'mutableContent': 1, // Important, without this the extension won't fire
-            },
-            notifee_options: {
-                image: 'https://placeimg.com/640/480/any', // URL to pointing to a remote image
-                ios: {
-                    sound: 'media/kick.wav', // A local sound file you have inside your app's bundle
-                    foregroundPresentationOptions: {alert: true, badge: true, sound: true, banner: true, list: true},
-                    categoryId: 'post', // A category that's already been created by your app
-                    attachments: [{url: 'https://placeimg.com/640/480/any', thumbnailHidden: true}] // array of attachments of type `IOSNotificationAttachment`
-                    ... // any other api properties for NotificationIOS
-                },
-                ... // any other api properties for Notification, excluding `id`
-            },
-        },
-    },
-    ...
-};
-```
-
-#### 2. In a Notification Service Extension in your app when a device receives a remote message
-
-In your NotifeeNotificationService.m file you should have method `didReceiveNotificationRequest` where we are calling `NotifeeExtensionHelper`. Now you can modify
-`bestAttemptContent` before you send it to `NotifeeExtensionHelper`:
-
-```objectivec
-- (void)didReceiveNotificationRequest:(UNNotificationRequest *)request withContentHandler:(void (^)(UNNotificationContent * _Nonnull))contentHandler {
-    self.contentHandler = contentHandler;
-    self.bestAttemptContent = [request.content mutableCopy];
-  
-    NSMutableDictionary *userInfoDict = [self.bestAttemptContent.userInfo mutableCopy];
-    userInfoDict[@"notifee_options"] = [NSMutableDictionary dictionary];
-    userInfoDict[@"notifee_options"][@"title"] = @"Modified Title";
-  
-    self.bestAttemptContent.userInfo = userInfoDict;
-
-    [NotifeeExtensionHelper populateNotificationContent:request
-                                withContent: self.bestAttemptContent
-                                withContentHandler:contentHandler];
+  "notification": { "title": "A notification title!", "body": "A notification body" },
+  "apns": {
+    "payload": {
+      "aps": {
+        "mutableContent": 1,
+        "contentAvailable": 1
+      },
+      "notifee_options": {
+        "ios": {
+          "sound": "media/kick.wav",
+          "categoryId": "post",
+          "attachments": [{ "url": "https://placeimg.com/640/480/any", "thumbnailHidden": true }]
+        }
+      }
+    }
+  }
 }
 ```
 
-Please note, the `id` of the notification is the `request.identifier` and cannot be changed. For this reason, the `id` property in `notifee_options` should be excluded.
+`notifee_options` accepts most `Notification` and `NotificationIOS` fields. Do **not** include a client-side `foregroundPresentationOptions` here — the NSE cannot configure foreground presentation (the NSE runs only when the app is not already displaying the notification itself). If both `ios.attachments` and a top-level `image` are present, `ios.attachments` takes precedence.
 
-> If both `attachments` and `image` are present, `attachments` will take precedence over `image`
+Alternatively you can mutate `bestAttemptContent.userInfo[@"notifee_options"]` from inside `didReceiveNotificationRequest` before handing off to `NotifeeExtensionHelper`:
 
-#### Handling Events
+```objectivec
+NSMutableDictionary *userInfoDict = [self.bestAttemptContent.userInfo mutableCopy];
+NSMutableDictionary *opts = [NSMutableDictionary dictionary];
+opts[@"title"] = @"Modified Title";
+userInfoDict[@"notifee_options"] = opts;
+self.bestAttemptContent.userInfo = userInfoDict;
+```
 
-Currently, notifee supports the following events for remote notifications:
+The `id` of the displayed notification is always `request.identifier` (iOS does not let the NSE override it). Omit `id` from `notifee_options`.
 
-- `PRESSED`
-- `ACTION_PRESSED`
-- `DISMISSED`
+## Disabling Notifee's remote-notification delegate
 
-To know identify when an interaction is from a remote notification, we can check if `notification.remote` is populated:
+By default, the library swizzles the `UNUserNotificationCenter` delegate so tap events for remote notifications flow through Notifee's event system. If you are using `@react-native-firebase/messaging` (or another library) and want its original `onNotificationOpenedApp()` / `getInitialNotification()` to handle taps instead, opt out at startup:
 
-```jsx
+```js
+import notifee from 'react-native-notify-kit';
+
+await notifee.setNotificationConfig({
+  ios: { handleRemoteNotifications: false },
+});
+```
+
+When disabled, Notifee no longer intercepts remote-notification tap callbacks. Local notifications, trigger notifications, and NSE enrichment continue to work unchanged — only the delegate-forwarding path is relaxed. Call this once, early in startup, before any notifications are displayed.
+
+## Handling events
+
+Notifee emits the same event types for remote notifications that it does for local ones:
+
+- `EventType.PRESS` — user tapped the notification
+- `EventType.ACTION_PRESS` — user tapped a Quick Action
+- `EventType.DISMISSED` — user explicitly dismissed the notification (only fired for notifications with a `categoryId`)
+
+Use `notification.remote` to tell whether an event came from a remote push:
+
+```tsx
 import { useEffect } from 'react';
 import notifee, { EventType } from 'react-native-notify-kit';
 
-function App() {
-  // Subscribe to events
+export default function App() {
   useEffect(() => {
     return notifee.onForegroundEvent(({ type, detail }) => {
-      console.log('Remote notification info: ', detail.notification?.remote)
-      switch (type) {
-        case EventType.DISMISSED:
-          console.log('User dismissed notification', detail.notification);
-          break;
-        case EventType.PRESS:
-          console.log('User pressed notification', detail.notification);
-          break;
+      if (detail.notification?.remote) {
+        console.log('Remote notification:', detail.notification);
+      }
+
+      if (type === EventType.PRESS) {
+        // ...
+      } else if (type === EventType.DISMISSED) {
+        // ...
       }
     });
   }, []);
+
+  return null;
 }
 ```
 
-> On iOS, only notifications with a `categoryId` will receive a `DISMISSED` event.
+> On iOS, `DISMISSED` is only delivered for notifications that were displayed with a `categoryId`. That is a platform constraint — `UNUserNotificationCenter` only fires the dismiss callback for categorised notifications. If you need dismiss tracking on every push, ensure every payload carries a `categoryId` that matches a registered category (see [Categories & Actions](/react-native/ios/categories)).
+>
+> Background taps are routed to `onBackgroundEvent` (not `onForegroundEvent`) on **v9.2.1 and later** — earlier fork versions had a bug that routed them to foreground. See [Interaction](/react-native/ios/interaction#foreground-vs-background-routing).
