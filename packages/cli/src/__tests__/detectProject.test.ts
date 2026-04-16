@@ -18,27 +18,31 @@ describe('detectIosProject', () => {
 
   it('throws when no .xcodeproj found', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nse-detect-'));
-    expect(() => detectIosProject(tmp)).toThrow('Could not find .xcodeproj');
-    fs.rmSync(tmp, { recursive: true });
+    try {
+      expect(() => detectIosProject(tmp)).toThrow('Could not find .xcodeproj');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('throws when multiple .xcodeproj found', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'nse-detect-multi-'));
-    fs.mkdirSync(path.join(tmp, 'A.xcodeproj'));
-    fs.mkdirSync(path.join(tmp, 'B.xcodeproj'));
-    expect(() => detectIosProject(tmp)).toThrow('Multiple .xcodeproj');
-    fs.rmSync(tmp, { recursive: true });
+    try {
+      fs.mkdirSync(path.join(tmp, 'A.xcodeproj'));
+      fs.mkdirSync(path.join(tmp, 'B.xcodeproj'));
+      expect(() => detectIosProject(tmp)).toThrow('Multiple .xcodeproj');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('reads parent target name from pbxproj', () => {
     const info = detectIosProject(FIXTURE_DIR);
-    // The fixture is a copy of NotifeeExample — target name is NotifeeExample
     expect(info.parentTargetName).toBe('NotifeeExample');
   });
 
   it('reads parent bundle ID from pbxproj', () => {
     const info = detectIosProject(FIXTURE_DIR);
-    // The smoke app uses variable-based bundle ID
     expect(info.parentBundleId).toBeDefined();
   });
 });

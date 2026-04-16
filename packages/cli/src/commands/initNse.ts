@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import xcode from 'xcode';
 import { detectIosProject, deriveBundleId } from '../lib/detectProject';
 import { writeTemplates } from '../lib/writeTemplates';
 import { patchPodfile } from '../lib/patchPodfile';
@@ -32,10 +33,10 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     projectInfo = detectIosProject(opts.iosPath);
   } catch (e: unknown) {
     logger.error(e instanceof Error ? e.message : String(e));
-    process.exitCode = 1;
-    return;
+    process.exit(1);
   }
 
+  const absIosDir = path.resolve(projectInfo.iosDir);
   logger.success(`Detected iOS project at ${projectInfo.xcodeProjectPath}`);
 
   // 2. Derive bundle ID
@@ -48,30 +49,42 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
   }
   logger.success(`Bundle ID: ${projectInfo.parentBundleId ?? '(variable)'} → ${bundleId}`);
 
-  // 3. Check existing NSE
+  // 3. Check existing NSE — check BOTH filesystem AND pbxproj (Rule F3)
   const targetDir = path.join(projectInfo.iosDir, targetName);
-  if (fs.existsSync(targetDir) && !force) {
+  const dirExists = fs.existsSync(targetDir);
+  const pbxprojHasTarget = checkPbxprojTarget(projectInfo.pbxprojPath, targetName);
+
+  if ((dirExists || pbxprojHasTarget) && !force) {
+    const where =
+      dirExists && pbxprojHasTarget
+        ? `directory ${targetDir} and .pbxproj`
+        : dirExists
+          ? `directory ${targetDir}`
+          : '.pbxproj';
     logger.error(
-      `NSE target '${targetName}' appears to exist at ${targetDir}.\n` +
+      `NSE target '${targetName}' already exists in ${where}.\n` +
         '  Use --force to overwrite or --target-name to use a different name.',
     );
-    process.exitCode = 1;
-    return;
+    process.exit(1);
   }
 
   if (dryRun) {
-    logger.info('[DRY RUN] Would create the following files:');
-    logger.info(`  ${path.join(targetDir, 'NotificationService.swift')}`);
-    logger.info(`  ${path.join(targetDir, 'Info.plist')}`);
-    logger.info(`  ${path.join(targetDir, `${targetName}.entitlements`)}`);
-    logger.info('[DRY RUN] Would patch Podfile');
-    logger.info('[DRY RUN] Would patch .pbxproj');
+    logger.info('[DRY RUN] Would perform the following actions:');
+    logger.info(`  iOS project: ${absIosDir}`);
+    logger.info(`  Target name: ${targetName}`);
+    logger.info(`  NSE bundle ID: ${bundleId}`);
+    logger.info(`  Create: ${path.join(absIosDir, targetName, 'NotificationService.swift')}`);
+    logger.info(`  Create: ${path.join(absIosDir, targetName, 'Info.plist')}`);
+    logger.info(`  Create: ${path.join(absIosDir, targetName, `${targetName}.entitlements`)}`);
+    logger.info(`  Patch: ${path.join(absIosDir, 'Podfile')}`);
+    logger.info(`  Patch: ${projectInfo.pbxprojPath}`);
     return;
   }
 
   // 4. Create backups
   const podfilePath = path.join(projectInfo.iosDir, 'Podfile');
   const backups: Array<{ original: string; backup: string }> = [];
+  const templateDirCreated = !dirExists; // Track if WE created the dir (for rollback)
 
   try {
     if (fs.existsSync(podfilePath)) {
@@ -138,8 +151,11 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     console.log('');
     console.log('Docs: https://github.com/marcocrupi/react-native-notify-kit#nse-setup');
   } catch (e: unknown) {
-    // Restore from backups on failure
-    logger.error(`Failed during NSE scaffolding: ${e instanceof Error ? e.message : String(e)}`);
+    // Rollback: remove template dir first (C3), then restore backups
+    if (templateDirCreated && fs.existsSync(targetDir)) {
+      fs.rmSync(targetDir, { recursive: true, force: true });
+      logger.warn(`Removed ${targetDir} (rollback)`);
+    }
     for (const { original, backup } of backups) {
       if (fs.existsSync(backup)) {
         fs.copyFileSync(backup, original);
@@ -147,6 +163,23 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
         logger.warn(`Restored ${original} from backup`);
       }
     }
-    process.exitCode = 2;
+    logger.error(`Failed during NSE scaffolding: ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(2);
   }
+}
+
+function checkPbxprojTarget(pbxprojPath: string, targetName: string): boolean {
+  try {
+    const proj = xcode.project(pbxprojPath);
+    proj.parseSync();
+    const targets = proj.pbxNativeTargetSection();
+    for (const [, value] of Object.entries(targets)) {
+      if (typeof value !== 'object') continue;
+      const name = String((value as Record<string, unknown>).name ?? '').replace(/"/g, '');
+      if (name === targetName) return true;
+    }
+  } catch {
+    // If we can't parse, let the later patchXcodeProject step handle the error
+  }
+  return false;
 }

@@ -18,7 +18,7 @@ function setupTmpProject(): { pbxprojPath: string; iosDir: string; cleanup: () =
   return {
     pbxprojPath: path.join(xcodeDir, 'project.pbxproj'),
     iosDir,
-    cleanup: () => fs.rmSync(tmp, { recursive: true }),
+    cleanup: () => fs.rmSync(tmp, { recursive: true, force: true }),
   };
 }
 
@@ -53,126 +53,120 @@ function getBuildSetting(
 }
 
 describe('patchXcodeProject', () => {
+  let ctx: ReturnType<typeof setupTmpProject>;
+
+  beforeEach(() => {
+    ctx = setupTmpProject();
+  });
+
+  afterEach(() => {
+    ctx.cleanup();
+  });
+
   it('adds NotifyKitNSE target as app_extension', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     expect(getTargetNames(proj)).toContain('NotifyKitNSE');
-    cleanup();
   });
 
   it('sets IPHONEOS_DEPLOYMENT_TARGET to 15.1', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'IPHONEOS_DEPLOYMENT_TARGET')).toBe('15.1');
-    cleanup();
   });
 
   it('sets SWIFT_VERSION to 5.0', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'SWIFT_VERSION')).toBe('5.0');
-    cleanup();
   });
 
   it('sets PRODUCT_BUNDLE_IDENTIFIER correctly', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'PRODUCT_BUNDLE_IDENTIFIER')).toBe('com.test.nse');
-    cleanup();
   });
 
   it('sets INFOPLIST_FILE to target path', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'INFOPLIST_FILE')).toBe('NotifyKitNSE/Info.plist');
-    cleanup();
   });
 
   it('is idempotent: running twice returns false on second run', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     const first = patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
     const second = patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
     expect(first).toBe(true);
     expect(second).toBe(false);
-    // Verify no duplicate target
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     const nseTargets = getTargetNames(proj).filter(n => n === 'NotifyKitNSE');
     expect(nseTargets).toHaveLength(1);
-    cleanup();
   });
 
   it('dry-run does not write to disk', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
-    const originalContent = fs.readFileSync(pbxprojPath, 'utf-8');
+    const originalContent = fs.readFileSync(ctx.pbxprojPath, 'utf-8');
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: true,
     });
-    const afterContent = fs.readFileSync(pbxprojPath, 'utf-8');
+    const afterContent = fs.readFileSync(ctx.pbxprojPath, 'utf-8');
     expect(afterContent).toBe(originalContent);
-    cleanup();
   });
 
   it('creates build configurations for both Debug and Release', () => {
-    const { pbxprojPath, iosDir, cleanup } = setupTmpProject();
     patchXcodeProject({
-      pbxprojPath,
+      pbxprojPath: ctx.pbxprojPath,
       targetName: 'NotifyKitNSE',
       bundleId: 'com.test.nse',
-      iosDir,
+      iosDir: ctx.iosDir,
       dryRun: false,
     });
-    const proj = parseProject(pbxprojPath);
+    const proj = parseProject(ctx.pbxprojPath);
     const configs = proj.pbxXCBuildConfigurationSection();
     const nseConfigs = Object.entries(configs)
       .filter(([, v]) => typeof v === 'object' && (v as Record<string, unknown>).buildSettings)
@@ -180,8 +174,6 @@ describe('patchXcodeProject', () => {
         const s = (v as Record<string, unknown>).buildSettings as Record<string, string>;
         return s?.PRODUCT_NAME === '"NotifyKitNSE"';
       });
-    // Should have at least Debug and Release
     expect(nseConfigs.length).toBeGreaterThanOrEqual(2);
-    cleanup();
   });
 });

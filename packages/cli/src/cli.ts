@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { initNse } from './commands/initNse';
+import * as logger from './lib/logger';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pkg = require('../package.json') as { version: string };
@@ -19,8 +20,8 @@ program
   .option('--ios-path <path>', 'Path to iOS project directory')
   .option('--target-name <name>', 'NSE target name', 'NotifyKitNSE')
   .option('--bundle-suffix <str>', 'Bundle ID suffix', '.NotifyKitNSE')
-  .option('--force', 'Overwrite existing NSE files')
-  .option('--dry-run', 'Print actions without writing')
+  .option('-f, --force', 'Overwrite existing NSE files')
+  .option('-n, --dry-run', 'Print actions without writing')
   .action(async (cmdOpts: Record<string, unknown>) => {
     await initNse({
       iosPath: cmdOpts.iosPath as string | undefined,
@@ -31,4 +32,9 @@ program
     });
   });
 
-program.parse();
+(async () => {
+  await program.parseAsync();
+})().catch((err: Error) => {
+  logger.error(err.message ?? String(err));
+  process.exit(2);
+});
