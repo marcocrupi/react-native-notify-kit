@@ -5,7 +5,7 @@
 
 /**
  * Minimal subset of `@react-native-firebase/messaging`'s RemoteMessage that
- * {@link handleFcmMessage} actually reads.
+ * `handleFcmMessage` actually reads.
  */
 export type FcmRemoteMessage = {
   messageId?: string;
@@ -17,7 +17,7 @@ export type FcmRemoteMessage = {
 };
 
 /**
- * Configuration for {@link handleFcmMessage}. Call {@link setFcmConfig} once
+ * Configuration for `handleFcmMessage`. Call `setFcmConfig` once
  * at app startup (typically in `index.js` before `registerComponent`).
  */
 export type FcmConfig = {
