@@ -757,7 +757,7 @@ The script runs the macrobenchmark test in `apps/smoke/android/baselineprofile/`
 
 ## Documentation
 
-The upstream Notifee documentation remains the best reference for the public API and platform guides used by this fork.
+The full `react-native-notify-kit` documentation is hosted on docs.page and is kept in sync with this repo. It covers the public API, platform guides, FCM Mode, the server SDK, and the `init-nse` CLI.
 
 - [Overview](https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview)
 - [Reference](https://docs.page/marcocrupi/react-native-notify-kit/react-native/reference)
