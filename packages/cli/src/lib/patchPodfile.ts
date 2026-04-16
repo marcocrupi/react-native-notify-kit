@@ -39,8 +39,15 @@ export function getPatchedPodfile(content: string, targetName: string): string |
 
 /**
  * Inserts the NSE target block inside the main app target, just before
- * the target's closing `end`. CocoaPods requires extension targets to be
- * nested inside their host target for proper dependency resolution.
+ * the target's closing `end`.
+ *
+ * CocoaPods host-target rule: an app-extension target (Notification Service
+ * Extension here) must be declared nested inside its host app's target
+ * block with `inherit! :search_paths`. A top-level `target 'NotifyKitNSE'`
+ * block fails `pod install` with "Unable to find host target". We parse
+ * block depth to locate the main app's target body and insert the NSE
+ * sub-target there.
+ * Discovered: F3 Round 3, Check 3 smoke-app integration (2026-04).
  */
 function insertNseTarget(content: string, targetName: string): string | null {
   // Build the NSE block (indented since it's inside the parent target)

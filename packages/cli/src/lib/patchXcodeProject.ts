@@ -1,3 +1,17 @@
+/**
+ * Xcode project patching via xcode@3.x.
+ *
+ * xcode@3.x has three known bugs that this module works around. See inline
+ * comments tagged "xcode@3.x bug" for details. Do NOT remove these
+ * workarounds without verifying `pod install` succeeds on a real RN app —
+ * the bugs are silent at the library level but fail at the CocoaPods
+ * parsing or CocoaPods host-detection stage.
+ *
+ * Maintenance note: if xcode@3.x is replaced or upgraded, re-run the F3
+ * Round 3 Check 3 smoke-app integration test to confirm which workarounds
+ * remain necessary.
+ */
+
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import xcode from 'xcode';
@@ -30,10 +44,13 @@ export function patchXcodeProject(opts: PatchXcodeOptions): boolean {
     throw new Error(`xcode library failed to create target '${opts.targetName}'`);
   }
 
-  // Fix xcode@3.x bug: addTarget creates a .appex file reference with
-  // `fileEncoding = undefined` and `lastKnownFileType = undefined` (literal
-  // JS undefined serialized as strings). CocoaPods' xcodeproj gem rejects
-  // these. Remove the broken fields from the product file reference.
+  // xcode@3.x bug: addTarget creates the .appex product reference with
+  // `fileEncoding = undefined` and `lastKnownFileType = undefined` instead
+  // of omitting these keys entirely. CocoaPods' pbxproj parser rejects
+  // "undefined" literal string values and fails with a parse error during
+  // `pod install`. Strip these fields post-addTarget to restore a clean
+  // product reference that CocoaPods accepts.
+  // Discovered: F3 Round 3, Check 3 smoke-app integration (2026-04).
   fixProductFileReference(proj, opts.targetName);
 
   // 2. Add build phases
@@ -51,14 +68,17 @@ export function patchXcodeProject(opts: PatchXcodeOptions): boolean {
     group.uuid,
   );
 
-  // 4. Add target dependency from host → extension.
-  // xcode@3.x's addTargetDependency is broken (doesn't serialize), so we
-  // manually inject PBXContainerItemProxy + PBXTargetDependency entries.
-  // CocoaPods requires this to detect the host→extension relationship.
+  // xcode@3.x bug: addTargetDependency() adds the dependency to an internal
+  // cache but does not serialize it to the project hash, so writeSync()
+  // emits a pbxproj with no dependency entry. CocoaPods' host-target
+  // detection then fails with "Unable to find host target for NotifyKitNSE".
+  // Manual injection of PBXContainerItemProxy + PBXTargetDependency into
+  // the project hash restores the expected pbxproj structure.
   // NOTE: we do NOT add an "Embed App Extensions" build phase here —
   // the xcode library creates inconsistent file references that cause
-  // CocoaPods' post_install to crash. Instead, Xcode auto-creates the
-  // embed phase when the user opens the project and sees the dependency.
+  // CocoaPods' post_install to crash. Xcode auto-creates the embed phase
+  // when the user opens the project and sees the dependency.
+  // Discovered: F3 Round 3, Check 3 smoke-app integration (2026-04).
   const hostUuid = findHostTarget(proj);
   if (hostUuid) {
     addTargetDependencyManual(proj, hostUuid, target.uuid, opts.targetName);
