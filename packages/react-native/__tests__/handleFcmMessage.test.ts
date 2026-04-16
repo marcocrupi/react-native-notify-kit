@@ -609,4 +609,66 @@ describe('reconstructNotification — defense-in-depth', () => {
     );
     expect(n.ios?.attachments?.[0]).toEqual({ url: 'https://x.com/a.png', id: 'att-1' });
   });
+
+  it('C1: null element in ios.attachments is filtered out (no crash)', () => {
+    setPlatform('ios');
+    const n = reconstructNotification(
+      {
+        _v: 1,
+        title: 'a',
+        body: 'b',
+        ios: { attachments: [null, { url: 'https://x.com/a.png' }, 42] },
+      },
+      {},
+      {},
+    );
+    // null and 42 filtered, only the valid object survives
+    expect(n.ios?.attachments).toHaveLength(1);
+    expect(n.ios?.attachments?.[0]).toEqual({ url: 'https://x.com/a.png' });
+  });
+});
+
+// ===================================================================
+// 8. Adversarial round 2 fixes (5 tests)
+// ===================================================================
+
+describe('F2 R2 adversarial fixes', () => {
+  it('C2: JSON array notifee_options returns null + warns', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const result = parseFcmPayload({ notifee_options: '[]' });
+    expect(result).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('parsed to a non-object value'));
+    warn.mockRestore();
+  });
+
+  it('H1: setFcmConfig throws on null', () => {
+    expect(() => apiModule.setFcmConfig(null as any)).toThrow(
+      'config must be a plain object. Got: null',
+    );
+  });
+
+  it('M1: warns when both title and body are empty', async () => {
+    setPlatform('android');
+    await apiModule.setFcmConfig({ defaultChannelId: 'ch' });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await apiModule.handleFcmMessage({ messageId: 'x' });
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('displaying notification with empty title and body'),
+    );
+    warn.mockRestore();
+    await apiModule.setFcmConfig({});
+  });
+
+  it('M2: warns when Android has no channelId in fallback', async () => {
+    setPlatform('android');
+    await apiModule.setFcmConfig({}); // no defaultChannelId
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await apiModule.handleFcmMessage({
+      notification: { title: 'x', body: 'y' },
+    });
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Android fallback path has no channelId'),
+    );
+    warn.mockRestore();
+  });
 });

@@ -879,6 +879,18 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       }
     }
 
+    // Diagnostic warnings before display
+    if (!notification.title && !notification.body) {
+      console.warn(
+        '[react-native-notify-kit] handleFcmMessage: displaying notification with empty title and body. Check your FCM payload.',
+      );
+    }
+    if (isAndroid && !notification.android?.channelId) {
+      console.warn(
+        '[react-native-notify-kit] handleFcmMessage: Android fallback path has no channelId (no payload channelId, no defaultChannelId configured). Notification may be dropped by the OS.',
+      );
+    }
+
     // Android always displays (Rule C1), iOS foreground displays (Rule C2)
     return this.displayNotification(notification);
   };
@@ -892,6 +904,10 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
    * Currently resolves synchronously.
    */
   public setFcmConfig = (config: FcmConfig): Promise<void> => {
+    if (config == null || typeof config !== 'object' || Array.isArray(config)) {
+      const got = config === null ? 'null' : Array.isArray(config) ? 'array' : typeof config;
+      throw new Error(`notifee.setFcmConfig(*) config must be a plain object. Got: ${got}`);
+    }
     fcmConfig = { ...config };
     return Promise.resolve();
   };

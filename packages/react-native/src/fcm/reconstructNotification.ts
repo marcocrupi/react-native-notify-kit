@@ -169,17 +169,19 @@ function buildIosConfig(raw: Record<string, unknown>): NotificationIOS {
     }
   }
 
-  // Attachments — rename identifier → id
+  // Attachments — rename identifier → id, filter out null/non-object entries
   if (Array.isArray(raw.attachments)) {
-    ios.attachments = (raw.attachments as Array<Record<string, unknown>>).map(att => {
-      const mapped: { id?: string; url: string } = {
-        url: String(att.url ?? ''),
-      };
-      if (typeof att.identifier === 'string') {
-        mapped.id = att.identifier;
-      }
-      return mapped;
-    });
+    ios.attachments = (raw.attachments as Array<unknown>)
+      .filter((att): att is Record<string, unknown> => att != null && typeof att === 'object')
+      .map(att => {
+        const mapped: { id?: string; url: string } = {
+          url: String(att.url ?? ''),
+        };
+        if (typeof att.identifier === 'string') {
+          mapped.id = att.identifier;
+        }
+        return mapped;
+      });
   }
 
   return ios;

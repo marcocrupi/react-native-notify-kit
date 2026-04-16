@@ -36,7 +36,7 @@ export function parseFcmPayload(data: Record<string, string> | undefined): Parse
     return null;
   }
 
-  if (parsed === null || typeof parsed !== 'object') {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     console.warn(
       `${PREFIX} notifee_options parsed to a non-object value. Falling back to raw title/body.`,
     );
