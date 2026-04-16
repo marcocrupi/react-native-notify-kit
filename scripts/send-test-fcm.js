@@ -6,7 +6,7 @@
  *   yarn send:test:fcm <device-token> <scenario>
  *   node scripts/send-test-fcm.js <device-token> <scenario>
  *
- * Scenarios: minimal | kitchen-sink | emoji | marketing
+ * Scenarios: minimal | kitchen-sink | emoji | marketing | ios-attachment | android-big-picture
  *
  * Prerequisites:
  *   - Run `yarn install` from the repo root
@@ -119,6 +119,54 @@ const SCENARIOS = {
       ios: { sound: 'default', interruptionLevel: 'active' },
     },
     options: { ttl: 86400, collapseKey: 'promo-summer' },
+  },
+  'ios-attachment': {
+    token: '',
+    notification: {
+      id: 'ios-attachment-test',
+      title: 'Attachment Test',
+      body: 'This notification should show an image attachment on iOS',
+      data: { source: 'send-test-fcm', testCase: 'ios-attachment' },
+      android: {
+        channelId: 'default',
+        smallIcon: 'ic_launcher',
+      },
+      ios: {
+        sound: 'default',
+        threadId: 'attachments',
+        attachments: [
+          {
+            url: 'https://www.gstatic.com/webp/gallery/1.jpg',
+            identifier: 'sample-image',
+          },
+        ],
+      },
+    },
+    options: {
+      androidPriority: 'high',
+      ttl: 3600,
+    },
+  },
+  'android-big-picture': {
+    token: '',
+    notification: {
+      id: 'android-big-picture-test',
+      title: 'Big Picture Test',
+      body: 'Expand this notification to see the image',
+      data: { source: 'send-test-fcm', testCase: 'android-big-picture' },
+      android: {
+        channelId: 'default',
+        smallIcon: 'ic_launcher',
+        style: {
+          type: 'BIG_PICTURE',
+          picture: 'https://www.gstatic.com/webp/gallery/1.jpg',
+        },
+      },
+    },
+    options: {
+      androidPriority: 'high',
+      ttl: 3600,
+    },
   },
 };
 

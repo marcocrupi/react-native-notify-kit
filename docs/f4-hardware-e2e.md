@@ -59,6 +59,19 @@ Expected: app opens, `onForegroundEvent` fires with `EventType.PRESS`.
 Send kitchen-sink payload (has actions). Tap "Reply" action.
 Expected: background event fires with action ID `reply`.
 
+### Test 7: BIG_PICTURE image
+
+Put the app in background or kill it, then send:
+
+```bash
+yarn send:test:fcm <token> android-big-picture
+```
+
+Expected: notification appears with title and body; expanding it from the
+drawer reveals the image downloaded from the remote URL. The bitmap is
+fetched natively via `ResourceUtils.getImageBitmapFromUrl()` (10s timeout).
+The image is only visible while the notification is expanded.
+
 ## Scenario B — iOS (real iPhone + NSE)
 
 ### Setup
@@ -92,7 +105,12 @@ Force-quit the app, then send. Expected: same as background.
 
 ### Test 4: Attachments via NSE
 
-Send payload with iOS attachment URL.
+Put the app in background or kill it, then send:
+
+```bash
+yarn send:test:fcm <ios-token> ios-attachment
+```
+
 Expected: NSE downloads and attaches image.
 
 ### Test 5: Tap notification
@@ -131,17 +149,17 @@ yarn build:rn:server
 # Send test notification
 yarn send:test:fcm <device-token> <scenario>
 
-# Scenarios: minimal | kitchen-sink | emoji | marketing
+# Scenarios: minimal | kitchen-sink | emoji | marketing | ios-attachment | android-big-picture
 ```
 
 ## Expected Results Summary
 
-| Scenario         | Android              | iOS (foreground)     | iOS (background/killed)    |
-| ---------------- | -------------------- | -------------------- | -------------------------- |
-| Title/body       | from notifee_options | from notifee_options | from aps.alert + NSE       |
-| Custom channelId | yes                  | N/A                  | N/A                        |
-| BIG_TEXT style   | yes                  | N/A                  | N/A                        |
-| Sound            | N/A                  | from aps.sound       | from aps.sound             |
-| Badge            | N/A                  | from aps.badge       | from aps.badge             |
-| Attachments      | N/A                  | via NSE              | via NSE                    |
-| Press event      | yes                  | yes                  | yes (on tap, app launches) |
+| Scenario           | Android              | iOS (foreground)     | iOS (background/killed)    |
+| ------------------ | -------------------- | -------------------- | -------------------------- |
+| Title/body         | from notifee_options | from notifee_options | from aps.alert + NSE       |
+| Custom channelId   | yes                  | N/A                  | N/A                        |
+| BIG_TEXT style     | yes                  | N/A                  | N/A                        |
+| Sound              | N/A                  | from aps.sound       | from aps.sound             |
+| Badge              | N/A                  | from aps.badge       | from aps.badge             |
+| Images/Attachments | via BIG_PICTURE      | via NSE              | via NSE                    |
+| Press event        | yes                  | yes                  | yes (on tap, app launches) |

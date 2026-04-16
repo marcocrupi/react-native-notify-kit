@@ -61,6 +61,19 @@ Risultato atteso: l'app si apre, `onForegroundEvent` si attiva con `EventType.PR
 Inviare il payload kitchen-sink (contiene azioni). Toccare "Reply".
 Risultato atteso: evento in background con action ID `reply`.
 
+### Test 7: Immagine BIG_PICTURE
+
+Mettere l'app in background o chiuderla, poi inviare:
+
+```bash
+yarn send:test:fcm <token> android-big-picture
+```
+
+Risultato atteso: la notifica appare con titolo e corpo; espandendola dal
+drawer si vede l'immagine scaricata dall'URL remoto. Il bitmap viene
+recuperato nativamente da `ResourceUtils.getImageBitmapFromUrl()` (timeout
+10s). L'immagine è visibile solo quando la notifica è espansa.
+
 ## Scenario B — iOS (iPhone reale + NSE)
 
 ### Configurazione iniziale
@@ -97,7 +110,12 @@ Risultato atteso: identico al background.
 
 ### Test 4: Allegati via NSE
 
-Inviare payload con URL allegato iOS.
+Mettere l'app in background o chiuderla, poi inviare:
+
+```bash
+yarn send:test:fcm <ios-token> ios-attachment
+```
+
 Risultato atteso: NSE scarica e allega l'immagine.
 
 ### Test 5: Tap sulla notifica
@@ -136,20 +154,20 @@ yarn build:rn:server
 # Inviare notifica di test
 yarn send:test:fcm <device-token> <scenario>
 
-# Scenari disponibili: minimal | kitchen-sink | emoji | marketing
+# Scenari disponibili: minimal | kitchen-sink | emoji | marketing | ios-attachment | android-big-picture
 ```
 
 ## Riepilogo Risultati Attesi
 
-| Scenario         | Android            | iOS (foreground)   | iOS (background/terminata) |
-| ---------------- | ------------------ | ------------------ | -------------------------- |
-| Titolo/corpo     | da notifee_options | da notifee_options | da aps.alert + NSE         |
-| channelId custom | si                 | N/A                | N/A                        |
-| Stile BIG_TEXT   | si                 | N/A                | N/A                        |
-| Suono            | N/A                | da aps.sound       | da aps.sound               |
-| Badge            | N/A                | da aps.badge       | da aps.badge               |
-| Allegati         | N/A                | via NSE            | via NSE                    |
-| Evento pressione | si                 | si                 | si (tap avvia l'app)       |
+| Scenario          | Android            | iOS (foreground)   | iOS (background/terminata) |
+| ----------------- | ------------------ | ------------------ | -------------------------- |
+| Titolo/corpo      | da notifee_options | da notifee_options | da aps.alert + NSE         |
+| channelId custom  | si                 | N/A                | N/A                        |
+| Stile BIG_TEXT    | si                 | N/A                | N/A                        |
+| Suono             | N/A                | da aps.sound       | da aps.sound               |
+| Badge             | N/A                | da aps.badge       | da aps.badge               |
+| Immagini/Allegati | via BIG_PICTURE    | via NSE            | via NSE                    |
+| Evento pressione  | si                 | si                 | si (tap avvia l'app)       |
 
 ## Log Risultati Test
 
@@ -164,6 +182,7 @@ Compilare durante l'esecuzione:
 | A5 Tap, evento PRESS       |       |      |
 | A6 Pulsante azione         |       |      |
 | A7 Campi notifee_options   |       |      |
+| A8 Immagine BIG_PICTURE    |       |      |
 | B0 CLI init-nse            |       |      |
 | B1 pod install + build     |       |      |
 | B2 getFCMToken (iOS)       |       |      |
