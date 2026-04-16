@@ -2,8 +2,15 @@
  * @format
  */
 
+// ============================================================
+// F4 HARDWARE E2E — TEMPORARY WIRING
+// Revert via: git checkout apps/smoke/index.js apps/smoke/App.tsx
+// See docs/f4-hardware-execution-runbook.md section B8
+// ============================================================
+
 import '@react-native-firebase/app';
 import '@react-native-firebase/messaging';
+import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging/lib/modular';
 import { Alert, AppRegistry, Platform } from 'react-native';
 import notifee, { EventType } from 'react-native-notify-kit';
 import App from './App';
@@ -52,5 +59,25 @@ if (Platform.OS === 'android') {
     });
   });
 }
+
+// F4 HARDWARE E2E: configure handleFcmMessage defaults
+notifee.setFcmConfig({
+  defaultChannelId: 'default',
+  defaultPressAction: { id: 'default', launchActivity: 'default' },
+  fallbackBehavior: 'display',
+});
+
+// F4 HARDWARE E2E: background FCM handler using handleFcmMessage
+const messagingInstance = getMessaging();
+setBackgroundMessageHandler(messagingInstance, async remoteMessage => {
+  console.log('[BGHandler] received:', JSON.stringify(remoteMessage.data ?? {}));
+  try {
+    const result = await notifee.handleFcmMessage(remoteMessage);
+    console.log('[BGHandler] handleFcmMessage result:', result);
+    return result;
+  } catch (e) {
+    console.error('[BGHandler] handleFcmMessage error:', e);
+  }
+});
 
 AppRegistry.registerComponent(appName, () => App);

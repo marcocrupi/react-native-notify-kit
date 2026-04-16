@@ -76,18 +76,22 @@ function App() {
     }
   }, [log]);
 
-  // Display incoming FCM messages as local notifications when app is in foreground.
-  // Wrapped in try/catch so the app works without Firebase configured.
+  // F4 HARDWARE E2E: foreground FCM handler using handleFcmMessage
+  // (replaces legacy displayNotification path — revert after testing)
   useEffect(() => {
     try {
-      const messaging = getMessaging();
-      const unsubscribe = onMessage(messaging, async remoteMessage => {
-        log(`FCM received: ${remoteMessage.notification?.title ?? 'no title'}`);
-        await notifee.displayNotification({
-          title: remoteMessage.notification?.title ?? 'Push Notification',
-          body: remoteMessage.notification?.body ?? '',
-          android: { channelId: 'default' },
-        });
+      const messagingInstance = getMessaging();
+      const unsubscribe = onMessage(messagingInstance, async remoteMessage => {
+        log(
+          `FCM foreground: ${remoteMessage.notification?.title ?? remoteMessage.data?.title ?? '(no title)'}`,
+        );
+        try {
+          const result = await notifee.handleFcmMessage(remoteMessage);
+          log(`handleFcmMessage result: ${result ?? 'null'}`);
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
+          log(`handleFcmMessage error: ${message}`);
+        }
       });
       return unsubscribe;
     } catch (e: unknown) {
