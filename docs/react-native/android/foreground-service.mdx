@@ -176,24 +176,32 @@ It's important to note, for background events there can only be only a single ha
 
 ### Specifying foreground service types
 
-You may need access to either location, camera or microphone information in your foreground service.
+On Android 14+ (API level 34+) you **must** declare a `foregroundServiceType` on the library's `ForegroundService` component in your app's `AndroidManifest.xml`, otherwise calling `displayNotification({ android: { asForegroundService: true } })` will throw a `SecurityException` (the library logs an early-abort error with the missing declaration before Android crashes).
 
-To specify which service types you require, add `notifee`'s foreground service to your `AndroidManifest.xml`:
+> **Breaking change in v9.1.13**: the library previously shipped `android:foregroundServiceType="shortService"` on its own `ForegroundService` component, but that default was not safe to force on every consumer (Google Play policy, 3-minute `shortService` timeout, etc.) and was removed. Each app must now pick the types that match its use case and declare them explicitly. Existing apps upgrading from earlier versions must add this declaration.
 
 ```xml
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
   <application>
     ...
-    <!-- For example, with one service type -->
-    <service android:name="app.notifee.core.ForegroundService" android:foregroundServiceType="location" tools:replace="android:foregroundServiceType" />
+    <!-- Single service type -->
+    <service
+      android:name="app.notifee.core.ForegroundService"
+      android:foregroundServiceType="location"
+      tools:node="merge" />
 
-     <!-- Or, with multiple service types -->
-    <service android:name="app.notifee.core.ForegroundService" android:foregroundServiceType="location|camera|microphone" tools:replace="android:foregroundServiceType" />
+    <!-- Or, multiple service types combined with | -->
+    <service
+      android:name="app.notifee.core.ForegroundService"
+      android:foregroundServiceType="location|camera|microphone"
+      tools:node="merge" />
   </application>
 </manifest>
 ```
 
-From Android 14 (API level 34) or higher, the operating system checks when you create a foreground service to make sure your app has all the appropriate permissions for that service type. For example, when you create a foreground service of type `microphone`, the operating system verifies that your app currently has the `RECORD_AUDIO` permission. If you don't have that permission, the system throws a `SecurityException`. To support this, a notification can be created with `foregroundServiceTypes` property which specifies the types to be used while creating the service:
+The `tools:node="merge"` marker tells the Android manifest merger to add the `foregroundServiceType` attribute to the library's existing `<service>` declaration (which has no `foregroundServiceType` of its own). You can also use the older `tools:replace="android:foregroundServiceType"` — both work.
+
+When you create a foreground service on Android 14+, the OS verifies the app holds the matching runtime permissions for the declared type (for example, `RECORD_AUDIO` for `microphone`). If the permission is missing, the system throws a `SecurityException`. You can also scope the types per-invocation by setting `foregroundServiceTypes` on the notification — this is useful when the app has been granted additional permissions at runtime and you want to update the running service:
 
 ```js
 import notifee, { AndroidForegroundServiceType } from 'react-native-notify-kit';
@@ -204,11 +212,53 @@ notifee.displayNotification({
   android: {
     channelId,
     asForegroundService: true,
-    foregroundServiceTypes: [AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_CAMERA, AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE],
+    foregroundServiceTypes: [
+      AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_CAMERA,
+      AndroidForegroundServiceType.FOREGROUND_SERVICE_TYPE_MICROPHONE,
+    ],
   },
 });
 ```
 
-If no [foregroundServiceTypes](/react-native/android/interaction#quick-actions) property is provided, the types are taken from the manifest.
+If no `foregroundServiceTypes` property is provided on the notification, the types are taken from the manifest.
 
-If any permission was granted while running the service, the same notification (with the same notification ID and same channel ID) can be posted again with the new `foregroundServiceTypes` property array with the same notification ID and the current running service will be updated with the new types.
+If a new permission is granted while the service is running, posting the same notification (same `id` and `channelId`) with the updated `foregroundServiceTypes` array updates the running service with the new types.
+
+### Controlling display timing on Android 12+
+
+Android 12 (API 31) introduced a system-imposed delay of up to 10 seconds before a foreground service notification is displayed, to give short-lived services time to finish before bothering the user. The library overrides this by default so foreground service notifications display **immediately**, matching pre-Android-12 behavior. You can opt out via `foregroundServiceBehavior`:
+
+```js
+import notifee, { AndroidForegroundServiceBehavior } from 'react-native-notify-kit';
+
+notifee.displayNotification({
+  title: 'Deferred foreground service',
+  body: 'Displayed after the platform default delay.',
+  android: {
+    channelId,
+    asForegroundService: true,
+    foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED,
+  },
+});
+```
+
+Values:
+
+- `AndroidForegroundServiceBehavior.IMMEDIATE` — **library default** when `asForegroundService: true`. Displays the notification immediately. Corresponds to `NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE`.
+- `AndroidForegroundServiceBehavior.DEFERRED` — restores the Android 12+ deferred behavior (up to 10 s delay). Corresponds to `NotificationCompat.FOREGROUND_SERVICE_DEFERRED`.
+- `AndroidForegroundServiceBehavior.DEFAULT` — framework-neutral default. Corresponds to `NotificationCompat.FOREGROUND_SERVICE_DEFAULT`.
+
+The property is ignored when `asForegroundService` is `false` or not set, and has no effect below API 31.
+
+### Warmup (advanced)
+
+For latency-sensitive apps that call `displayNotification({ asForegroundService: true })` very early after process start (e.g. from a launch deeplink), `notifee.prewarmForegroundService()` pre-loads the foreground service classes and warms the `INotificationManager` Binder proxy on a background thread. It's idempotent and safe to call multiple times; on iOS it resolves immediately as a no-op.
+
+```js
+import notifee from 'react-native-notify-kit';
+
+// Call early in your app startup — e.g. in index.js or App.tsx
+notifee.prewarmForegroundService();
+```
+
+Most apps do not need this — the library warms automatically via its `InitProvider` content provider during app startup. The opt-in API is an escape hatch for lazy-loaded libraries, post-splash-screen warmup, or low-end devices where the automatic warmup hasn't completed by the first notification.

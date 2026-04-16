@@ -9,11 +9,11 @@ with notifications, and also hook onto events when the interaction occurs.
 
 ## Press Action
 
-Notifee does not provide any default interaction behaviour when a user presses a notification. The Android guidelines
-suggest a notification should always open the application when pressed. In React Native, we have multiple
-options to exactly _how_ the application opens.
+By default, tapping a notification opens the app's main activity — equivalent to `pressAction: { id: 'default', launchActivity: 'default' }`. This default is applied when `android.pressAction` is omitted. To create a non-tappable notification (the notification displays but tapping it does nothing), pass `pressAction: null` explicitly. The Android guidelines suggest a notification should always be tappable, but opt-outs are sometimes useful for status-only displays.
 
-If a notification is pressed with no action, a `PRESS` [event](/react-native/events) published to any subscribers.
+You can override the default to customize exactly _how_ the application opens, to launch a different Activity, or to run a background task — the options are described below.
+
+If a notification is pressed, a `PRESS` [event](/react-native/events) is published to any subscribers regardless of the configured `pressAction`.
 
 ### Simple behaviour
 

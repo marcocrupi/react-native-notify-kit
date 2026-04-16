@@ -168,6 +168,8 @@ notifee.displayNotification({
 });
 ```
 
+> **Foreground service notifications**: when `asForegroundService: true`, `ongoing` defaults to `true` even if you don't set it — this prevents the user from dismissing the notification on Android 13, matching pre-Android 13 platform behavior. On Android 14+, dismissed foreground service notifications are automatically re-posted while the service is active (Android 14 ignores `FLAG_ONGOING_EVENT` for most service types). Set `ongoing: false` explicitly if you want the user-dismissible behavior — not recommended for most FGS use cases.
+
 ## Full-screen
 
 You may want to display a full-screen notification for time-sensitive, urgent notifications. For example, an ongoing alarm or an incoming call.
