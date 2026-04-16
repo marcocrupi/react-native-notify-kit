@@ -23,21 +23,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
   Validation rejects: zero or multiple routing fields (`token` / `topic` / `condition`), non-string values in `notification.data`, the reserved keys `notifee_options` / `notifee_data` in user data, empty-string `notification.id`, non-integer or non-positive `options.ttl`, and non-https iOS attachment URLs. A `console.warn` fires when the serialized payload exceeds ~3500 UTF-8 bytes (measured with `Buffer.byteLength`, not JS code units, to correctly account for emoji / CJK content).
 
-- **Tests**: 104 Jest tests for the server SDK — 100 % statement / branch / line / function coverage across `buildPayload.ts`, `ios.ts`, `android.ts`, `serialize.ts`, `validation.ts`. Includes a kitchen-sink snapshot asserting the canonical FCM v1 wire shape.
+- **Tests**: Jest tests for the server SDK with 100% statement / branch / line / function coverage across `buildPayload.ts`, `ios.ts`, `android.ts`, `serialize.ts`, `validation.ts`. Includes a kitchen-sink snapshot asserting the canonical FCM v1 wire shape.
+
+- **Docs**: New [docs/fcm-mode.md](docs/fcm-mode.md) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from manual pattern, troubleshooting, and known limitations. Root README and `packages/react-native/README.md` updated with FCM Mode quick-start, Server SDK, CLI Tools, and Automated NSE setup sections. `packages/react-native/server/README.md` expanded with full API reference. `apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md` updated with a CLI-recommendation header. Issue #129, Phase 5 of 5.
 
 ### Fixed
 
-- **Client**: `handleFcmMessage` no longer throws unhandled rejection when an iOS attachment in `notifee_options` has a missing or empty `url`. Invalid attachments are now filtered out with a `console.warn` instead of propagating to the validator. (H1)
-- **Client**: `reconstructNotification` now emits a `console.warn` when a recognized Android style type (`BIG_TEXT` / `BIG_PICTURE`) is present but the required sub-field (`text` / `picture`) is missing. Previously the style was silently dropped with no diagnostic signal. (M1)
-- **Client**: `setFcmConfig` and `handleFcmMessage` now deep-copy the nested `ios` sub-object, preventing caller mutation from leaking into stored config. (M4)
-- **CLI**: `patchPodfile` now throws an error (triggering rollback) when it cannot locate the main app target's closing `end`, instead of silently appending the NSE block at file-end which would produce an invalid Podfile. (H2)
-- **CLI**: `--bundle-suffix` is now validated against `/^\.[A-Za-z0-9\-.]+$/` to prevent pbxproj corruption from special characters. (M2)
-- **CLI**: `readParentTarget` now scopes the bundle ID search to the app target's own `buildConfigurationList` instead of scanning all build configurations globally. Prevents returning a test target's bundle ID in multi-target projects. (M3)
-- **CLI**: `opts.dryRun` is now forwarded to `patchPodfile` and `patchXcodeProject` calls instead of being hardcoded to `false`. (L1)
+- **Client**: `handleFcmMessage` no longer throws an unhandled rejection when an iOS attachment in `notifee_options` has a missing or empty `url`. Invalid attachments are now filtered out with a `console.warn` instead of propagating to the validator.
+- **Client**: `reconstructNotification` now emits a `console.warn` when a recognized Android style type (`BIG_TEXT` / `BIG_PICTURE`) is present but the required sub-field (`text` / `picture`) is missing. Previously the style was silently dropped with no diagnostic signal.
+- **Client**: `setFcmConfig` and `handleFcmMessage` now deep-copy the nested `ios` sub-object, preventing caller mutation from leaking into stored config.
+- **CLI**: `patchPodfile` now throws an error (triggering rollback) when it cannot locate the main app target's closing `end`, instead of silently appending the NSE block at file-end which would produce an invalid Podfile.
+- **CLI**: `--bundle-suffix` is now validated against `/^\.[A-Za-z0-9\-.]+$/` to prevent pbxproj corruption from special characters.
+- **CLI**: `readParentTarget` now scopes the bundle ID search to the app target's own `buildConfigurationList` instead of scanning all build configurations globally. Prevents returning a test target's bundle ID in multi-target projects.
+- **CLI**: `opts.dryRun` is now forwarded to `patchPodfile` and `patchXcodeProject` calls instead of being hardcoded to `false`.
+- **CLI**: `deriveBundleId` now expands `$(PRODUCT_NAME)` / `$(TARGET_NAME)` variables in the parent bundle ID using the detected target name, instead of passing the unresolved variable through to the NSE bundle ID. A warning is still logged when the parent bundle ID uses unresolved variables the CLI cannot expand (e.g. `$(PRODUCT_BUNDLE_PREFIX)`), so the user can fix the NSE bundle ID manually in Xcode.
+- **CLI**: `patchXcodeProject` now strips the RNFB-style `INFOPLIST_FILE` input path from the host target's build settings after adding the NSE target, avoiding an Xcode host-extension build cycle that prevented incremental builds.
+- **CLI**: Swift NSE template now uses the correct `with:` Objective-C selector label (was `withContent:`) when calling `NotifeeExtensionHelper.populateNotificationContent`, matching the ObjC method signature exposed via `NS_SWIFT_NAME`.
+- **iOS**: `RNNotifeeCore.podspec` now declares `DEFINES_MODULE = YES` so the NSE target can `import RNNotifeeCore` as a Swift module without a bridging header.
 
 ### Changed
 
-- **Package exports**: [packages/react-native/package.json](packages/react-native/package.json) now declares a formal `exports` map (previously absent). Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`. For backward compatibility with any consumer that was importing internal paths before 9.8.x, `./src/*` and `./dist/*` are also exposed — **these are deprecated and will be removed in a future major**. Migrate to the public exports (`react-native-notify-kit` for the client, `react-native-notify-kit/server` for the server SDK).
+- **Package exports**: [packages/react-native/package.json](packages/react-native/package.json) now declares a formal `exports` map (previously absent). Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`. For backward compatibility with any consumer that was importing internal paths before 10.0.0, `./src/*` and `./dist/*` are also exposed — **these are deprecated and will be removed in a future major**. Migrate to the public exports (`react-native-notify-kit` for the client, `react-native-notify-kit/server` for the server SDK).
+
+- **NSE template**: Generated `NotificationService.swift` now emits `[NotifyKitNSE]` NSLog diagnostics on `didReceive`, `contentHandler`, and `serviceExtensionTimeWillExpire` paths. Visible in Console.app by filtering on the `NotifyKitNSE` process, making it easier to diagnose missing attachments, missing `notifee_options`, or `serviceExtensionTimeWillExpire` termination on slow networks.
 
 ## [9.7.0] - 2026-04-15
 

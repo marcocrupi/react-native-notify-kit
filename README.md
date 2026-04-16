@@ -135,9 +135,29 @@ useEffect(() => {
 }, []);
 ```
 
+## Notifee FCM Mode (NEW in 10.0.0)
+
+**Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS** — one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and scaffold the iOS Notification Service Extension with a single CLI command:
+
+```bash
+# server: build the payload
+import { buildNotifyKitPayload } from 'react-native-notify-kit/server';
+await admin.messaging().send(buildNotifyKitPayload({ token, notification: { title, body, android, ios } }));
+
+# client (Android + iOS): one line in setBackgroundMessageHandler / onMessage
+await notifee.handleFcmMessage(remoteMessage);
+
+# iOS NSE scaffold
+npx react-native-notify-kit init-nse && cd ios && pod install
+```
+
+See the full guide: **[docs/fcm-mode.md](docs/fcm-mode.md)** — covers architecture, server SDK reference, client API, NSE setup, payload schema, migration, troubleshooting, and known limitations.
+
 ## Push Notifications (Firebase)
 
 This library handles notification **display and management**. For receiving push notifications, pair it with [`@react-native-firebase/messaging`](https://rnfirebase.io/messaging/usage):
+
+> **New in 10.0.0:** for a turnkey FCM integration that handles both platforms (no duplicate on Android, APNs-reliable on iOS), use **[Notifee FCM Mode](docs/fcm-mode.md)** instead of the manual pattern below. The sections that follow still apply for basic Firebase setup (google-services plugin, permissions, APNs capability).
 
 ### Android setup
 
@@ -196,7 +216,22 @@ messaging().onMessage(async remoteMessage => {
 
 ## iOS Notification Service Extension
 
-To modify push notification content before display (e.g., attach images), create a Notification Service Extension:
+To modify push notification content before display (e.g., attach images), create a Notification Service Extension.
+
+### Automated setup (recommended)
+
+From your project root, with `react-native-notify-kit` installed:
+
+```bash
+npx react-native-notify-kit init-nse
+cd ios && pod install
+```
+
+The CLI scaffolds a Swift NSE target (default name: `NotifyKitNSE`), patches your Podfile, and wires `.pbxproj`. Open your `.xcworkspace` in Xcode, verify the NSE target's signing, and build. See [docs/fcm-mode.md#ios-nse-setup](docs/fcm-mode.md#ios-nse-setup) for the full CLI reference (target name, bundle suffix, `--dry-run`, `--force`).
+
+### Manual setup
+
+For Expo, monorepos with non-standard iOS paths, or heavily-customized Xcode configurations where the CLI can't patch the project cleanly:
 
 1. In Xcode: **File > New > Target > Notification Service Extension**
 2. Add to your Podfile:
@@ -233,6 +268,40 @@ To modify push notification content before display (e.g., attach images), create
    ```
 
 5. Run `cd ios && pod install`
+
+## Server SDK
+
+`react-native-notify-kit` ships a **zero-dependency server SDK** under the `/server` subpath, for building FCM HTTP v1 payloads that the client `handleFcmMessage` handler consumes. Runs in Node.js 22+ and Firebase Cloud Functions.
+
+```ts
+import { buildNotifyKitPayload } from 'react-native-notify-kit/server';
+import * as admin from 'firebase-admin';
+
+const message = buildNotifyKitPayload({
+  token: '<device FCM token>',
+  notification: {
+    id: 'order-42',
+    title: 'Your order is on the way',
+    body: 'Tap to see live tracking',
+    data: { orderId: '42' },
+    android: { channelId: 'orders', smallIcon: 'ic_notification' },
+    ios: { sound: 'default', interruptionLevel: 'timeSensitive' },
+  },
+  options: { androidPriority: 'high', ttl: 3600 },
+});
+
+await admin.messaging().send(message);
+```
+
+Full reference: [docs/fcm-mode.md#server-sdk-reference](docs/fcm-mode.md#server-sdk-reference) (types, validation rules, payload shape, FCM 4 KB limit).
+
+## CLI Tools
+
+The library ships a small CLI at `npx react-native-notify-kit`. Currently one command is available:
+
+- `npx react-native-notify-kit init-nse` — scaffolds an iOS Notification Service Extension (Swift), patches the Podfile, and wires `.pbxproj`. See [docs/fcm-mode.md#ios-nse-setup](docs/fcm-mode.md#ios-nse-setup) for options.
+
+The CLI is prepacked into the main package at publish time, so `npx react-native-notify-kit` works immediately after `yarn add react-native-notify-kit` — no separate install.
 
 ## Jest Testing
 

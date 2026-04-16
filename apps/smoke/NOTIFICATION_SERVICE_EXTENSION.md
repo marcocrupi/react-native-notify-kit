@@ -1,5 +1,13 @@
 # iOS Notification Service Extension (NSE) Setup
 
+> **Recommended: use the automated CLI instead.**
+> Run `npx react-native-notify-kit init-nse` from your project root.
+> See [FCM Mode docs](../../docs/fcm-mode.md) for the full guide.
+>
+> The manual steps below are for projects where the CLI doesn't work
+> (Expo managed workflow, custom Xcode configurations, monorepos with
+> non-standard iOS paths).
+
 A Notification Service Extension allows your app to modify notification content before it is displayed. This is required for features like media attachments on iOS push notifications.
 
 ## Prerequisites
