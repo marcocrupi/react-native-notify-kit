@@ -191,7 +191,7 @@ describe('patchXcodeProject', () => {
       .filter(([, v]) => {
         const s = (v as Record<string, unknown>).buildSettings as Record<string, string>;
         return s?.PRODUCT_NAME === '"NotifyKitNSE"';
-    });
+      });
     expect(nseConfigs.length).toBeGreaterThanOrEqual(2);
   });
 

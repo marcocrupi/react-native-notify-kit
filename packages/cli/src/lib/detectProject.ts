@@ -84,10 +84,7 @@ export function deriveBundleId(
   return `$(PRODUCT_BUNDLE_IDENTIFIER:default)${suffix}`;
 }
 
-function expandKnownBundleIdVariables(
-  bundleId: string,
-  parentTargetName?: string,
-): string | null {
+function expandKnownBundleIdVariables(bundleId: string, parentTargetName?: string): string | null {
   if (!parentTargetName) {
     return null;
   }
