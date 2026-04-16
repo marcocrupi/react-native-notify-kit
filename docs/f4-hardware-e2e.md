@@ -6,7 +6,7 @@ Not automated — run by a developer with physical device access.
 ## Prerequisites
 
 - Firebase project with FCM enabled (NotifyKitTest or equivalent)
-- Service account key at `~/.firebase-notifykittest.json` (never committed)
+- Service account key at `./firebase-notifykittest.json` in the repo root (never committed)
 - Smoke app deployed to device (`yarn smoke:android` / `yarn smoke:ios`)
 - Device token obtained from app logs at startup
 
@@ -28,7 +28,7 @@ Expected: notification displays with title/body from the mock payload.
 ### Test 2: Real FCM push (foreground)
 
 ```bash
-ts-node scripts/send-test-fcm.ts <token> kitchen-sink
+yarn send:test:fcm <token> kitchen-sink
 ```
 
 Expected: `onMessage` fires, `handleFcmMessage` runs, notification displays
@@ -39,7 +39,7 @@ with channelId, pressAction, BIG_TEXT style.
 Put app in background, then send:
 
 ```bash
-ts-node scripts/send-test-fcm.ts <token> minimal
+yarn send:test:fcm <token> minimal
 ```
 
 Expected: `setBackgroundMessageHandler` fires, `handleFcmMessage` runs,
@@ -74,7 +74,7 @@ cd apps/smoke/ios && pod install
 ### Test 1: Real FCM push (foreground)
 
 ```bash
-ts-node scripts/send-test-fcm.ts <ios-token> kitchen-sink
+yarn send:test:fcm <ios-token> kitchen-sink
 ```
 
 Expected: `onMessage` fires, `handleFcmMessage` runs,
@@ -115,18 +115,21 @@ git checkout apps/smoke/ios/
 rm -rf apps/smoke/ios/NotifyKitNSE/
 ```
 
-## `scripts/send-test-fcm.ts` usage
+## `yarn send:test:fcm` usage
 
 ```bash
-# Install firebase-admin if not present
-npm install -g firebase-admin ts-node
+# Install repo dependencies if needed
+yarn install
+
+# Rebuild the server SDK if dist is missing or stale
+yarn build:rn:server
 
 # Set up service account key
 # Download from Firebase Console > Project Settings > Service Accounts
-# Save as ~/.firebase-notifykittest.json
+# Save as firebase-notifykittest.json in the repo root
 
 # Send test notification
-ts-node scripts/send-test-fcm.ts <device-token> <scenario>
+yarn send:test:fcm <device-token> <scenario>
 
 # Scenarios: minimal | kitchen-sink | emoji | marketing
 ```

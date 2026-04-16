@@ -184,6 +184,8 @@ fabric.properties
 **/.firebaserc
 **/GoogleService-Info.plist
 **/google-services.json
+/firebase-notifykittest.json
+/.firebase-notifykittest.json
 
 ### Firebase Patch ###
 .runtimeconfig.json

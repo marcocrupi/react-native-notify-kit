@@ -7,7 +7,7 @@ sviluppatore con accesso fisico ai dispositivi.
 ## Prerequisiti
 
 - Progetto Firebase con FCM abilitato (NotifyKitTest o equivalente)
-- Chiave del service account in `~/.firebase-notifykittest.json` (mai committata)
+- Chiave del service account in `./firebase-notifykittest.json` nella root del repo (mai committata)
 - Smoke app installata sul dispositivo (`yarn smoke:android` / `yarn smoke:ios`)
 - Token del dispositivo ottenuto dai log dell'app all'avvio
 
@@ -29,7 +29,7 @@ Risultato atteso: la notifica viene mostrata con titolo e corpo dal payload mock
 ### Test 2: Push FCM reale (app in foreground)
 
 ```bash
-ts-node scripts/send-test-fcm.ts <token> kitchen-sink
+yarn send:test:fcm <token> kitchen-sink
 ```
 
 Risultato atteso: `onMessage` si attiva, `handleFcmMessage` viene eseguito,
@@ -40,7 +40,7 @@ la notifica viene mostrata con channelId, pressAction, stile BIG_TEXT.
 Mettere l'app in background, poi inviare:
 
 ```bash
-ts-node scripts/send-test-fcm.ts <token> minimal
+yarn send:test:fcm <token> minimal
 ```
 
 Risultato atteso: `setBackgroundMessageHandler` si attiva,
@@ -77,7 +77,7 @@ cd apps/smoke/ios && pod install
 ### Test 1: Push FCM reale (foreground)
 
 ```bash
-ts-node scripts/send-test-fcm.ts <ios-token> kitchen-sink
+yarn send:test:fcm <ios-token> kitchen-sink
 ```
 
 Risultato atteso: `onMessage` si attiva, `handleFcmMessage` viene eseguito,
@@ -120,53 +120,56 @@ git checkout apps/smoke/ios/
 rm -rf apps/smoke/ios/NotifyKitNSE/
 ```
 
-## Utilizzo di `scripts/send-test-fcm.ts`
+## Utilizzo di `yarn send:test:fcm`
 
 ```bash
-# Installare firebase-admin se non presente
-npm install -g firebase-admin ts-node
+# Installare le dipendenze del repo se non presenti
+yarn install
+
+# Se manca la build del server SDK
+yarn build:rn:server
 
 # Configurare la chiave del service account
 # Scaricare da Firebase Console > Impostazioni progetto > Account di servizio
-# Salvare come ~/.firebase-notifykittest.json
+# Salvare come firebase-notifykittest.json nella root del repo
 
 # Inviare notifica di test
-ts-node scripts/send-test-fcm.ts <device-token> <scenario>
+yarn send:test:fcm <device-token> <scenario>
 
 # Scenari disponibili: minimal | kitchen-sink | emoji | marketing
 ```
 
 ## Riepilogo Risultati Attesi
 
-| Scenario         | Android              | iOS (foreground)     | iOS (background/terminata) |
-| ---------------- | -------------------- | -------------------- | -------------------------- |
-| Titolo/corpo     | da notifee_options   | da notifee_options   | da aps.alert + NSE         |
-| channelId custom | si                   | N/A                  | N/A                        |
-| Stile BIG_TEXT   | si                   | N/A                  | N/A                        |
-| Suono            | N/A                  | da aps.sound         | da aps.sound               |
-| Badge            | N/A                  | da aps.badge         | da aps.badge               |
-| Allegati         | N/A                  | via NSE              | via NSE                    |
-| Evento pressione | si                   | si                   | si (tap avvia l'app)       |
+| Scenario         | Android            | iOS (foreground)   | iOS (background/terminata) |
+| ---------------- | ------------------ | ------------------ | -------------------------- |
+| Titolo/corpo     | da notifee_options | da notifee_options | da aps.alert + NSE         |
+| channelId custom | si                 | N/A                | N/A                        |
+| Stile BIG_TEXT   | si                 | N/A                | N/A                        |
+| Suono            | N/A                | da aps.sound       | da aps.sound               |
+| Badge            | N/A                | da aps.badge       | da aps.badge               |
+| Allegati         | N/A                | via NSE            | via NSE                    |
+| Evento pressione | si                 | si                 | si (tap avvia l'app)       |
 
 ## Log Risultati Test
 
 Compilare durante l'esecuzione:
 
-| Test                            | Stato | Note |
-| ------------------------------- | ----- | ---- |
-| A1 getFCMToken                  |       |      |
-| A2 FCM foreground               |       |      |
-| A3 FCM background               |       |      |
-| A4 FCM app terminata            |       |      |
-| A5 Tap, evento PRESS            |       |      |
-| A6 Pulsante azione              |       |      |
-| A7 Campi notifee_options        |       |      |
-| B0 CLI init-nse                 |       |      |
-| B1 pod install + build          |       |      |
-| B2 getFCMToken (iOS)            |       |      |
-| B3 FCM foreground (iOS)         |       |      |
-| B4 FCM background (NSE)         |       |      |
-| B5 FCM app terminata (NSE)      |       |      |
-| B6 Campi iOS (suono/badge)      |       |      |
-| B7 Tap, avvio app               |       |      |
-| B8 Pulizia e ripristino         |       |      |
+| Test                       | Stato | Note |
+| -------------------------- | ----- | ---- |
+| A1 getFCMToken             |       |      |
+| A2 FCM foreground          |       |      |
+| A3 FCM background          |       |      |
+| A4 FCM app terminata       |       |      |
+| A5 Tap, evento PRESS       |       |      |
+| A6 Pulsante azione         |       |      |
+| A7 Campi notifee_options   |       |      |
+| B0 CLI init-nse            |       |      |
+| B1 pod install + build     |       |      |
+| B2 getFCMToken (iOS)       |       |      |
+| B3 FCM foreground (iOS)    |       |      |
+| B4 FCM background (NSE)    |       |      |
+| B5 FCM app terminata (NSE) |       |      |
+| B6 Campi iOS (suono/badge) |       |      |
+| B7 Tap, avvio app          |       |      |
+| B8 Pulizia e ripristino    |       |      |

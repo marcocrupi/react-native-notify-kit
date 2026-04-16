@@ -44,7 +44,8 @@
     "e2e:cli-tarball": "bash scripts/e2e-cli-tarball.sh",
     "smoke:android": "cd apps/smoke && npx react-native run-android",
     "smoke:ios": "cd apps/smoke && npx react-native run-ios",
-    "smoke:start": "cd apps/smoke && npx react-native start"
+    "smoke:start": "cd apps/smoke && npx react-native start",
+    "send:test:fcm": "node scripts/send-test-fcm.js"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.4.1",
@@ -63,6 +64,7 @@
     "eslint-plugin-react": "^7.29.3",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-native": "^4.1.0",
+    "firebase-admin": "^13.8.0",
     "google-java-format": "^1.4.0",
     "lerna": "^9.0.7",
     "prettier": "^3.8.1",

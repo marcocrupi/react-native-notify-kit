@@ -17,12 +17,12 @@ Follow this document top-to-bottom. All commands run from the repo root
 ### Firebase Setup
 
 - [ ] Firebase project `NotifyKitTest` with FCM enabled
-- [ ] Service account JSON at `~/.firebase-notifykittest.json`
-- [ ] `firebase-admin` installed: `npm ls firebase-admin || npm install firebase-admin`
+- [ ] Service account JSON at `./firebase-notifykittest.json` in the repo root
+- [ ] Repo dependencies installed: `yarn install`
 - [ ] Verify key loads:
 
 ```bash
-node -e "require(require('os').homedir() + '/.firebase-notifykittest.json'); console.log('OK')"
+node -e "require(require('path').resolve('firebase-notifykittest.json')); console.log('OK')"
 ```
 
 ### Android (Pixel 9 Pro XL)
@@ -89,7 +89,7 @@ export FCM_TOKEN="<paste token here>"
 Keep the app in the foreground.
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$FCM_TOKEN" kitchen-sink
+yarn send:test:fcm "$FCM_TOKEN" kitchen-sink
 ```
 
 **Expected terminal output**:
@@ -119,7 +119,7 @@ adb logcat -s ReactNativeJS | grep -E "Notifee|FCM|BackgroundEvent|ForegroundEve
 Press the Home button to background the app. Send:
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$FCM_TOKEN" minimal
+yarn send:test:fcm "$FCM_TOKEN" minimal
 ```
 
 **Expected**: Notification appears in the notification shade.
@@ -143,7 +143,7 @@ adb shell am force-stop com.notifeeexample
 Send:
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$FCM_TOKEN" emoji
+yarn send:test:fcm "$FCM_TOKEN" emoji
 ```
 
 **Expected**: Notification appears with title "Launch!", body "Celebration time".
@@ -166,7 +166,7 @@ Alert dialog: "Notifee PRESS (foreground)".
 Send kitchen-sink (has actions):
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$FCM_TOKEN" kitchen-sink
+yarn send:test:fcm "$FCM_TOKEN" kitchen-sink
 ```
 
 Pull down the notification to expand it. Tap **"Reply"** action button.
@@ -273,7 +273,7 @@ Keep the app in foreground. Send:
 
 ```bash
 cd /Users/marcocrupi/Documents/Programmazione/notifee
-npx ts-node scripts/send-test-fcm.ts "$IOS_FCM_TOKEN" kitchen-sink
+yarn send:test:fcm "$IOS_FCM_TOKEN" kitchen-sink
 ```
 
 **Expected**: Notification banner appears with title "Your order is ready".
@@ -284,7 +284,7 @@ Sound plays. Xcode console shows the FCM received log.
 Press Home to background the app. Send:
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$IOS_FCM_TOKEN" minimal
+yarn send:test:fcm "$IOS_FCM_TOKEN" minimal
 ```
 
 **Expected**: Notification appears on lock screen / notification center.
@@ -302,7 +302,7 @@ Title: "Hello from NotifyKit". The NSE activated and processed `notifee_options`
 Force-quit the app (swipe up from app switcher). Send:
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$IOS_FCM_TOKEN" emoji
+yarn send:test:fcm "$IOS_FCM_TOKEN" emoji
 ```
 
 **Expected**: Notification with "Launch!" appears. NSE processes it
@@ -313,7 +313,7 @@ identically to background.
 Send kitchen-sink:
 
 ```bash
-npx ts-node scripts/send-test-fcm.ts "$IOS_FCM_TOKEN" kitchen-sink
+yarn send:test:fcm "$IOS_FCM_TOKEN" kitchen-sink
 ```
 
 **Verification checklist (background/killed)**:
@@ -362,13 +362,13 @@ git status -- apps/smoke/
 
 1. **Background handler not registered**: Check `index.js` has
    `messaging().setBackgroundMessageHandler(...)` before `AppRegistry.registerComponent`.
-2. **`notifee_options` missing from data**: Verify `send-test-fcm.ts` output
+2. **`notifee_options` missing from data**: Verify `yarn send:test:fcm` output
    shows non-zero payload size.
 
 ### iOS — NSE not activating
 
 1. **`mutable-content: 1` missing**: All NotifyKit payloads include this.
-   Verify with `send-test-fcm.ts` output.
+   Verify with `yarn send:test:fcm` output.
 2. **Signing mismatch**: NSE target must use the same Apple Team as the main app.
 3. **NSE crashed**: Check Console.app filtered by `NotifyKitNSE` process.
 4. **Pod not installed**: Run `cd apps/smoke/ios && pod install` again.
@@ -381,10 +381,10 @@ git status -- apps/smoke/
    Check: `cat apps/smoke/ios/Podfile | grep -A3 NotifyKitNSE`.
 2. **Dependency conflict**: Run `pod install --repo-update`.
 
-### `send-test-fcm.ts` — "Send failed"
+### `yarn send:test:fcm` — "Send failed"
 
 1. **Invalid token**: Tokens expire. Get a fresh one via the app's getFCMToken button.
-2. **Service account key**: Verify `~/.firebase-notifykittest.json` exists and
+2. **Service account key**: Verify `firebase-notifykittest.json` exists in the repo root and
    has the correct project.
 3. **Payload too large**: Check `Payload size:` in the output. Must be under 4096 bytes.
 
