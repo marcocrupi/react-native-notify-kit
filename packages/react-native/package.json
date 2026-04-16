@@ -5,6 +5,7 @@
   "description": "Maintained Notifee-compatible fork for React Native — advanced local notifications for Android & iOS.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": "./cli/bin/react-native-notify-kit",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -29,6 +30,8 @@
     "build:watch": "tsc --watch",
     "test:server": "jest --config jest.config.server.js",
     "prepare": "yarn run build",
+    "prepack": "bash ../../scripts/prepack-cli.sh",
+    "postpack": "rm -rf cli",
     "prepublishOnly": "cd ../.. && yarn run build:core",
     "format:android": "google-java-format --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",
     "format:android:check": "google-java-format --set-exit-if-changed --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",
@@ -48,6 +51,12 @@
     "rimraf": "^3.0.2",
     "ts-jest": "^29.2.5",
     "typescript": "^5.9.3"
+  },
+  "optionalDependencies": {
+    "chalk": "^4.1.0",
+    "commander": "^12.0.0",
+    "plist": "^3.1.0",
+    "xcode": "^3.0.1"
   },
   "peerDependencies": {
     "react-native": ">=0.73.0"
@@ -103,6 +112,8 @@
     "!/server/src/__tests__",
     "/server/README.md",
     "/server/tsconfig.json",
-    "/server/package.json"
+    "/server/package.json",
+    "/cli/dist",
+    "/cli/bin"
   ]
 }

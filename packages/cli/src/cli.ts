@@ -1,18 +1,34 @@
 #!/usr/bin/env node
 
+import * as fs from 'fs';
+import * as path from 'path';
 import { Command } from 'commander';
 import { initNse } from './commands/initNse';
 import * as logger from './lib/logger';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pkg = require('../package.json') as { version: string };
+// Resolve version from whichever package.json is reachable: the CLI's own
+// (dev context) or the parent RN package's (prepack/published context).
+function resolveVersion(): string {
+  for (const rel of ['../package.json', '../../../package.json']) {
+    try {
+      const p = path.resolve(__dirname, rel);
+      if (fs.existsSync(p)) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        return (require(p) as { version: string }).version;
+      }
+    } catch {
+      // continue
+    }
+  }
+  return '0.0.0';
+}
 
 const program = new Command();
 
 program
   .name('react-native-notify-kit')
   .description('CLI tools for react-native-notify-kit')
-  .version(pkg.version);
+  .version(resolveVersion());
 
 program
   .command('init-nse')

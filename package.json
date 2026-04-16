@@ -41,6 +41,7 @@
     "tests_rn:test-coverage": "cd packages/react-native && npx jest --config jest.config.js --coverage",
     "tests_rn:test-server": "cd packages/react-native && npx jest --config jest.config.server.js",
     "verify:consumer-resolution": "bash scripts/verify-consumer-resolution.sh",
+    "e2e:cli-tarball": "bash scripts/e2e-cli-tarball.sh",
     "smoke:android": "cd apps/smoke && npx react-native run-android",
     "smoke:ios": "cd apps/smoke && npx react-native run-ios",
     "smoke:start": "cd apps/smoke && npx react-native start"

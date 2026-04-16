@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const TEMPLATES_DIR = path.join(__dirname, '..', 'templates');
+// Templates live at dist/templates/ in dev (relative to dist/lib/writeTemplates.js)
+// and at cli/dist/templates/ in the bundled prepack (relative to cli/dist/cli.bundle.js).
+// The fallback path handles the bundled context where __dirname is the bundle's dir.
+const TEMPLATES_DIR = fs.existsSync(path.join(__dirname, 'templates'))
+  ? path.join(__dirname, 'templates')
+  : path.join(__dirname, '..', 'templates');
 
 export interface WriteTemplatesOptions {
   iosDir: string;
