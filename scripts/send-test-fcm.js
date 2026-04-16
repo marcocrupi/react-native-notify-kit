@@ -44,6 +44,26 @@ function loadBuildNotifyKitPayload() {
 const admin = loadFirebaseAdmin();
 const buildNotifyKitPayload = loadBuildNotifyKitPayload();
 
+function normalizePayloadForFirebaseAdmin(payload) {
+  const normalized = { ...payload };
+
+  if (payload.android !== undefined) {
+    normalized.android = { ...payload.android };
+
+    // The local server SDK currently emits Android TTL as an FCM wire-format
+    // string (e.g. "3600s"), while firebase-admin validates input before
+    // transport and expects a millisecond number here.
+    if (typeof normalized.android.ttl === 'string') {
+      const match = normalized.android.ttl.match(/^(\d+)s$/);
+      if (match) {
+        normalized.android.ttl = Number.parseInt(match[1], 10) * 1000;
+      }
+    }
+  }
+
+  return normalized;
+}
+
 const SCENARIOS = {
   minimal: {
     token: '',
@@ -58,7 +78,7 @@ const SCENARIOS = {
       data: { orderId: '42', source: 'send-test-fcm' },
       android: {
         channelId: 'default',
-        smallIcon: 'ic_notification',
+        smallIcon: 'ic_launcher',
         pressAction: { id: 'open-order' },
         style: { type: 'BIG_TEXT', text: 'Order #42 has shipped from warehouse A.' },
         actions: [
@@ -126,6 +146,7 @@ async function main() {
   }
 
   const payload = buildNotifyKitPayload({ ...SCENARIOS[scenario], token });
+  const sendPayload = normalizePayloadForFirebaseAdmin(payload);
 
   console.log('Sending FCM message:');
   console.log('  Token:', token.substring(0, 20) + '...');
@@ -133,7 +154,7 @@ async function main() {
   console.log('  Payload size:', payload.sizeBytes, 'bytes');
 
   try {
-    const messageId = await admin.messaging().send(payload);
+    const messageId = await admin.messaging().send(sendPayload);
     console.log('Successfully sent. Message ID:', messageId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

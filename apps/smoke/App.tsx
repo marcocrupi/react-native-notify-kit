@@ -34,6 +34,26 @@ type Section = {
   buttons: Array<{ label: string; onPress: () => void; testID?: string }>;
 };
 
+function extractForegroundFcmTitle(remoteMessage: {
+  notification?: { title?: string | null } | null;
+  data?: Record<string, string> | null;
+}): string {
+  const serializedOptions = remoteMessage.data?.notifee_options;
+
+  if (typeof serializedOptions === 'string') {
+    try {
+      const parsed = JSON.parse(serializedOptions) as { title?: unknown };
+      if (typeof parsed.title === 'string' && parsed.title.length > 0) {
+        return parsed.title;
+      }
+    } catch {
+      // Ignore malformed debug payloads and fall back to raw message fields.
+    }
+  }
+
+  return remoteMessage.notification?.title ?? remoteMessage.data?.title ?? '(no title)';
+}
+
 function App() {
   const [screen, setScreen] = useState<'main' | 'delivered' | 'race549'>(
     VERIFY_549_AUTO_RUN ? 'race549' : 'main',
@@ -82,9 +102,7 @@ function App() {
     try {
       const messagingInstance = getMessaging();
       const unsubscribe = onMessage(messagingInstance, async remoteMessage => {
-        log(
-          `FCM foreground: ${remoteMessage.notification?.title ?? remoteMessage.data?.title ?? '(no title)'}`,
-        );
+        log(`FCM foreground: ${extractForegroundFcmTitle(remoteMessage)}`);
         try {
           const result = await notifee.handleFcmMessage(remoteMessage);
           log(`handleFcmMessage result: ${result ?? 'null'}`);
@@ -107,12 +125,16 @@ function App() {
       log(
         `ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'} ` +
           `title=${detail.notification?.title ?? '?'} ` +
+          `actionId=${detail.pressAction?.id ?? 'n/a'} ` +
+          `input=${detail.input ?? 'n/a'} ` +
           `data=${JSON.stringify(detail.notification?.data)}`,
       );
-      if (type === EventType.PRESS) {
+      if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
         Alert.alert(
-          'Notifee PRESS (foreground)',
+          `Notifee ${typeName} (foreground)`,
           `Title: ${detail.notification?.title}\n` +
+            `Action ID: ${detail.pressAction?.id ?? 'n/a'}\n` +
+            `Input: ${detail.input ?? 'n/a'}\n` +
             `Data: ${JSON.stringify(detail.notification?.data)}`,
         );
       }
@@ -562,10 +584,7 @@ function App() {
   if (screen === 'race549') {
     return (
       <SafeAreaProvider>
-        <TriggerRaceTestScreen
-          onBack={() => setScreen('main')}
-          autoRun={VERIFY_549_AUTO_RUN}
-        />
+        <TriggerRaceTestScreen onBack={() => setScreen('main')} autoRun={VERIFY_549_AUTO_RUN} />
       </SafeAreaProvider>
     );
   }

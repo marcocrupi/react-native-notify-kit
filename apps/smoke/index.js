@@ -10,7 +10,10 @@
 
 import '@react-native-firebase/app';
 import '@react-native-firebase/messaging';
-import { getMessaging, setBackgroundMessageHandler } from '@react-native-firebase/messaging/lib/modular';
+import {
+  getMessaging,
+  setBackgroundMessageHandler,
+} from '@react-native-firebase/messaging/lib/modular';
 import { Alert, AppRegistry, Platform } from 'react-native';
 import notifee, { EventType } from 'react-native-notify-kit';
 import App from './App';
@@ -35,6 +38,10 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
     detail.notification?.id,
     'title:',
     detail.notification?.title,
+    'actionId:',
+    detail.pressAction?.id,
+    'input:',
+    detail.input,
     'data:',
     JSON.stringify(detail.notification?.data),
   );
@@ -42,6 +49,8 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
     `BackgroundEvent (${typeName})`,
     `ID: ${detail.notification?.id}\n` +
       `Title: ${detail.notification?.title}\n` +
+      `Action ID: ${detail.pressAction?.id ?? 'n/a'}\n` +
+      `Input: ${detail.input ?? 'n/a'}\n` +
       `Data: ${JSON.stringify(detail.notification?.data)}`,
   );
 });
