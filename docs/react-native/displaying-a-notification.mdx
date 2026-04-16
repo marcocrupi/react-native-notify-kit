@@ -43,10 +43,9 @@ function Screen() {
       android: {
         channelId,
         smallIcon: 'name-of-a-small-icon', // optional, defaults to 'ic_launcher'.
-        // pressAction is needed if you want the notification to open the app when pressed
-        pressAction: {
-          id: 'default',
-        },
+        // Tapping the notification opens the app by default (since v9.3.0,
+        // pressAction defaults to { id: 'default', launchActivity: 'default' }).
+        // Set pressAction: null explicitly to create a non-tappable notification.
       },
     });
   }
@@ -93,8 +92,7 @@ async function onDisplayNotification() {
     name: 'Default Channel',
   });
 
-  // Required for iOS
-  // See https://notifee.app/react-native/docs/ios/permissions
+  // Required for iOS — see /react-native/ios/permissions
   await notifee.requestPermission();
 
   const notificationId = await notifee.displayNotification({
