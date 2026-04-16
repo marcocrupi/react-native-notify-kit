@@ -27,6 +27,15 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     dryRun = false,
   } = opts;
 
+  // 0. Validate target name (prevents Podfile/pbxproj injection via special chars)
+  if (!/^[A-Za-z0-9_\-.]+$/.test(targetName)) {
+    logger.error(
+      `Invalid target name '${targetName}'. Must match [A-Za-z0-9_-.]\n` +
+        '  Target names can only contain letters, digits, underscores, hyphens, and dots.',
+    );
+    process.exit(1);
+  }
+
   // 1. Detect project
   let projectInfo;
   try {
@@ -81,19 +90,20 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     return;
   }
 
-  // 4. Create backups
+  // 4. Create backups (PID-stamped to avoid collision with parallel runs)
   const podfilePath = path.join(projectInfo.iosDir, 'Podfile');
   const backups: Array<{ original: string; backup: string }> = [];
   const templateDirCreated = !dirExists; // Track if WE created the dir (for rollback)
+  const bakSuffix = `.bak.${process.pid}.${Date.now()}`;
 
   try {
     if (fs.existsSync(podfilePath)) {
-      const podfileBackup = podfilePath + '.bak';
+      const podfileBackup = podfilePath + bakSuffix;
       fs.copyFileSync(podfilePath, podfileBackup);
       backups.push({ original: podfilePath, backup: podfileBackup });
     }
 
-    const pbxprojBackup = projectInfo.pbxprojPath + '.bak';
+    const pbxprojBackup = projectInfo.pbxprojPath + bakSuffix;
     fs.copyFileSync(projectInfo.pbxprojPath, pbxprojBackup);
     backups.push({ original: projectInfo.pbxprojPath, backup: pbxprojBackup });
 
@@ -136,9 +146,11 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
       logger.info(`.pbxproj already contains ${targetName} target (skipped)`);
     }
 
-    // 8. Success — delete backups
+    // 8. Success — delete backups (guard against concurrent removal)
     for (const { backup } of backups) {
-      fs.unlinkSync(backup);
+      if (fs.existsSync(backup)) {
+        fs.unlinkSync(backup);
+      }
     }
 
     // 9. Print next steps

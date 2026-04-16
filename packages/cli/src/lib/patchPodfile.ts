@@ -7,9 +7,8 @@ import * as fs from 'fs';
 export function patchPodfile(podfilePath: string, targetName: string, dryRun: boolean): boolean {
   const content = fs.readFileSync(podfilePath, 'utf-8');
 
-  // Idempotency check
-  const targetRegex = new RegExp(`target\\s+['"]${escapeRegex(targetName)}['"]`);
-  if (targetRegex.test(content)) {
+  // Idempotency check — skip commented lines (# prefix)
+  if (hasUncommentedTarget(content, targetName)) {
     return false; // Already present
   }
 
@@ -28,8 +27,7 @@ export function patchPodfile(podfilePath: string, targetName: string, dryRun: bo
  * preview or testing).
  */
 export function getPatchedPodfile(content: string, targetName: string): string | null {
-  const targetRegex = new RegExp(`target\\s+['"]${escapeRegex(targetName)}['"]`);
-  if (targetRegex.test(content)) {
+  if (hasUncommentedTarget(content, targetName)) {
     return null; // Already present
   }
   const block = buildNseTargetBlock(targetName, content);
@@ -65,6 +63,17 @@ function insertBeforePostInstall(content: string, block: string): string {
 
   // No post_install found — append at end
   return content + '\n' + block;
+}
+
+function hasUncommentedTarget(content: string, targetName: string): boolean {
+  const pattern = new RegExp(`target\\s+['"]${escapeRegex(targetName)}['"]`);
+  for (const line of content.split('\n')) {
+    const stripped = line.replace(/#.*$/, ''); // Remove comments
+    if (pattern.test(stripped)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function escapeRegex(s: string): string {

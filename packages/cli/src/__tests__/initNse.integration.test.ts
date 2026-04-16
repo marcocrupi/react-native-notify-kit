@@ -156,4 +156,15 @@ describe('initNse integration', () => {
     // Target name
     expect(output).toContain('NotifyKitNSE');
   });
+
+  it('C2: rejects target name with special characters (injection prevention)', async () => {
+    await initNse({
+      iosPath: path.join(ctx.root, 'ios'),
+      targetName: "Foo'; system('rm -rf /'); #",
+      bundleSuffix: '.NotifyKitNSE',
+      force: false,
+      dryRun: false,
+    });
+    expect(mockExit).toHaveBeenCalledWith(1);
+  });
 });

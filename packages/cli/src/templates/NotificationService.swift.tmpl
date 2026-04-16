@@ -19,7 +19,7 @@ class NotificationService: UNNotificationServiceExtension {
 
     NotifeeExtensionHelper.populateNotificationContent(
       request,
-      with: bestAttemptContent,
+      withContent: bestAttemptContent,
       withContentHandler: contentHandler
     )
   }

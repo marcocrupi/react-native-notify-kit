@@ -75,4 +75,20 @@ describe('writeTemplates', () => {
     });
     expect(fs.existsSync(path.join(tmp, 'NotifyKitNSE', 'NotificationService.swift'))).toBe(true);
   });
+
+  it('C1: Swift template uses withContent: (matches ObjC header)', () => {
+    writeTemplates({
+      iosDir: tmp,
+      targetName: 'NotifyKitNSE',
+      bundleId: 'com.test.nse',
+      force: false,
+    });
+    const swift = fs.readFileSync(
+      path.join(tmp, 'NotifyKitNSE', 'NotificationService.swift'),
+      'utf-8',
+    );
+    // Must match the ObjC selector populateNotificationContent:withContent:withContentHandler:
+    expect(swift).toContain('withContent: bestAttemptContent');
+    expect(swift).not.toContain('with: bestAttemptContent');
+  });
 });

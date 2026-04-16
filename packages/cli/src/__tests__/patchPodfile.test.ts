@@ -67,4 +67,12 @@ describe('patchPodfile', () => {
     const result = getPatchedPodfile(BASIC_PODFILE, 'MyCustomNSE');
     expect(result).toContain("target 'MyCustomNSE' do");
   });
+
+  it('H1: does NOT match commented-out target as existing (false idempotency)', () => {
+    const podfileWithComment = BASIC_PODFILE + "\n# target 'NotifyKitNSE' do\n# end\n";
+    const result = getPatchedPodfile(podfileWithComment, 'NotifyKitNSE');
+    // Should NOT return null — the comment should be ignored
+    expect(result).not.toBeNull();
+    expect(result).toContain("target 'NotifyKitNSE' do");
+  });
 });
