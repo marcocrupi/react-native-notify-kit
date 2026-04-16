@@ -149,7 +149,7 @@ In your app's `index.js` (before `AppRegistry.registerComponent`):
 // index.js
 import { AppRegistry } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import notifee from 'react-native-notify-kit';
+import notifee, { AndroidImportance } from 'react-native-notify-kit';
 import App from './App';
 
 // Optional: configure defaults once at startup
@@ -159,8 +159,8 @@ notifee.setFcmConfig({
 });
 
 // Create the channel your payloads reference
-notifee.createChannel({ id: 'orders', name: 'Orders', importance: 4 });
-notifee.createChannel({ id: 'default', name: 'Default', importance: 4 });
+notifee.createChannel({ id: 'orders', name: 'Orders', importance: AndroidImportance.HIGH });
+notifee.createChannel({ id: 'default', name: 'Default', importance: AndroidImportance.HIGH });
 
 // Background + killed state
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
@@ -377,12 +377,27 @@ Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages
 
 > **Note on `ttl: 0`.** Zero is rejected because it's semantically ambiguous ("never expire" vs "expire immediately") and FCM's HTTP v1 API uses the same string format for both concepts. Omit `ttl` entirely to use FCM's default (4 weeks), or pass a positive integer in seconds.
 
+<!-- markdownlint-disable-next-line MD028 -->
+
+> **Note on `firebase-admin` TTL compatibility.** `buildNotifyKitPayload` emits `android.ttl` in FCM HTTP v1 wire format (`"3600s"`), which is what the FCM REST API expects. `firebase-admin`'s `admin.messaging().send()` validates input in the SDK layer before serializing and expects `ttl` as a **number of milliseconds** (`3_600_000`). If you route through `firebase-admin` and pass `options.ttl`, normalize it before sending:
+>
+> ```ts
+> const message = buildNotifyKitPayload(input);
+> if (typeof message.android.ttl === 'string') {
+>   const match = message.android.ttl.match(/^(\d+)s$/);
+>   if (match) (message.android as any).ttl = Number(match[1]) * 1000;
+> }
+> await admin.messaging().send(message);
+> ```
+>
+> See [`scripts/send-test-fcm.js`](../scripts/send-test-fcm.js) in this repo for the reference adapter.
+
 ### Payload size
 
 FCM has a **4 KB hard limit** per message (the HTTP v1 `Message` JSON, not just your `data` map). The server SDK emits a `console.warn` when the serialized payload exceeds ~3500 bytes — enough headroom for FCM's own wrapping. Size is measured with `Buffer.byteLength(json, 'utf8')`, so emoji and CJK characters are counted correctly.
 
 ```text
-[react-native-notify-kit/server] Payload size 3612 bytes approaches FCM 4KB limit. Consider reducing data keys or notification.body length.
+[react-native-notify-kit/server] Payload size 3612 bytes approaches FCM 4KB limit. Consider reducing notifee_options.
 ```
 
 Read `output.sizeBytes` for programmatic checks:
@@ -605,9 +620,9 @@ npx react-native-notify-kit init-nse [options]
 
 **Validation errors** (exact text):
 
-- `Invalid target name '<name>'. Must match [A-Za-z0-9_-.]` — reject target names with special chars.
+- `Invalid target name '<name>'. Must match [A-Za-z0-9_-.]\n  Target names can only contain letters, digits, underscores, hyphens, and dots.` — reject target names with special chars.
 - `Invalid bundle suffix '<suffix>'. Must start with '.' and contain only letters, digits, hyphens, and dots.`
-- `NSE target '<name>' already exists in <where>. Use --force to overwrite or --target-name to use a different name.`
+- `NSE target '<name>' already exists in <where>.\n  Use --force to overwrite or --target-name to use a different name.`
 
 **Parent bundle ID with variables.** If your main app target sets `PRODUCT_BUNDLE_IDENTIFIER` via an Xcode build variable (e.g. `$(PRODUCT_BUNDLE_PREFIX).$(PRODUCT_NAME)`), the CLI logs a warning and writes the literal variable into the NSE bundle ID — you'll need to set the NSE's bundle ID manually in Xcode. This shows up as:
 
@@ -645,11 +660,12 @@ Attach to the running NSE process from Xcode:
 2. In Xcode: **Debug → Attach to Process → `NotifyKitNSE`** (appears after the first push arrives and spawns the extension).
 3. Send a push. Set breakpoints in `NotificationService.swift` or log with `NSLog`.
 
-You can also read NSE logs in **Console.app** — filter by subsystem `NotifyKitNSE` or by process `NotifyKitNSE`. The template emits three log lines per invocation:
+You can also read NSE logs in **Console.app** — filter by process `NotifyKitNSE`. The template emits two log lines per normal invocation (entry + completion), plus a third on the timeout path:
 
 ```text
 [NotifyKitNSE] didReceive id=... title=... hasNotifeeOptions=true requestedAttachments=1 urls=https://...
 [NotifyKitNSE] contentHandler id=... title=... deliveredAttachments=1 identifiers=notifee-attachment-0
+[NotifyKitNSE] serviceExtensionTimeWillExpire id=... title=... deliveredAttachments=0
 ```
 
 If `hasNotifeeOptions=false`, the server didn't send a NotifyKit-shaped payload — either you're not using `buildNotifyKitPayload`, or the payload was stripped by a proxy.
