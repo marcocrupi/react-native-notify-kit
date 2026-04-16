@@ -36,6 +36,14 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     process.exit(1);
   }
 
+  // 0b. Validate bundle suffix (prevents pbxproj injection via quotes/newlines)
+  if (!/^\.[A-Za-z0-9\-.]+$/.test(bundleSuffix)) {
+    logger.error(
+      `Invalid bundle suffix '${bundleSuffix}'. Must start with '.' and contain only letters, digits, hyphens, and dots.`,
+    );
+    process.exit(1);
+  }
+
   // 1. Detect project
   let projectInfo;
   try {
@@ -120,7 +128,7 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
 
     // 6. Patch Podfile
     if (fs.existsSync(podfilePath)) {
-      const patched = patchPodfile(podfilePath, targetName, false);
+      const patched = patchPodfile(podfilePath, targetName, dryRun);
       if (patched) {
         logger.success(`Updated ${podfilePath} (added ${targetName} target)`);
       } else {
@@ -136,7 +144,7 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
       targetName,
       bundleId,
       iosDir: projectInfo.iosDir,
-      dryRun: false,
+      dryRun,
     });
     if (xcodePatched) {
       logger.success(

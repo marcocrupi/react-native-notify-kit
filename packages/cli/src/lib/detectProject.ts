@@ -94,12 +94,22 @@ function readParentTarget(pbxprojPath: string): {
     if (productType.includes('application')) {
       targetName = name;
 
-      // Read bundle ID from the first build configuration
+      // Read bundle ID scoped to THIS target's build configuration list
       const configListRef = target.buildConfigurationList as string | undefined;
       if (configListRef) {
+        const configListSection = (proj as any).hash.project.objects.XCConfigurationList;
+        const configList = configListSection?.[configListRef];
+        const configUuids = new Set<string>();
+        if (configList?.buildConfigurations && Array.isArray(configList.buildConfigurations)) {
+          for (const entry of configList.buildConfigurations) {
+            if (entry?.value) configUuids.add(entry.value);
+          }
+        }
+
         const configs = proj.pbxXCBuildConfigurationSection();
-        for (const [, cfg] of Object.entries(configs)) {
-          if (typeof cfg !== 'object') continue;
+        for (const [cfgKey, cfg] of Object.entries(configs)) {
+          if (typeof cfg !== 'object' || cfgKey.endsWith('_comment')) continue;
+          if (!configUuids.has(cfgKey)) continue;
           const config = cfg as Record<string, unknown>;
           const settings = config.buildSettings as Record<string, string> | undefined;
           if (settings?.PRODUCT_BUNDLE_IDENTIFIER) {

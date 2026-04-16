@@ -89,4 +89,21 @@ describe('patchPodfile', () => {
     const result = getPatchedPodfile(BASIC_PODFILE, 'NotifyKitNSE');
     expect(result).toContain('inherit! :search_paths');
   });
+
+  it('H2: throws when depth counter cannot find matching end', () => {
+    // A Podfile where ^target matches but the closing `end` is commented out or
+    // has a trailing comment — the strict `trimmed === 'end'` check won't match,
+    // so depth never reaches 0 and insertIndex stays -1.
+    const brokenPodfile = `platform :ios, '15.1'
+
+target 'MyApp' do
+  pod 'React', :path => '../node_modules/react-native'
+end # main target
+`;
+    // The `end # main target` line has trimmed !== 'end', so depth counter never
+    // reaches 0. Previously this silently appended at file end; now it should throw.
+    expect(() => getPatchedPodfile(brokenPodfile, 'NotifyKitNSE')).toThrow(
+      /Could not locate main app target/,
+    );
+  });
 });

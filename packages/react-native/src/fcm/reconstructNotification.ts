@@ -139,6 +139,11 @@ function buildAndroidConfig(
           android.style = { type: AndroidStyle.BIGTEXT, text: style.text };
         } else if (mappedType === AndroidStyle.BIGPICTURE && typeof style.picture === 'string') {
           android.style = { type: AndroidStyle.BIGPICTURE, picture: style.picture };
+        } else {
+          const field = mappedType === AndroidStyle.BIGTEXT ? 'text' : 'picture';
+          console.warn(
+            `${PREFIX} android.style.type '${style.type}' present but required '${field}' field missing or not a string. Style ignored.`,
+          );
         }
       } else {
         console.warn(`${PREFIX} Unknown android.style.type '${style.type}'. Style ignored.`);
@@ -169,13 +174,21 @@ function buildIosConfig(raw: Record<string, unknown>): NotificationIOS {
     }
   }
 
-  // Attachments — rename identifier → id, filter out null/non-object entries
+  // Attachments — rename identifier → id, filter out invalid entries
   if (Array.isArray(raw.attachments)) {
     ios.attachments = (raw.attachments as Array<unknown>)
-      .filter((att): att is Record<string, unknown> => att != null && typeof att === 'object')
+      .filter((att): att is Record<string, unknown> => {
+        if (att == null || typeof att !== 'object') return false;
+        const a = att as Record<string, unknown>;
+        if (typeof a.url !== 'string' || a.url.length === 0) {
+          console.warn(`${PREFIX} ios.attachments entry has missing or empty url. Skipped.`);
+          return false;
+        }
+        return true;
+      })
       .map(att => {
         const mapped: { id?: string; url: string } = {
-          url: String(att.url ?? ''),
+          url: att.url as string,
         };
         if (typeof att.identifier === 'string') {
           mapped.id = att.identifier;

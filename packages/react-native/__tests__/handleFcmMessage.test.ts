@@ -672,3 +672,100 @@ describe('F2 R2 adversarial fixes', () => {
     warn.mockRestore();
   });
 });
+
+// ===================================================================
+// 9. Full-context bug hunt fixes (7 tests)
+// ===================================================================
+
+describe('Full-context bug hunt fixes', () => {
+  // H1: attachment with missing/empty url is filtered out (not passed to displayNotification)
+  it('H1: ios attachment with missing url is filtered out + warns', () => {
+    setPlatform('ios');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const n = reconstructNotification(
+      {
+        _v: 1,
+        title: 'a',
+        body: 'b',
+        ios: {
+          attachments: [{ identifier: 'no-url' }, { url: 'https://x.com/a.png', identifier: 'ok' }],
+        },
+      },
+      {},
+      {},
+    );
+    // Only the valid attachment survives
+    expect(n.ios?.attachments).toHaveLength(1);
+    expect(n.ios?.attachments?.[0]).toEqual({ url: 'https://x.com/a.png', id: 'ok' });
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('ios.attachments entry has missing or empty url'),
+    );
+    warn.mockRestore();
+  });
+
+  it('H1: ios attachment with empty string url is filtered out', () => {
+    setPlatform('ios');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const n = reconstructNotification(
+      {
+        _v: 1,
+        title: 'a',
+        body: 'b',
+        ios: { attachments: [{ url: '', identifier: 'empty' }] },
+      },
+      {},
+      {},
+    );
+    expect(n.ios?.attachments).toHaveLength(0);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('ios.attachments entry has missing or empty url'),
+    );
+    warn.mockRestore();
+  });
+
+  // M1: BIG_TEXT without text field warns
+  it('M1: BIG_TEXT with missing text warns and omits style', () => {
+    setPlatform('android');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const n = reconstructNotification(
+      { _v: 1, title: 'a', body: 'b', android: { style: { type: 'BIG_TEXT' } } },
+      {},
+      {},
+    );
+    expect(n.android?.style).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("'text' field missing or not a string"),
+    );
+    warn.mockRestore();
+  });
+
+  it('M1: BIG_PICTURE with missing picture warns and omits style', () => {
+    setPlatform('android');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const n = reconstructNotification(
+      { _v: 1, title: 'a', body: 'b', android: { style: { type: 'BIG_PICTURE' } } },
+      {},
+      {},
+    );
+    expect(n.android?.style).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("'picture' field missing or not a string"),
+    );
+    warn.mockRestore();
+  });
+
+  // M4: setFcmConfig deep-copies nested ios object
+  it('M4: caller mutation of ios sub-object after setFcmConfig does not leak', async () => {
+    setPlatform('ios');
+    setAppState('active');
+    const cfg = { ios: { suppressForegroundBanner: false } };
+    await apiModule.setFcmConfig(cfg);
+    // Mutate the original object after setFcmConfig
+    cfg.ios.suppressForegroundBanner = true;
+    // handleFcmMessage should use the stored snapshot, not the mutated reference
+    const result = await apiModule.handleFcmMessage(makeMessage());
+    expect(displaySpy).toHaveBeenCalledTimes(1);
+    expect(typeof result).toBe('string');
+    await apiModule.setFcmConfig({});
+  });
+});

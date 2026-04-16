@@ -25,6 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Tests**: 104 Jest tests for the server SDK — 100 % statement / branch / line / function coverage across `buildPayload.ts`, `ios.ts`, `android.ts`, `serialize.ts`, `validation.ts`. Includes a kitchen-sink snapshot asserting the canonical FCM v1 wire shape.
 
+### Fixed
+
+- **Client**: `handleFcmMessage` no longer throws unhandled rejection when an iOS attachment in `notifee_options` has a missing or empty `url`. Invalid attachments are now filtered out with a `console.warn` instead of propagating to the validator. (H1)
+- **Client**: `reconstructNotification` now emits a `console.warn` when a recognized Android style type (`BIG_TEXT` / `BIG_PICTURE`) is present but the required sub-field (`text` / `picture`) is missing. Previously the style was silently dropped with no diagnostic signal. (M1)
+- **Client**: `setFcmConfig` and `handleFcmMessage` now deep-copy the nested `ios` sub-object, preventing caller mutation from leaking into stored config. (M4)
+- **CLI**: `patchPodfile` now throws an error (triggering rollback) when it cannot locate the main app target's closing `end`, instead of silently appending the NSE block at file-end which would produce an invalid Podfile. (H2)
+- **CLI**: `--bundle-suffix` is now validated against `/^\.[A-Za-z0-9\-.]+$/` to prevent pbxproj corruption from special characters. (M2)
+- **CLI**: `readParentTarget` now scopes the bundle ID search to the app target's own `buildConfigurationList` instead of scanning all build configurations globally. Prevents returning a test target's bundle ID in multi-target projects. (M3)
+- **CLI**: `opts.dryRun` is now forwarded to `patchPodfile` and `patchXcodeProject` calls instead of being hardcoded to `false`. (L1)
+
 ### Changed
 
 - **Package exports**: [packages/react-native/package.json](packages/react-native/package.json) now declares a formal `exports` map (previously absent). Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`. For backward compatibility with any consumer that was importing internal paths before 9.8.x, `./src/*` and `./dist/*` are also exposed — **these are deprecated and will be removed in a future major**. Migrate to the public exports (`react-native-notify-kit` for the client, `react-native-notify-kit/server` for the server SDK).

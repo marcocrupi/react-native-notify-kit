@@ -855,8 +855,12 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       throw new Error("notifee.handleFcmMessage(*) 'remoteMessage' expected an object.");
     }
 
-    // Snapshot config at entry — Rule C10 (mid-flight setFcmConfig won't affect this call)
-    const config: FcmConfig = { ...fcmConfig };
+    // Snapshot config at entry — Rule C10 (mid-flight setFcmConfig won't affect this call).
+    // Deep-copy nested ios sub-object to prevent caller mutation leaking through.
+    const config: FcmConfig = {
+      ...fcmConfig,
+      ios: fcmConfig.ios ? { ...fcmConfig.ios } : undefined,
+    };
 
     const parsed = parseFcmPayload(remoteMessage.data);
 
@@ -908,7 +912,10 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       const got = config === null ? 'null' : Array.isArray(config) ? 'array' : typeof config;
       throw new Error(`notifee.setFcmConfig(*) config must be a plain object. Got: ${got}`);
     }
-    fcmConfig = { ...config };
+    fcmConfig = {
+      ...config,
+      ios: config.ios ? { ...config.ios } : undefined,
+    };
     return Promise.resolve();
   };
 }

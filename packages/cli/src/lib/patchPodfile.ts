@@ -94,8 +94,12 @@ function insertNseTarget(content: string, targetName: string): string | null {
   }
 
   if (insertIndex === -1) {
-    // Could not find matching end — append at file end
-    return content + '\n' + block;
+    // Could not find matching end — abort rather than silently producing invalid output
+    throw new Error(
+      "Could not locate main app target's closing 'end' in Podfile. NSE insertion aborted. " +
+        'Your Podfile may use abstract_target, unusual formatting, or nested blocks — ' +
+        'add the NSE target manually per the legacy guide.',
+    );
   }
 
   return content.slice(0, insertIndex) + block + content.slice(insertIndex);

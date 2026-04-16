@@ -167,4 +167,26 @@ describe('initNse integration', () => {
     });
     expect(mockExit).toHaveBeenCalledWith(1);
   });
+
+  it('M2: rejects bundleSuffix with injection characters', async () => {
+    await initNse({
+      iosPath: path.join(ctx.root, 'ios'),
+      targetName: 'NotifyKitNSE',
+      bundleSuffix: '".evil"',
+      force: false,
+      dryRun: false,
+    });
+    expect(mockExit).toHaveBeenCalledWith(1);
+  });
+
+  it('M2: rejects bundleSuffix without leading dot', async () => {
+    await initNse({
+      iosPath: path.join(ctx.root, 'ios'),
+      targetName: 'NotifyKitNSE',
+      bundleSuffix: 'NoDot',
+      force: false,
+      dryRun: false,
+    });
+    expect(mockExit).toHaveBeenCalledWith(1);
+  });
 });
