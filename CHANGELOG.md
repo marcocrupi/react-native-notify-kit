@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Android**: removed spurious `BOOT_COMPLETED` intent-filter from `NotificationAlarmReceiver` in `AndroidManifest.xml`. The receiver does not handle boot — reboot recovery is owned exclusively by `RebootBroadcastReceiver` (already present and correct). The removed filter previously caused no-op wakeups on every device boot with a null-extras Intent that early-returned at `NotificationAlarmReceiver.java:43`. No behavior change for notification delivery.
+
+- **TypeScript**: `validateTrigger` now produces targeted error messages when `trigger.timestamp` is suspiciously small (< 1e12 ms). Three cases are distinguished: day-of-month values (1–31) suggest `date.getDate()` usage, values in the 1e9–1e12 range suggest seconds since epoch instead of milliseconds, and other small values produce a generic "too small" message. All three messages recommend `Date.now()` or `date.getTime()`. Addresses upstream [invertase/notifee#872](https://github.com/invertase/notifee/issues/872). Previously these cases all emitted the generic "'trigger.timestamp' date must be in the future." which did not help users diagnose the root cause — a confusion between `.getDate()` / seconds / milliseconds.
+
+### Added
+
+- **Tests**: `validateTrigger.test.ts` cases covering the three new small-timestamp error paths and a regression guard for the existing "must be in the future" message on valid-but-past epoch-ms values.
+
+- **Tests**: new instrumented `RebootRecoveryTest` case covering the non-repeating future TIMESTAMP happy path (trigger with `repeatFrequency: -1` and `timestamp > now` must survive a simulated reboot with its fire time preserved and the `AlarmManager` PendingIntent re-registered at the original timestamp). Complements existing coverage of past-stale non-repeating (within/beyond grace) and DAILY/WEEKLY repeating paths.
+
+### Docs
+
+- **README**: added two rows to the "Bugs Fixed from Upstream Notifee" table linking upstream issues [invertase/notifee#601](https://github.com/invertase/notifee/issues/601), [#1063](https://github.com/invertase/notifee/issues/1063), and [#991](https://github.com/invertase/notifee/issues/991) to the fork releases that resolved them (9.1.12 + 9.1.14 + 9.5.0 + 9.6.0 cumulative). Updated the "33 upstream bugs fixed" header counter to 35. Motivation: the upstream repo was archived on April 7, 2026, so README/npm SEO is now the only discovery path for users googling these issues. Applied identically to root `README.md` and `packages/react-native/README.md`.
+
 ## [10.1.0] - 2026-04-17
 
 ### Added
