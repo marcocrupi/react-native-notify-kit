@@ -75,6 +75,8 @@ notifee.displayNotification({
 });
 ```
 
+**Note (from 10.1.0):** if the `smallIcon` name cannot be resolved at runtime (asset missing from release builds, R8 resource shrinking, naming mismatch), the library falls back to your app's launcher icon and logs a warning at level `w` instead of failing the notification display. See the [README Troubleshooting section](https://github.com/marcocrupi/react-native-notify-kit#small-icon-not-showing-in-android-release-builds-falls-back-to-launcher-icon) for diagnosis tips.
+
 <Vimeo id="435859310" caption="Android Small Icon Example" />
 
 The image file used in the example can be downloaded [here](https://user-images.githubusercontent.com/14185925/86519462-cde1f000-be32-11ea-8ae6-cdec95754866.png).

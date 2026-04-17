@@ -312,6 +312,8 @@ class NotificationManager {
               } else {
                 builder.setSmallIcon(smallIconId);
               }
+            } else {
+              builder.setSmallIcon(ResourceUtils.getFallbackSmallIconId(getApplicationContext()));
             }
 
             if (androidModel.getSortKey() != null) {

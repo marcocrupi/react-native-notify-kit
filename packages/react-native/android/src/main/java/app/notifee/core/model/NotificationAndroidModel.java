@@ -533,9 +533,14 @@ public class NotificationAndroidModel {
     int smallIconId = ResourceUtils.getImageResourceId(rawIcon);
 
     if (smallIconId == 0) {
-      Logger.d(
-          "NotificationAndroidModel",
-          String.format("Notification small icon '%s' could not be found", rawIcon));
+      Logger.w(
+          TAG,
+          String.format(
+              "Notification small icon '%s' could not be resolved; falling back to the app"
+                  + " launcher icon. Common causes: asset only in src/debug/res, R8 resource"
+                  + " shrinking, or name mismatch (names must be lowercase with underscores)."
+                  + " See README Troubleshooting.",
+              rawIcon));
       return null;
     }
 

@@ -18,6 +18,7 @@ package app.notifee.core.utility;
  */
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -221,6 +222,33 @@ public class ResourceUtils {
     }
 
     return resourceId;
+  }
+
+  /**
+   * Returns a resource id guaranteed to be usable as a smallIcon. Three-layer fallback: (1) {@code
+   * applicationInfo.icon}, (2) {@code applicationInfo.logo}, (3) the system {@code
+   * android.R.drawable.ic_dialog_info} drawable. Never returns 0, never throws.
+   *
+   * <p>Used by {@link app.notifee.core.NotificationManager} to keep a notification valid when the
+   * user-supplied {@code smallIcon} string cannot be resolved to a drawable at runtime.
+   */
+  public static int getFallbackSmallIconId(Context context) {
+    try {
+      if (context != null) {
+        ApplicationInfo info = context.getApplicationInfo();
+        if (info != null) {
+          if (info.icon != 0) {
+            return info.icon;
+          }
+          if (info.logo != 0) {
+            return info.logo;
+          }
+        }
+      }
+    } catch (Exception e) {
+      Logger.w(TAG, "getFallbackSmallIconId -> falling back to system default icon", e);
+    }
+    return android.R.drawable.ic_dialog_info;
   }
 
   /** Attempts to find a resource id by name and type */

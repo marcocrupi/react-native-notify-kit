@@ -383,6 +383,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | Scheduled trigger notifications silently lost across device reboot on OEM devices (Xiaomi MIUI, OnePlus, Huawei EMUI, Oppo ColorOS, Vivo FuntouchOS) whose vendor OS suppresses `BOOT_COMPLETED` until the user manually enables autostart. Also handles zombie non-repeating triggers whose fire time already passed (fire-once within a 24-hour grace period, then delete the Room row; delete silently beyond the grace period) and adds try/catch/finally guards to all notifee `BroadcastReceiver` async paths. | Android | [#734](https://github.com/invertase/notifee/issues/734) | 9.6.0 |
 | `ObjectAlreadyConsumedException` in headless task when the same `WritableMap` is reused or the `taskConfig` accessor is read twice — `TaskConfig.init` mutated the caller's map instead of copying it first. Latent in most apps but observed in production by upstream users with high-frequency headless events | Android | [#266](https://github.com/invertase/notifee/issues/266) | 9.6.0 |
 | `getDisplayedNotifications()` returned no `data` field on Android, breaking iOS/Android API symmetry where iOS exposes custom keys via `parseDataFromUserInfo:` (see platform limitation note below — the fix is API parity for app-posted notifications, not a workaround for FCM background auto-display) | Android | [#393](https://github.com/invertase/notifee/issues/393) | 9.7.0 |
+| Small icon resolution failure in release builds causes `IllegalArgumentException` at `NotificationCompat.Builder.build()` — library now falls back to the app launcher icon and logs a warning instead of failing the notification display | Android | [#733](https://github.com/invertase/notifee/issues/733) | 10.1.0 |
 
 > **Important note on `getDisplayedNotifications()` and FCM custom data on Android.**
 >
@@ -438,6 +439,8 @@ In addition to bug fixes, the fork makes a few opinionated default changes vs `@
 - **Foreground service notifications use `FOREGROUND_SERVICE_IMMEDIATE` by default** (since 9.4.0 — **BREAKING vs upstream**). Upstream Notifee never called `setForegroundServiceBehavior()`, causing Android 12+ to defer foreground service notification display by up to 10 seconds unless the notification qualified for a system exemption. The fork now sets `FOREGROUND_SERVICE_IMMEDIATE` by default when `asForegroundService: true`, eliminating the delay. Opt out per-notification with `foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED`. Additionally, the library now pre-loads critical foreground service classes and Binder proxies on a background thread during app startup (`InitProvider.onCreate`), reducing first-display cold-start latency by ~50–100 ms. Opt out of the warmup via `<meta-data android:name="notifee_init_warmup_enabled" android:value="false" />` in your app's `AndroidManifest.xml`.
 
 - **iOS `EventType.DELIVERED` now emitted for all foreground notifications** (since 9.3.0 — **BREAKING vs upstream**). Upstream Notifee had a guard in `willPresentNotification:` that suppressed DELIVERED for notifications created via `displayNotification()` (immediate display), emitting it only for trigger notifications. Android always emitted DELIVERED in both cases. The fork removes the guard so iOS matches Android. If you registered `onForegroundEvent` listeners that did heavy work on DELIVERED assuming the event would only fire for trigger notifications, audit them — you may now receive an event per `displayNotification()` call while in foreground. **Known limitation**: trigger notifications that fire while the app is in background or killed still do not emit DELIVERED on iOS — this is a platform limitation (`willPresentNotification:` is only invoked in foreground, and iOS provides no delegate callback for background-delivered triggers). If you need delivery confirmation for background trigger notifications on iOS, check the notification's presence via `getDisplayedNotifications()` after the app returns to foreground.
+
+- **Failed `smallIcon` resolution falls back to the app launcher icon instead of failing the notification** (since 10.1.0). Previously, when the string in `android.smallIcon` did not resolve to a valid resource ID at runtime (asset only in `src/debug/res/`, R8 resource shrinking, naming mismatch), the library logged the failure at DEBUG level — invisible in release logcat — and skipped `setSmallIcon()`, causing `NotificationCompat.Builder.build()` to throw `IllegalArgumentException`. The library now resolves to the app's launcher icon as a fallback and logs a warning with the original icon name and likely causes. See the [Troubleshooting section](#small-icon-not-showing-in-android-release-builds-falls-back-to-launcher-icon) for diagnosis tips.
 
 These changes are documented in the [CHANGELOG](CHANGELOG.md) under the release that introduced them. If you rely on any of the upstream defaults, you can either pin to the specific behavior via the opt-out flags listed above, or open an issue to discuss.
 
@@ -702,6 +705,26 @@ Default is `true` (backward compatible — Notifee handles everything, same as o
 ## Advanced
 
 ### Troubleshooting
+
+#### Small icon not showing in Android release builds (falls back to launcher icon)
+
+From 10.1.0, when the resource ID for `android.smallIcon` cannot be resolved at runtime, the library logs a warning and falls back to your app's launcher icon instead of failing the notification display. If you see your launcher icon in a notification where you expected a custom small icon, filter logcat for the `NOTIFEE` tag to find the resolution failure.
+
+Three causes account for the vast majority of reports:
+
+**Asset only in `src/debug/res/`.** When you add a drawable from Android Studio with the "Image Asset" wizard, the IDE sometimes places it under the `debug` variant only. The resource exists in debug builds but disappears in release. Copy or move the asset into `android/app/src/main/res/drawable-*/` (and the density buckets) so it participates in the release build.
+
+**R8 / ProGuard resource shrinking.** Release builds with `shrinkResources true` in the app's `build.gradle` can strip drawables that R8 judges unreferenced from code. Declare the asset as keep in `android/app/src/main/res/raw/keep.xml`:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />
+```
+
+**Naming mismatch.** Android resource names are case-sensitive and only accept `[a-z0-9_]`. A string like `smallIcon: 'icNotification'` will not resolve `ic_notification.png`. Rename the `smallIcon` value to match the file on disk exactly.
+
+For the full procedure on creating a small-icon asset via Android Studio, see [docs/react-native/android/appearance.mdx](docs/react-native/android/appearance.mdx).
 
 #### Custom sounds for push notifications in background or killed state
 

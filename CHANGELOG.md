@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.1.0] - 2026-04-17
+
+### Added
+
+- **Android**: `ResourceUtils.getFallbackSmallIconId(Context)` — new public static helper that returns a resource ID guaranteed to be valid for a smallIcon. Three-layer fallback: `applicationInfo.icon` → `applicationInfo.logo` → `android.R.drawable.ic_dialog_info`. Never returns `0`, never throws, catches any exception and falls through to the system default. Reusable from any code path that needs an emergency icon.
+
+- **Tests**: `ResourceUtilsFallbackIconTest` — six Robolectric + Mockito unit tests covering each of the three fallback tiers, the exception-swallow branch, the null-context branch, and a "never returns 0" invariant guard across all five paths. `NotificationAndroidModelSmallIconFallbackTest` — three Robolectric unit tests covering the `getSmallIcon()` return contract when the `smallIcon` key is missing, unresolvable, or empty.
+
+- **Docs**: new "Small icon not showing in Android release builds" subsection in the Troubleshooting section of both root `README.md` and `packages/react-native/README.md`, documenting the three common causes (asset only in `src/debug/res/`, R8 resource shrinking, naming mismatch) with recipes for each. New bullet in the "Behavior changes from upstream" section covering the fallback. New row in the "Bugs Fixed from Upstream Notifee" table referencing upstream [invertase/notifee#733](https://github.com/invertase/notifee/issues/733).
+
 ### Changed
+
+- **Android**: **Behavior change** — when `android.smallIcon` does not resolve to a valid resource ID at runtime (asset only in `src/debug/res/`, R8 resource shrinking, naming mismatch), the library now falls back to the app's launcher icon instead of letting `NotificationCompat.Builder.build()` throw `IllegalArgumentException: Invalid notification (no valid small icon)`. The resolution failure is logged at level `w` (previously `d`, invisible in release logcat) with the original icon name, the three typical causes, and a pointer to the README Troubleshooting section. The log stays internal to logcat — `LogEvent` is not propagated to the JS layer (pre-existing architectural choice, unchanged here). Addresses the fragile code path behind upstream [invertase/notifee#733](https://github.com/invertase/notifee/issues/733).
 
 - **Docs**: Linked upstream Notifee issues [#1079](https://github.com/invertase/notifee/issues/1079), [#1226](https://github.com/invertase/notifee/issues/1226), and [#1262](https://github.com/invertase/notifee/issues/1262) to the existing 9.2.0 architectural fix entry in the "Bugs Fixed from Upstream Notifee" table (previously marked `N/A (architectural)`). All three are the same root cause — the pre-compiled AAR distributed via a bundled Maven repo at `node_modules/@notifee/react-native/android/libs/` — and are all resolved by the single-module compile-from-source architecture introduced in 9.2.0. Added a new Troubleshooting subsection `#### \`Could not resolve app.notifee:core:+\` — does not apply to this fork` to capture direct Google searches for the error string. Applied identically to the root `README.md` and `packages/react-native/README.md`. Motivation: the upstream repo was archived on April 7, 2026 and issue commenting is no longer possible, so README/npm SEO is now the only discovery path for users still blocked by these issues.
 

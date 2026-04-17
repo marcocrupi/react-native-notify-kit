@@ -226,6 +226,44 @@ function App() {
       });
     });
 
+  // === #733: smallIcon fallback (permanent regression guard, 10.1.0) ===
+  // Tests the behavior introduced in 10.1.0: when `android.smallIcon` does not resolve
+  // to a valid drawable at runtime, the library falls back to the app's launcher icon
+  // and logs a warning, instead of letting NotificationCompat.Builder.build() throw
+  // IllegalArgumentException. Keep this button permanently — it is the end-to-end
+  // regression guard on a real device for the release-build fragility of the smallIcon
+  // path (asset only in src/debug/res/, R8 resource shrinking, naming mismatch) that
+  // was fragile upstream (invertase/notifee#733) and which the JVM tests
+  // (ResourceUtilsFallbackIconTest, NotificationAndroidModelSmallIconFallbackTest) only
+  // exercise at unit level.
+  //
+  // Expected behavior on Android:
+  //   - Notification is displayed using the smoke app's launcher icon (no crash).
+  //   - `adb logcat -s NOTIFEE:W` shows a single warning line containing the searched
+  //     name `does_not_exist_at_runtime_issue_733` and a pointer to the README
+  //     Troubleshooting section.
+  //
+  // On iOS the notification displays without any smallIcon-related behavior (the
+  // `android` sub-object is ignored); the regression this test guards is Android-only.
+  const testSmallIconFallback = () =>
+    run('testSmallIconFallback', async () => {
+      if (Platform.OS === 'android') {
+        await notifee.createChannel({
+          id: 'default',
+          name: 'Default Channel',
+          importance: AndroidImportance.HIGH,
+        });
+      }
+      return notifee.displayNotification({
+        title: 'smallIcon fallback test (#733)',
+        body: 'Should appear with launcher icon. Check logcat: adb logcat -s NOTIFEE:W',
+        android: {
+          channelId: 'default',
+          smallIcon: 'does_not_exist_at_runtime_issue_733',
+        },
+      });
+    });
+
   const cancelAll = () => run('cancelAllNotifications', () => notifee.cancelAllNotifications());
 
   const requestPermission = () => run('requestPermission', () => notifee.requestPermission());
@@ -536,6 +574,7 @@ function App() {
       buttons: [
         { label: 'displayNotification', onPress: displayNotification },
         { label: 'displayNotification (with data) [#393]', onPress: displayNotificationWithData },
+        { label: 'Test #733: smallIcon fallback', onPress: testSmallIconFallback },
         { label: 'cancelAllNotifications', onPress: cancelAll },
         { label: 'getDisplayedNotifications', onPress: getDisplayed },
         { label: 'getNotificationSettings', onPress: getSettings },
