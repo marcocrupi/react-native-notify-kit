@@ -49,15 +49,16 @@
       </intent-filter>
     </receiver>
 
+    <!--
+      NotificationAlarmReceiver is invoked exclusively via PendingIntent broadcasts from
+      AlarmManager (NotifeeAlarmManager.scheduleTimestampTriggerNotification). It does not
+      handle any system-broadcast Intent action — onReceive dispatches intent.getExtras()
+      to NotifeeAlarmManager.displayScheduledNotification, which early-returns on null
+      extras. Reboot recovery is owned by RebootBroadcastReceiver above.
+    -->
     <receiver
       android:name="app.notifee.core.NotificationAlarmReceiver"
-      android:exported="false">
-      <intent-filter>
-        <action android:name="android.intent.action.BOOT_COMPLETED" />
-        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-        <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
-      </intent-filter>
-    </receiver>
+      android:exported="false" />
 
     <!-- Broadcast Receiver -->
     <receiver
