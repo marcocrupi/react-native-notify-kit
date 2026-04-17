@@ -7,6 +7,7 @@ import notifee, {
   AndroidImportance,
   AndroidForegroundServiceType,
   AlarmType,
+  RepeatFrequency,
 } from 'react-native-notify-kit';
 import {
   getMessaging,
@@ -334,6 +335,63 @@ function App() {
       );
     });
 
+  // Reboot smoke for upstream #991 + manifest cleanup. Schedules a DAILY trigger
+  // at now+2min and a non-repeating TIMESTAMP at now+3min, then leaves the device
+  // free for an operator to force-stop the app and reboot. After reboot both
+  // notifications must still fire at their original wall-clock times.
+  const scheduleRebootSmokeTriggers = () =>
+    run('scheduleRebootSmokeTriggers', async () => {
+      if (Platform.OS !== 'android') {
+        log('scheduleRebootSmokeTriggers: Android-only smoke, skipping on iOS');
+        return;
+      }
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+        importance: AndroidImportance.HIGH,
+      });
+      const now = Date.now();
+      const dailyTs = now + 2 * 60 * 1000;
+      const oneShotTs = now + 3 * 60 * 1000;
+      const dailyId = await notifee.createTriggerNotification(
+        {
+          id: 'reboot-smoke-daily',
+          title: 'Reboot smoke (DAILY)',
+          body: 'Scheduled at ' + new Date(dailyTs).toISOString(),
+          android: { channelId: 'default' },
+        },
+        {
+          type: TriggerType.TIMESTAMP,
+          timestamp: dailyTs,
+          repeatFrequency: RepeatFrequency.DAILY,
+          alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+        },
+      );
+      const oneShotId = await notifee.createTriggerNotification(
+        {
+          id: 'reboot-smoke-oneshot',
+          title: 'Reboot smoke (one-shot)',
+          body: 'Scheduled at ' + new Date(oneShotTs).toISOString(),
+          android: { channelId: 'default' },
+        },
+        {
+          type: TriggerType.TIMESTAMP,
+          timestamp: oneShotTs,
+          alarmManager: { type: AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE },
+        },
+      );
+      log(
+        '[REBOOT-SMOKE] scheduled daily=' +
+          dailyId +
+          ' fire=' +
+          new Date(dailyTs).toISOString() +
+          ' oneshot=' +
+          oneShotId +
+          ' fire=' +
+          new Date(oneShotTs).toISOString(),
+      );
+    });
+
   const getBadge = () => run('getBadgeCount', () => notifee.getBadgeCount());
 
   const setBadge = () => run('setBadgeCount(5)', () => notifee.setBadgeCount(5));
@@ -582,7 +640,14 @@ function App() {
     },
     {
       title: 'Triggers',
-      buttons: [{ label: 'createTriggerNotification (+10s)', onPress: createTrigger }],
+      buttons: [
+        { label: 'createTriggerNotification (+10s)', onPress: createTrigger },
+        {
+          label: 'Reboot smoke: DAILY +2m / one-shot +3m [#991]',
+          onPress: scheduleRebootSmokeTriggers,
+          testID: 'reboot-smoke-button',
+        },
+      ],
     },
     {
       title: 'Badge',
