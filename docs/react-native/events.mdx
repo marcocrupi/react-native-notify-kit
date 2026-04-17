@@ -56,6 +56,8 @@ asynchronous actions such as performing a HTTP request.
 To learn about handling user interaction with events, view the [Android Interaction](/react-native/android/interaction)
 documentation.
 
+> **iOS tap routing.** On iOS, a tap on a notification while the app is in **background or killed** is routed to `onBackgroundEvent` — not `onForegroundEvent` — even though iOS then brings the app to the foreground. At the moment iOS delivers the tap to the `UNUserNotificationCenter` delegate, `UIApplication.applicationState` is `Inactive` (not `Active`), so the routing is based on "app was not active when the tap happened". Register **both** handlers if you need to react to taps in every app state. See [iOS Interaction → Foreground vs background routing](/react-native/ios/interaction#foreground-vs-background-routing) for the native-side detail. Resolves the confusion reported in upstream [invertase/notifee#1155](https://github.com/invertase/notifee/issues/1155).
+
 ### Unsubscribing
 
 The `onForegroundEvent` method returns a function which can be used to unsubscribe from future events:

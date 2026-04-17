@@ -1,5 +1,7 @@
 # Notify Kit FCM Mode
 
+> **Hitting upstream Notifee [#1133](https://github.com/invertase/notifee/issues/1133) ("onBackgroundEvent not triggered on iOS for remote notifications")?** FCM Mode resolves it. The client-side `onBackgroundEvent` handler only fires for remote pushes on iOS when the APNs payload carries a `notifee_options` blob that the Notification Service Extension can enrich into `userInfo[__notifee_notification]` before delivery. Shipping FCM payloads via the server SDK and scaffolding the NSE with `npx react-native-notify-kit init-nse` is the end-to-end fix — see the architecture and setup sections below.
+
 A delivery pattern for apps that want **`react-native-notify-kit` as the sole display layer for FCM push notifications** on both Android and iOS.
 
 FCM Mode solves two problems at once: the Android `notification`-payload duplicate (the system tray draws the push, and then your client draws it again via `displayNotification`) and the iOS data-only payload drop rate (APNs throttles silent pushes aggressively — ~30–60% loss is typical on real devices). It uses a **different FCM payload shape per platform** but the same developer API, so the asymmetry is invisible to your app code.

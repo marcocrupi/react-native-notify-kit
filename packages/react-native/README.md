@@ -142,6 +142,14 @@ useEffect(() => {
 }, []);
 ```
 
+> **Which handler fires when (iOS):**
+>
+> - Tap a notification while the app is **active in foreground** → `onForegroundEvent` receives `PRESS`.
+> - Tap a notification while the app is **in background or killed** → `onBackgroundEvent` receives `PRESS`, even though iOS immediately brings the app to the foreground right after. At the moment iOS delivers the tap to the delegate, `UIApplication.applicationState` is `Inactive`, not `Active`, so the event is routed to the background handler.
+> - Foreground delivery of a Notifee-owned notification → `onForegroundEvent` receives `DELIVERED`.
+>
+> Register **both** handlers if you need to react to taps in every app state. Resolves the confusion reported in upstream [invertase/notifee#1155](https://github.com/invertase/notifee/issues/1155).
+
 ## Notifee FCM Mode (NEW in 10.0.0)
 
 **Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS** — one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and scaffold the iOS Notification Service Extension with a single CLI command:
@@ -740,6 +748,14 @@ An advanced alternative on Android is to switch the backend to an FCM **data-onl
 **Local notifications are different.** This limitation only affects **remote pushes** delivered by FCM/APNs while the app is killed. Notifications scheduled locally via `notifee.displayNotification()` or `notifee.createTriggerNotification()` — for example, a timer firing after the user closed the app — *do* honor the JS-side `sound` parameter, because the library itself wakes up and presents the notification (via `AlarmManager` on Android or `UNUserNotificationCenter` on iOS). The usual platform rules still apply: on Android the `NotificationChannel` sound is immutable after creation and wins over the per-notification `sound`; on iOS the sound file must be bundled in the app (`.wav`/`.aiff`/`.caf`, under 30 seconds, in the main bundle). For reliable local timer notifications on OEM devices that aggressively kill background work, prefer `AlarmType.SET_ALARM_CLOCK` — see the [Timers: foreground service or `SET_ALARM_CLOCK`?](#timers-foreground-service-or-set_alarm_clock) section.
 
 Reference: [invertase/notifee#927](https://github.com/invertase/notifee/issues/927).
+
+#### Silent pushes and background fetch — handled by Firebase, not by this library
+
+`react-native-notify-kit` hooks into `UNUserNotificationCenterDelegate` on iOS to display notifications and dispatch tap/delivery events to JS. It does **not** hook into `application:didReceiveRemoteNotification:fetchCompletionHandler:` — the iOS entry point for silent pushes (`content-available: 1` with no visible alert) and background fetch. Those paths belong to [`@react-native-firebase/messaging`](https://rnfirebase.io/messaging/usage) via `setBackgroundMessageHandler`.
+
+If a silent push arrives while the app is killed and its only job is to trigger JS code (no notification displayed), subject to iOS's background budget it is handled entirely by Firebase's path — `notifee.onBackgroundEvent` will not fire, by design. If the silent push's JS handler then calls `notifee.displayNotification()`, the subsequent user tap on the displayed notification does flow through Notifee and fires `onBackgroundEvent` normally.
+
+Relates to upstream [invertase/notifee#597](https://github.com/invertase/notifee/issues/597) for apps with slow startup. For remote notifications that should fire `onBackgroundEvent` reliably on iOS, use [FCM Mode](docs/fcm-mode.mdx) — see also the note on [#1133](https://github.com/invertase/notifee/issues/1133) in the FCM Mode guide.
 
 #### `Could not resolve app.notifee:core:+` — does not apply to this fork
 

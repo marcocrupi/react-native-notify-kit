@@ -33,6 +33,8 @@ PRESS events are routed to the handler that matches the app state at the moment 
 
 On iOS the background-routing path relies on `UIApplication.applicationState` being read correctly at tap time. If you see background taps landing in `onForegroundEvent`, make sure you are on at least **v9.2.1** — earlier fork versions had a subtle bug (`dispatch_after` delay + wrong `UIApplicationStateBackground` check + off-main-thread state read) that caused the routing to always pick foreground. Events emitted in the ~1 second window between the iOS `Inactive` state and the app becoming `Active` can still be routed to the background handler intentionally; guard state-dependent handler logic with `AppState.currentState` if strict foreground delivery matters.
 
+This background-routing behavior is what users in upstream [invertase/notifee#1155](https://github.com/invertase/notifee/issues/1155) experience — a tap from background lands in `onBackgroundEvent`, not `onForegroundEvent`. It is intentional and correct post-v9.2.1; register both handlers if you need to observe taps in every app state.
+
 ## Notification Delivery Events
 
 On iOS, `EventType.DELIVERED` is emitted to `onForegroundEvent` whenever a Notify Kit-owned notification is presented to the user while the app is in foreground. This includes local `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays. See the [behaviour guide](/react-native/ios/behaviour#foreground-delivery-events) for the iOS-specific caveats (background / killed trigger notifications do not emit DELIVERED on iOS).
