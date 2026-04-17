@@ -14,8 +14,8 @@ package app.notifee.core;
  * NOT RUN IN CI.
  *
  * Instrumented regression suite for the reboot-recovery path in
- * NotifeeAlarmManager.rescheduleNotifications, covering three upstream
- * issues across five test cases:
+ * NotifeeAlarmManager.rescheduleNotifications, covering four upstream
+ * issues across six test cases:
  *
  *   1. rescheduleNotifications_advancesEveryAnchorBeforeCompleting
  *      (upstream invertase/notifee#549 — reboot-recovery anchor persistence
@@ -53,6 +53,15 @@ package app.notifee.core;
  *      Asserts the row is STILL deleted because Futures.catchingAsync in
  *      handleStaleNonRepeatingTrigger routes the failure through the
  *      resilient branch that still runs deleteById.
+ *
+ *   6. rescheduleNotifications_nonRepeatingFuture_preservesAnchorAndRearmsAlarm
+ *      (upstream invertase/notifee#991 — non-repeating TIMESTAMP triggers lost
+ *      after device reboot on Android 14). Seeds a non-repeating row 5 minutes
+ *      in the future and asserts the row survives reboot recovery with its
+ *      anchor preserved AND a fresh AlarmManager PendingIntent registered.
+ *      Complements the past-stale paths above by covering the happy-path
+ *      branch where setNextTimestamp early-returns at TimestampTriggerModel:136
+ *      and rescheduleNotification re-arms the original anchor.
  *
  * Run manually via the smoke harness (recommended — wraps gradle + copies
  * reports + fails loud if no XML reports are found):
@@ -133,6 +142,9 @@ public class RebootRecoveryTest {
   /** 48 hours before "now" — well beyond the 24h grace period. */
   private static final long STALE_BEYOND_GRACE_OFFSET_MS = 48 * HOUR_IN_MS;
 
+  /** 5 minutes after "now" — the future-non-repeating happy path for upstream #991. */
+  private static final long FUTURE_NON_REPEATING_OFFSET_MS = 5L * 60 * 1000;
+
   /**
    * Channel id used by the within-grace stale-trigger test fixture. Must match a real Android
    * notification channel created in {@link #setUp()} so {@code
@@ -181,6 +193,7 @@ public class RebootRecoveryTest {
     NotifeeAlarmManager.cancelNotification(staleWithinGraceTestId());
     NotifeeAlarmManager.cancelNotification(staleBeyondGraceTestId());
     NotifeeAlarmManager.cancelNotification(staleDisplayFailsTestId());
+    NotifeeAlarmManager.cancelNotification(nonRepeatingFutureTestId());
     // Dismiss any notifications the within-grace tests may have posted so the device
     // notification shade is left clean — the Room row is the test's contract, but the
     // visible notification is a side effect we should not leave behind.
@@ -387,6 +400,81 @@ public class RebootRecoveryTest {
         repo.getWorkDataById(id).get(5, TimeUnit.SECONDS) == null);
   }
 
+  /**
+   * Regression test for upstream invertase/notifee#991 — non-repeating TIMESTAMP triggers whose
+   * fire time is still in the future at boot must be re-armed with their original anchor preserved.
+   *
+   * <p>The existing #734 tests cover the past-stale branches of {@code
+   * handleStaleNonRepeatingTrigger}; this fills the happy-path gap. Seeds a non-repeating
+   * trigger 5 minutes in the future, invokes reboot recovery, and asserts that:
+   *
+   * <ul>
+   *   <li>the Room row survives (not stale → not deleted),
+   *   <li>the timestamp is unchanged (non-repeating → {@code setNextTimestamp} early-returns at
+   *       {@code TimestampTriggerModel.java:136-139}),
+   *   <li>an {@code AlarmManager} {@code PendingIntent} has been re-registered for the row,
+   *       proving {@code rescheduleNotification} → {@code scheduleTimestampTriggerNotification}
+   *       reached the alarm-set call.
+   * </ul>
+   */
+  @Test
+  public void rescheduleNotifications_nonRepeatingFuture_preservesAnchorAndRearmsAlarm()
+      throws Exception {
+    long now = System.currentTimeMillis();
+    long futureAnchor = now + FUTURE_NON_REPEATING_OFFSET_MS;
+    String id = nonRepeatingFutureTestId();
+
+    repo.insert(buildNonRepeatingEntity(id, futureAnchor)).get(5, TimeUnit.SECONDS);
+    assertEquals(1, repo.getAll().get(5, TimeUnit.SECONDS).size());
+
+    new NotifeeAlarmManager().rescheduleNotifications(null);
+
+    PendingIntent pi = awaitPendingIntentRegistered(id);
+    assertNotNull(
+        "AlarmManager PendingIntent must be re-registered for the non-repeating future row " + id,
+        pi);
+
+    WorkDataEntity row = repo.getWorkDataById(id).get(5, TimeUnit.SECONDS);
+    assertNotNull("non-repeating future row must survive reboot recovery", row);
+    Bundle triggerBundle = ObjectUtils.bytesToBundle(row.getTrigger());
+    long preservedAnchor = ObjectUtils.getLong(triggerBundle.get("timestamp"));
+    assertEquals(
+        "non-repeating future trigger anchor must NOT be advanced — setNextTimestamp early-returns"
+            + " when repeatFrequency is -1 and timestamp is in the future",
+        futureAnchor,
+        preservedAnchor);
+  }
+
+  /**
+   * Polls until an {@code AlarmManager} {@code PendingIntent} keyed off {@code id.hashCode()} is
+   * registered (FLAG_NO_CREATE returns non-null). Times out via {@link #fail(String)} if the
+   * reschedule pass never reaches {@code alarmManager.set*}.
+   */
+  private PendingIntent awaitPendingIntentRegistered(String id) throws Exception {
+    Intent intent = new Intent(context, NotificationAlarmReceiver.class);
+    intent.putExtra("notificationId", id);
+    long deadline = System.currentTimeMillis() + POLL_DEADLINE_MS;
+    while (System.currentTimeMillis() < deadline) {
+      PendingIntent pi =
+          PendingIntent.getBroadcast(
+              context,
+              id.hashCode(),
+              intent,
+              PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_MUTABLE);
+      if (pi != null) {
+        return pi;
+      }
+      Thread.sleep(POLL_INTERVAL_MS);
+    }
+    fail(
+        "AlarmManager PendingIntent for "
+            + id
+            + " was not registered within "
+            + POLL_DEADLINE_MS
+            + "ms — the #991 fix in rescheduleNotification may be broken");
+    return null; // unreachable
+  }
+
   /** Polls {@link WorkDataRepository#getWorkDataById(String)} until it returns {@code null}. */
   private void awaitRowDeleted(String id) throws Exception {
     long deadline = System.currentTimeMillis() + POLL_DEADLINE_MS;
@@ -565,5 +653,9 @@ public class RebootRecoveryTest {
 
   private static String staleDisplayFailsTestId() {
     return "reboot-recovery-stale-display-fails-test";
+  }
+
+  private static String nonRepeatingFutureTestId() {
+    return "reboot-recovery-non-repeating-future-test";
   }
 }
