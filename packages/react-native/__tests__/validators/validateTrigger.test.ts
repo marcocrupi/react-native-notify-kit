@@ -66,6 +66,51 @@ describe('Validate Trigger', () => {
         );
       });
 
+      // Regression tests for upstream invertase/notifee#872 — users repeatedly
+      // confuse Date.getDate() (day-of-month) and seconds-epoch with the
+      // milliseconds-epoch shape Notifee actually expects.
+      test('throws targeted error when timestamp looks like a day-of-month (.getDate())', () => {
+        const trigger: TimestampTrigger = {
+          type: TriggerType.TIMESTAMP,
+          timestamp: 15,
+        };
+
+        expect(() => validateTrigger(trigger)).toThrowError(
+          "'trigger.timestamp' looks like a day-of-month (15). Did you mean `date.getTime()` instead of `date.getDate()`?",
+        );
+      });
+
+      test('throws targeted error when timestamp looks like seconds since epoch', () => {
+        const trigger: TimestampTrigger = {
+          type: TriggerType.TIMESTAMP,
+          timestamp: 1730000000,
+        };
+
+        expect(() => validateTrigger(trigger)).toThrowError(
+          "'trigger.timestamp' looks like seconds since epoch (1730000000). Notifee expects milliseconds — multiply by 1000, or use `Date.now()` / `date.getTime()`.",
+        );
+      });
+
+      test('throws generic small-value error for sub-1e12 values that match no specific pattern', () => {
+        const trigger: TimestampTrigger = {
+          type: TriggerType.TIMESTAMP,
+          timestamp: 500,
+        };
+
+        expect(() => validateTrigger(trigger)).toThrowError(
+          "'trigger.timestamp' (500) is too small to be a valid epoch millisecond value. Use `Date.now()` or `someDate.getTime()`.",
+        );
+      });
+
+      test('accepts a valid future epoch-ms timestamp without small-value detection', () => {
+        const trigger: TimestampTrigger = {
+          type: TriggerType.TIMESTAMP,
+          timestamp: Date.now() + 60_000,
+        };
+
+        expect(() => validateTrigger(trigger)).not.toThrow();
+      });
+
       test('repeatFrequency defaults to -1 if not set', () => {
         const date = new Date(Date.now());
         date.setSeconds(date.getSeconds() + 10);
