@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Tests**: Jest tests for the server SDK with 100% statement / branch / line / function coverage across `buildPayload.ts`, `ios.ts`, `android.ts`, `serialize.ts`, `validation.ts`. Includes a kitchen-sink snapshot asserting the canonical FCM v1 wire shape.
 
-- **Docs**: New [docs/fcm-mode.md](docs/fcm-mode.md) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from manual pattern, troubleshooting, and known limitations. Root README and `packages/react-native/README.md` updated with FCM Mode quick-start, Server SDK, CLI Tools, and Automated NSE setup sections. `packages/react-native/server/README.md` expanded with full API reference. `apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md` updated with a CLI-recommendation header. Issue #129, Phase 5 of 5.
+- **Docs**: New [docs/fcm-mode.mdx](docs/fcm-mode.mdx) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from manual pattern, troubleshooting, and known limitations. Root README and `packages/react-native/README.md` updated with FCM Mode quick-start, Server SDK, CLI Tools, and Automated NSE setup sections. `packages/react-native/server/README.md` expanded with full API reference. `apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md` updated with a CLI-recommendation header. Issue #129, Phase 5 of 5.
 
 ### Fixed
 

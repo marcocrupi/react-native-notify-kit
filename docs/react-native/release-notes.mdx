@@ -13,7 +13,7 @@ description: react-native-notify-kit API releases
 * **Server SDK**: new `react-native-notify-kit/server` subpath export — a zero-runtime-dependency Node.js / Firebase Cloud Functions helper that builds FCM HTTP v1 message payloads. Public API: `buildNotifyKitPayload`, `buildIosApnsPayload`, `buildAndroidPayload`, `serializeNotifeeOptions`. 100% unit-test coverage.
 * **CLI `init-nse`**: `npx react-native-notify-kit init-nse` scaffolds an iOS Notification Service Extension target, patching `.pbxproj` and `Podfile` automatically. Ships in the main package — no extra install. Supports `--dry-run`, `--force`, `--target-name`, `--ios-path`, `--bundle-suffix`. Atomic writes with rollback on failure.
 * **Package exports**: `packages/react-native/package.json` now declares a formal `exports` map. Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`.
-* **Docs**: new [docs/fcm-mode.md](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/fcm-mode.md) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from the manual pattern, troubleshooting, and known limitations.
+* **Docs**: new [docs/fcm-mode.mdx](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/fcm-mode.mdx) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from the manual pattern, troubleshooting, and known limitations.
 
 ### Fixed
 

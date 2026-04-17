@@ -4,7 +4,7 @@ Server-side FCM HTTP v1 payload builder for [`react-native-notify-kit`](../READM
 
 Use it to construct payloads that the client-side `handleFcmMessage` handler can consume — Android receives data-only messages routed through `setBackgroundMessageHandler`, iOS receives alert-style APNs payloads that a Notification Service Extension reads from the `notifee_options` key.
 
-For the full end-to-end guide (client setup, iOS NSE scaffolding, migration, troubleshooting), see [`docs/fcm-mode.md`](../../../docs/fcm-mode.md).
+For the full end-to-end guide (client setup, iOS NSE scaffolding, migration, troubleshooting), see [`docs/fcm-mode.mdx`](../../../docs/fcm-mode.mdx).
 
 ## Install
 
@@ -94,7 +94,7 @@ import type {
 } from 'react-native-notify-kit/server';
 ```
 
-Full type definitions are in [`docs/fcm-mode.md#server-sdk-reference`](../../../docs/fcm-mode.md#server-sdk-reference).
+Full type definitions are in [`docs/fcm-mode.mdx#server-sdk-reference`](../../../docs/fcm-mode.mdx#server-sdk-reference).
 
 ## Behavior
 
@@ -106,7 +106,7 @@ Full type definitions are in [`docs/fcm-mode.md#server-sdk-reference`](../../../
 
 ## Validation
 
-All validation happens synchronously in `buildNotifyKitPayload`. Errors thrown as `Error` objects with the `[react-native-notify-kit/server]` prefix. The complete list of error messages lives in [`docs/fcm-mode.md#validation-rules`](../../../docs/fcm-mode.md#validation-rules); highlights:
+All validation happens synchronously in `buildNotifyKitPayload`. Errors thrown as `Error` objects with the `[react-native-notify-kit/server]` prefix. The complete list of error messages lives in [`docs/fcm-mode.mdx#validation-rules`](../../../docs/fcm-mode.mdx#validation-rules); highlights:
 
 - Exactly one of `token`, `topic`, `condition` required.
 - `notification.title` and `notification.body` are required non-empty strings.
@@ -124,6 +124,6 @@ All validation happens synchronously in `buildNotifyKitPayload`. Errors thrown a
 
 ## See also
 
-- [Full FCM Mode guide](../../../docs/fcm-mode.md) — architecture, NSE setup, migration, troubleshooting.
+- [Full FCM Mode guide](../../../docs/fcm-mode.mdx) — architecture, NSE setup, migration, troubleshooting.
 - [Main README](../README.md) — Notifee's full client API surface.
 - [CHANGELOG](../../../CHANGELOG.md) — release history.
