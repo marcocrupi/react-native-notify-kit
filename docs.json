@@ -3,9 +3,10 @@
   "name": "react-native-notify-kit",
   "description": "Maintained Notifee-compatible fork — a feature-rich React Native notification library.",
   "logo": {
-    "light": "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
-    "dark": "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+    "light": "/assets/logo.png",
+    "dark": "/assets/logo.png"
   },
+  "favicon": "/assets/logo.png",
   "theme": {
     "primary": "#553D9A"
   },

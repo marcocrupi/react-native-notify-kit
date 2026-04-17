@@ -1,16 +1,23 @@
+<!-- markdownlint-disable MD033 MD041 -->
+<p align="center">
+  <img src="./assets/logo.png" alt="react-native-notify-kit" width="160" />
+</p>
+
 # react-native-notify-kit
 
 Maintained Notifee-compatible fork — a feature-rich React Native notification library (Android & iOS).
 
-<!-- markdownlint-disable MD033 -->
 <p align="center">
   <a href="https://www.npmjs.com/package/react-native-notify-kit"><img src="https://img.shields.io/npm/v/react-native-notify-kit.svg" alt="npm version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/platform-Android%20%7C%20iOS-green.svg" alt="Platform">
   <img src="https://img.shields.io/badge/React%20Native-%3E%3D0.73-blue.svg" alt="React Native">
+  <a href="https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview"><img src="https://img.shields.io/badge/docs-docs.page-blue.svg" alt="Documentation"></a>
 </p>
 
 <hr/>
+
+> 📘 **Full documentation:** [docs.page/marcocrupi/react-native-notify-kit](https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview) — public API reference, platform guides, FCM Mode, server SDK, and the `init-nse` CLI.
 
 An actively maintained fork of Notifee for React Native notifications, continued and improved by Marco Crupi.
 
