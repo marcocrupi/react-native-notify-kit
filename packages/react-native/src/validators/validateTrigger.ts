@@ -52,9 +52,33 @@ export default function validateTrigger(trigger: Trigger): Trigger {
   }
 }
 
+// Smallest plausible epoch-ms value for a future trigger. 1e12 ms ≈ Sep 2001;
+// anything smaller is almost certainly the wrong unit (seconds-since-epoch,
+// or a Date.getDate() day-of-month). We intercept the three common shapes
+// and emit targeted hints — see upstream invertase/notifee#872 for the
+// year-after-year UX pattern this guards against.
+const MIN_PLAUSIBLE_EPOCH_MS = 1e12;
+const MIN_PLAUSIBLE_EPOCH_SECONDS = 1e9;
+
 function validateTimestampTrigger(trigger: TimestampTrigger): TimestampTrigger {
   if (!isNumber(trigger.timestamp)) {
     throw new Error("'trigger.timestamp' expected a number value.");
+  }
+
+  if (trigger.timestamp < MIN_PLAUSIBLE_EPOCH_MS) {
+    if (trigger.timestamp >= 1 && trigger.timestamp <= 31) {
+      throw new Error(
+        `'trigger.timestamp' looks like a day-of-month (${trigger.timestamp}). Did you mean \`date.getTime()\` instead of \`date.getDate()\`?`,
+      );
+    }
+    if (trigger.timestamp >= MIN_PLAUSIBLE_EPOCH_SECONDS) {
+      throw new Error(
+        `'trigger.timestamp' looks like seconds since epoch (${trigger.timestamp}). Notifee expects milliseconds — multiply by 1000, or use \`Date.now()\` / \`date.getTime()\`.`,
+      );
+    }
+    throw new Error(
+      `'trigger.timestamp' (${trigger.timestamp}) is too small to be a valid epoch millisecond value. Use \`Date.now()\` or \`someDate.getTime()\`.`,
+    );
   }
 
   const now = Date.now();
