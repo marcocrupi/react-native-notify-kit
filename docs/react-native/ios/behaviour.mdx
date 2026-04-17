@@ -42,7 +42,7 @@ notifee.displayNotification({
 
 ## Foreground delivery events
 
-On iOS, an `EventType.DELIVERED` event is emitted to `onForegroundEvent` when a Notifee-owned notification is presented to the user while the app is in the foreground (immediate `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays). Use this for analytics, read-state tracking, or badge maintenance.
+On iOS, an `EventType.DELIVERED` event is emitted to `onForegroundEvent` when a Notify Kit-owned notification is presented to the user while the app is in the foreground (immediate `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays). Use this for analytics, read-state tracking, or badge maintenance.
 
 Trigger notifications that fire while the app is in **background or killed** do not emit DELIVERED on iOS — `willPresentNotification:` is only invoked in the foreground and the platform exposes no equivalent callback for background-presented local notifications. Android emits DELIVERED unconditionally in both cases. If you need delivery confirmation for background trigger notifications on iOS, query `getDisplayedNotifications()` after the app returns to foreground. See the [events](/react-native/events) documentation for the full event shape.
 

@@ -1,6 +1,6 @@
 ---
 title: OneSignal
-description: Integrate the OneSignal platform to display custom local notifications with Notifee.
+description: Integrate the OneSignal platform to display custom local notifications with Notify Kit.
 ---
 
 [OneSignal](https://onesignal.com) is a platform for sending cloud messages to mobile devices.
@@ -9,7 +9,7 @@ description: Integrate the OneSignal platform to display custom local notificati
 
 In [their react-native documentation](https://documentation.onesignal.com/docs/react-native-sdk-setup) they describe several things you must do, but [users here have noticed incompatibilities](https://github.com/notifee/react-native-notifee/issues/124#issuecomment-690383445) (and [also here](https://github.com/notifee/react-native-notifee/issues/145#issuecomment-690372202)) when following the documentation because the older OneSignal libraries pulled in conflicting Firebase modules.
 
-With special thanks to users [Ashok Kumar](https://github.com/ashokkumar88) and [burhanDebug](https://github.com/burhanDebug) and [zaweisise](https://github.com/zaweiswise) for helping us figure it out and confirm a solution, this is how to integrate notifee with OneSignal:
+With special thanks to users [Ashok Kumar](https://github.com/ashokkumar88) and [burhanDebug](https://github.com/burhanDebug) and [zaweisise](https://github.com/zaweiswise) for helping us figure it out and confirm a solution, this is how to integrate Notify Kit with OneSignal:
 
 1. Do *not* use the onesignal gradle plugin (currently step 3.2 in their documentation)
 1. If using a `react-native-onesignal` version earlier than 4.0.0 - edit `node_modules/react-native-onesignal/android/build.gradle`:

@@ -5,13 +5,13 @@ description: Learn how to import the library & use the library within your proje
 
 ## Importing the library
 
-Once [installed](/react-native/installation), Notifee can be imported into your React Native project:
+Once [installed](/react-native/installation), Notify Kit can be imported into your React Native project:
 
 ```js
 import notifee from 'react-native-notify-kit';
 ```
 
-The default export can then be used to interact with Notifee API, either inside of your React components or standalone
+The default export can then be used to interact with the Notify Kit API, either inside of your React components or standalone
 (e.g. inside of a [Headless Task](https://facebook.github.io/react-native/docs/headless-js-android)).
 
 The library also exports the API types, documented within the [Reference API](/react-native/reference). For example to import the [`AndroidColor`](/react-native/reference/androidcolor) type:
@@ -23,20 +23,20 @@ import { AndroidColor } from 'react-native-notify-kit';
 ## TypeScript
 
 Projects using [TypeScript](https://www.typescriptlang.org) with [React Native](https://facebook.github.io/react-native/docs/typescript) can
-expect Notifee to work out of the box with no additional steps required. Simply import the package and the typed API
+expect Notify Kit to work out of the box with no additional steps required. Simply import the package and the typed API
 interface will be available.
 
-Using TypeScript in React Native is entirely optional and is not required to use Notifee.
+Using TypeScript in React Native is entirely optional and is not required to use Notify Kit.
 
 ## Android vs iOS
 
-Notifee supports both Android & iOS using the same interface. The API has been designed to function on both platforms,
+Notify Kit supports both Android & iOS using the same interface. The API has been designed to function on both platforms,
 even in situations whereby functionality may not exist on one platform. In those cases, the API will "noop" or instantly
 resolve.
 
 ## Remote notifications (FCM)
 
-To render FCM push notifications with full Notifee control on both platforms, use **FCM Mode** — a layered opt-in on top of the core library:
+To render FCM push notifications with full Notify Kit control on both platforms, use **FCM Mode** — a layered opt-in on top of the core library:
 
 - A server SDK at `react-native-notify-kit/server` that builds the correct FCM HTTP v1 payload per platform (data-only on Android, alert + `mutable-content: 1` on iOS).
 - A one-liner client handler: `notifee.handleFcmMessage(remoteMessage)`.

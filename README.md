@@ -5,7 +5,7 @@
 
 # react-native-notify-kit
 
-Maintained Notifee-compatible fork — a feature-rich React Native notification library (Android & iOS).
+Maintained Notifee-compatible fork: a feature-rich React Native notification library (Android & iOS).
 
 <p align="center">
   <a href="https://www.npmjs.com/package/react-native-notify-kit"><img src="https://img.shields.io/npm/v/react-native-notify-kit.svg" alt="npm version"></a>

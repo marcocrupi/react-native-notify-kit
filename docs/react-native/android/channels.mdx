@@ -9,7 +9,7 @@ Starting in Android 8.0 (API level 26), all notifications must be assigned to a 
 can be customised with its own unique visual & auditory behaviour. Once a channel has been created with initial settings, the user
 then has full control in changing those settings and can also decide how intrusive notifications from your application can be.
 
-> Notifee provides rich control for managing notification channels whilst also supporting devices without channel support (API level < 26).
+> Notify Kit provides rich control for managing notification channels whilst also supporting devices without channel support (API level < 26).
 
 The screenshots below show the notification settings for the Android "Clock" app. The screenshot on the left shows listing channels as "categories". The screenshot on the right shows
 the further options available once you click on a category, in this instance, the "Firing alarms & timers" category.
@@ -39,7 +39,7 @@ Users are able to override notification behavior. The user can alter notificatio
 
 ## Managing Channels & Groups
 
-Using Notifee, your application can create, update and delete notification channels and groups. The API has been designed to work seamlessly between
+Using Notify Kit, your application can create, update and delete notification channels and groups. The API has been designed to work seamlessly between
 devices with and without notification channel support.
 
 ### Creating & updating channels
@@ -118,13 +118,13 @@ to function as expected.
 
 ## Listening to channel events
 
-Notifee provides a handy [event](/react-native/events) listener to subscribe to all incoming notification and device events.
+Notify Kit provides a handy [event](/react-native/events) listener to subscribe to all incoming notification and device events.
 
 In some applications, you may want to know when a user disables a notification channel, or the entire application. For example,
 you could save received notifications locally when the channel it belongs to is disabled, and show an in-app "unread"
 notification count to the user when they open the application.
 
-Notifee provides 3 event types for channel events:
+Notify Kit provides 3 event types for channel events:
 
 | Event Type            |                                                                                             |
 | --------------------- | ------------------------------------------------------------------------------------------- |

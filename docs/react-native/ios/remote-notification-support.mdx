@@ -1,6 +1,6 @@
 ---
 title: Remote Notification support
-description: Display remote (APNs / FCM) notifications with full Notifee control via a Notification Service Extension.
+description: Display remote (APNs / FCM) notifications with full Notify Kit control via a Notification Service Extension.
 ---
 
 `react-native-notify-kit` supports remote (push) notifications through Apple Push Notification service (APNs). Because iOS displays alert-style APNs pushes through the OS itself, any client-side rewriting (attachments, category, interruption level, custom sound from a bundled resource, …) must happen inside a **Notification Service Extension** (NSE) — a separate bundle that the OS runs when the push arrives. This page explains how to set one up.
@@ -42,7 +42,7 @@ The server SDK sets `mutable-content: 1` automatically so the NSE always fires, 
 
 On the client, `notifee.handleFcmMessage(remoteMessage)` is a no-op on iOS in background/killed (the NSE already displayed the notification) and a foreground banner otherwise. See the full [FCM Mode guide](/fcm-mode) for architecture, payload schema, and troubleshooting.
 
-## Using APNs keys only (no Notifee-side rewriting)
+## Using APNs keys only (no Notify Kit-side rewriting)
 
 If you don't need attachment, category, sound-file, or interruption-level rewriting on the client, you can send a plain APNs payload and iOS will display it directly — no NSE required:
 
@@ -60,7 +60,7 @@ If you don't need attachment, category, sound-file, or interruption-level rewrit
 }
 ```
 
-This works, but you cannot use Notifee's iOS-specific features (attachments from arbitrary URLs, `categoryId` routing to a library-registered category, custom `interruptionLevel`, `foregroundPresentationOptions`) on the alert itself without an NSE.
+This works, but you cannot use Notify Kit's iOS-specific features (attachments from arbitrary URLs, `categoryId` routing to a library-registered category, custom `interruptionLevel`, `foregroundPresentationOptions`) on the alert itself without an NSE.
 
 ## Manual NSE setup (legacy)
 
@@ -125,7 +125,7 @@ Build the app once and confirm it still compiles with the NSE target selected.
 
 ### 4. Choose the payload
 
-Notifee reads `notifee_options` from `apns.payload` (not from `aps`) and reshapes the notification before the OS displays it.
+Notify Kit reads `notifee_options` from `apns.payload` (not from `aps`) and reshapes the notification before the OS displays it.
 
 > `mutable-content: 1` (`mutableContent` in Firebase Admin SDK) is **required** on every payload that should trigger the NSE. Without it, iOS will not invoke the extension.
 >
@@ -166,9 +166,9 @@ self.bestAttemptContent.userInfo = userInfoDict;
 
 The `id` of the displayed notification is always `request.identifier` (iOS does not let the NSE override it). Omit `id` from `notifee_options`.
 
-## Disabling Notifee's remote-notification delegate
+## Disabling Notify Kit's remote-notification delegate
 
-By default, the library swizzles the `UNUserNotificationCenter` delegate so tap events for remote notifications flow through Notifee's event system. If you are using `@react-native-firebase/messaging` (or another library) and want its original `onNotificationOpenedApp()` / `getInitialNotification()` to handle taps instead, opt out at startup:
+By default, the library swizzles the `UNUserNotificationCenter` delegate so tap events for remote notifications flow through Notify Kit's event system. If you are using `@react-native-firebase/messaging` (or another library) and want its original `onNotificationOpenedApp()` / `getInitialNotification()` to handle taps instead, opt out at startup:
 
 ```js
 import notifee from 'react-native-notify-kit';
@@ -178,11 +178,11 @@ await notifee.setNotificationConfig({
 });
 ```
 
-When disabled, Notifee no longer intercepts remote-notification tap callbacks. Local notifications, trigger notifications, and NSE enrichment continue to work unchanged — only the delegate-forwarding path is relaxed. Call this once, early in startup, before any notifications are displayed.
+When disabled, Notify Kit no longer intercepts remote-notification tap callbacks. Local notifications, trigger notifications, and NSE enrichment continue to work unchanged — only the delegate-forwarding path is relaxed. Call this once, early in startup, before any notifications are displayed.
 
 ## Handling events
 
-Notifee emits the same event types for remote notifications that it does for local ones:
+Notify Kit emits the same event types for remote notifications that it does for local ones:
 
 - `EventType.PRESS` — user tapped the notification
 - `EventType.ACTION_PRESS` — user tapped a Quick Action

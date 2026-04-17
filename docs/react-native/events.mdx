@@ -8,11 +8,11 @@ a displayed notification and changing the in-app screen).
 
 ## Listening for events
 
-Using Notifee it is possible to display notifications in various situations, for example via [Headless JS](https://facebook.github.io/react-native/docs/headless-js-android)
+Using Notify Kit it is possible to display notifications in various situations, for example via [Headless JS](https://facebook.github.io/react-native/docs/headless-js-android)
 tasks, directly from your application (e.g. Button press) or via 3rd party services such as [FCM](/react-native/integrations/fcm).
 
 This flexibility opens up a key challenge for React Native developers; handling events when the application is both
-active & killed. Notifee provides a simple API for handling both scenarios.
+active & killed. Notify Kit provides a simple API for handling both scenarios.
 
 ## Foreground Events
 
@@ -82,7 +82,7 @@ device resources so it is important that any code is executed efficiently & quic
 > To run long running tasks on Android, view the [Foreground Service](/react-native/android/foreground-service) documentation.
 
 Background tasks run without React context, meaning you cannot update your application UI. You can however perform logic
-to update a remote database, update local device storage or even display/update a notification with Notifee! An example
+to update a remote database, update local device storage or even display/update a notification with Notify Kit! An example
 of a background event would be handling a "Mark as read" action by updating your database and cancelling the notification.
 
 Only a single background event handler can be registered. To register your handler, the [`onBackgroundEvent`](/react-native/reference/onbackgroundevent)
@@ -118,7 +118,7 @@ of an [`async function`](https://developer.mozilla.org/en-US/docs/Web/JavaScript
 returns an implicit Promise once complete. If you are not using `async`, ensure your handler callback returns a promise
 once complete.
 
-> **iOS delivery events.** `DELIVERED` is emitted to `onForegroundEvent` for **all** Notifee-owned notifications presented while the app is in foreground — immediate `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays. Trigger notifications that fire while the app is in background or killed do **not** emit `DELIVERED` on iOS (platform limitation — `willPresentNotification:` only fires in foreground and iOS provides no equivalent callback for background-presented local notifications). Android emits `DELIVERED` unconditionally in both cases. If you need delivery confirmation for background trigger notifications on iOS, query `getDisplayedNotifications()` after the app returns to foreground.
+> **iOS delivery events.** `DELIVERED` is emitted to `onForegroundEvent` for **all** Notify Kit-owned notifications presented while the app is in foreground — immediate `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays. Trigger notifications that fire while the app is in background or killed do **not** emit `DELIVERED` on iOS (platform limitation — `willPresentNotification:` only fires in foreground and iOS provides no equivalent callback for background-presented local notifications). Android emits `DELIVERED` unconditionally in both cases. If you need delivery confirmation for background trigger notifications on iOS, query `getDisplayedNotifications()` after the app returns to foreground.
 
 ## App open events
 

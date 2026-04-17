@@ -4,7 +4,7 @@ description: Handle the users interaction with your notifications.
 ---
 
 In their basic form, users can only interact with notifications by clearing them from the notification shade, via the
-"Clear all" button on the device or by physically swiping them away. Notifee allows the user to interact
+"Clear all" button on the device or by physically swiping them away. Notify Kit allows the user to interact
 with notifications, and also hook onto events when the interaction occurs.
 
 ## Press Action
@@ -37,7 +37,7 @@ notifee.displayNotification({
 });
 ```
 
-Notifee will now attempt to launch the application when the user presses the notification. View the
+Notify Kit will now attempt to launch the application when the user presses the notification. View the
 [App Open Events](/react-native/events#app-open-events) documentation to learn how to read the notification
 which caused the app to launch.
 
@@ -225,7 +225,7 @@ notifee.onForegroundEvent(({ type, detail }) => {
 
 It is also possible to open the application when a notification action is pressed, for example to view a specific
 chat conversation. To trigger the application to open (if it is not already), the `launchActivity` property on the
-`pressAction` can be used. Notifee will use this activity to launch your application:
+`pressAction` can be used. Notify Kit will use this activity to launch your application:
 
 ```js
 notifee.displayNotification({

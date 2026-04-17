@@ -1,4 +1,4 @@
-# Notifee FCM Mode
+# Notify Kit FCM Mode
 
 A delivery pattern for apps that want **`react-native-notify-kit` as the sole display layer for FCM push notifications** on both Android and iOS.
 
@@ -21,11 +21,11 @@ FCM Mode solves two problems at once: the Android `notification`-payload duplica
 
 ### The problem
 
-FCM has two delivery modes, and neither is a good default for apps that use Notifee for display:
+FCM has two delivery modes, and neither is a good default for apps that use Notify Kit for display:
 
 | Payload shape | Android behavior | iOS behavior |
 | --- | --- | --- |
-| `notification` (alert) | OS auto-displays via the FCM SDK. If you also call `displayNotification` in `setBackgroundMessageHandler`, you get **two tray entries**. Custom `data` is routed to the tap `PendingIntent` only, so `getDisplayedNotifications()` can't see it (tracked at [firebase-android-sdk#2639](https://github.com/firebase/firebase-android-sdk/issues/2639)). | APNs delivers reliably. If you want Notifee to rewrite the notification (attachments, categories, custom sound), you need a Notification Service Extension. |
+| `notification` (alert) | OS auto-displays via the FCM SDK. If you also call `displayNotification` in `setBackgroundMessageHandler`, you get **two tray entries**. Custom `data` is routed to the tap `PendingIntent` only, so `getDisplayedNotifications()` can't see it (tracked at [firebase-android-sdk#2639](https://github.com/firebase/firebase-android-sdk/issues/2639)). | APNs delivers reliably. If you want Notify Kit to rewrite the notification (attachments, categories, custom sound), you need a Notification Service Extension. |
 | `data` only | OS wakes your app and you call `displayNotification` yourself — clean, but iOS treats these as silent pushes and throttles / drops them aggressively. Real-device loss rates of **30–60%** are typical; worse under Low Power Mode and with the app force-quit. | Same delivery throttling as above. Unusable for user-facing pushes. |
 
 ### The solution
@@ -459,7 +459,7 @@ Import the default `notifee` module — `handleFcmMessage` and `setFcmConfig` ar
 
 ### `notifee.handleFcmMessage(remoteMessage): Promise<string | null>`
 
-Processes an FCM remote message produced by the server SDK and displays a Notifee notification according to the embedded `notifee_options`. Safe to call from both `setBackgroundMessageHandler` and `onMessage`.
+Processes an FCM remote message produced by the server SDK and displays a Notify Kit notification according to the embedded `notifee_options`. Safe to call from both `setBackgroundMessageHandler` and `onMessage`.
 
 **Returns:** the displayed notification ID, or `null` if the call was an intentional no-op.
 
@@ -881,7 +881,7 @@ notifee.setFcmConfig({ defaultChannelId: 'default' });
 
 ### Step 3 — iOS
 
-Run the CLI: `npx react-native-notify-kit init-nse && cd ios && pod install`. If you already had a Notifee Service Extension (e.g. from the legacy ObjC guide), you can either keep it and skip this step, or regenerate with `--force` to get the new Swift template.
+Run the CLI: `npx react-native-notify-kit init-nse && cd ios && pod install`. If you already had a Notify Kit Service Extension (e.g. from the legacy ObjC guide), you can either keep it and skip this step, or regenerate with `--force` to get the new Swift template.
 
 ### Compatibility during migration
 
@@ -911,7 +911,7 @@ If you see two notifications per push on Android, the FCM SDK is auto-displaying
 
 ### Custom sound not playing
 
-Custom sounds have platform-specific requirements that don't go through the Notifee JS API when FCM delivers the push.
+Custom sounds have platform-specific requirements that don't go through the Notify Kit JS API when FCM delivers the push.
 
 - **iOS:** the sound file must be bundled in the **NSE target's** resources, not (only) the main app. Drag the file into the `NotifyKitNSE/` folder in Xcode and verify it appears in the NSE target's Build Phases → Copy Bundle Resources.
 - **Android:** the `NotificationChannel` sound is locked at channel creation. `notifee_options.android.sound` from FCM Mode overrides the channel sound only if the channel was created with that sound already. To change the sound, create a new channel under a new ID.
@@ -975,10 +975,10 @@ The server SDK warns at ~3500 bytes. Common fixes:
 | iOS NSE setup | One CLI command | Manual Xcode steps | Bundled, closed-source | Managed (no NSE needed) |
 | Backend SDK | `react-native-notify-kit/server` (zero deps) | Hand-rolled FCM v1 | OneSignal REST API | Expo push REST API |
 | Backend runs on | Any Node.js (CFns, Lambda, self-hosted) | Any Node.js | OneSignal (vendor lock) | Expo servers (vendor lock-ish) |
-| Notification styling | BIG_TEXT, BIG_PICTURE, actions, attachments, categories, thread-id | Full Notifee surface | OneSignal-specific | Limited (no custom styles on Android) |
+| Notification styling | BIG_TEXT, BIG_PICTURE, actions, attachments, categories, thread-id | Full Notify Kit surface | OneSignal-specific | Limited (no custom styles on Android) |
 | Rich iOS notifications | Yes, via NSE blob | Yes, via NSE blob | Yes | Limited |
 | Foreground services | Via `displayNotification` | Same | Not supported | Not supported |
-| Trigger notifications (scheduled) | Full Notifee (AlarmManager) | Same | OneSignal scheduling | Basic (local) |
+| Trigger notifications (scheduled) | Full Notify Kit (AlarmManager) | Same | OneSignal scheduling | Basic (local) |
 | Source availability | Apache-2.0, open source | Same | Closed source | Apache-2.0, vendor-tied |
 | Data-only pushes | Supported (fall through to `displayNotification`) | Supported | Supported | Limited |
 | Works without FCM | No (FCM is the transport) | No | Proprietary transport | Expo transport |
@@ -986,4 +986,4 @@ The server SDK warns at ~3500 bytes. Common fixes:
 
 ---
 
-See the [main README](../README.md) for Notifee's full feature surface, the [server SDK README](../packages/react-native/server/README.md) for a compact server reference, and the [CHANGELOG](../CHANGELOG.md) for release history.
+See the [main README](../README.md) for Notify Kit's full feature surface, the [server SDK README](../packages/react-native/server/README.md) for a compact server reference, and the [CHANGELOG](../CHANGELOG.md) for release history.

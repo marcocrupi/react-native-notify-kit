@@ -35,7 +35,7 @@ On iOS the background-routing path relies on `UIApplication.applicationState` be
 
 ## Notification Delivery Events
 
-On iOS, `EventType.DELIVERED` is emitted to `onForegroundEvent` whenever a Notifee-owned notification is presented to the user while the app is in foreground. This includes local `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays. See the [behaviour guide](/react-native/ios/behaviour#foreground-delivery-events) for the iOS-specific caveats (background / killed trigger notifications do not emit DELIVERED on iOS).
+On iOS, `EventType.DELIVERED` is emitted to `onForegroundEvent` whenever a Notify Kit-owned notification is presented to the user while the app is in foreground. This includes local `displayNotification` calls, trigger notifications that fire in foreground, and `handleFcmMessage` foreground displays. See the [behaviour guide](/react-native/ios/behaviour#foreground-delivery-events) for the iOS-specific caveats (background / killed trigger notifications do not emit DELIVERED on iOS).
 
 ## Quick Actions
 
@@ -143,7 +143,7 @@ regardless.
 
 ### Action input
 
-Notifee also supports allowing users to provide custom user input via an action. To enable this functionality, set the
+Notify Kit also supports allowing users to provide custom user input via an action. To enable this functionality, set the
 `input` property to `true`:
 
 ```js

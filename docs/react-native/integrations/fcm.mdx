@@ -67,7 +67,7 @@ export async function sendOrderUpdate(deviceToken: string, orderId: string) {
 
 ### 2. Android client: wire `handleFcmMessage`
 
-`handleFcmMessage` is a one-liner that parses the server payload, reconstructs a `Notification` object, and displays it through the usual Notifee pipeline.
+`handleFcmMessage` is a one-liner that parses the server payload, reconstructs a `Notification` object, and displays it through the usual Notify Kit pipeline.
 
 ```js
 // index.js
