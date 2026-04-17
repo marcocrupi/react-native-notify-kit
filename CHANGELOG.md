@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Docs**: Linked upstream Notifee issues [#1079](https://github.com/invertase/notifee/issues/1079), [#1226](https://github.com/invertase/notifee/issues/1226), and [#1262](https://github.com/invertase/notifee/issues/1262) to the existing 9.2.0 architectural fix entry in the "Bugs Fixed from Upstream Notifee" table (previously marked `N/A (architectural)`). All three are the same root cause — the pre-compiled AAR distributed via a bundled Maven repo at `node_modules/@notifee/react-native/android/libs/` — and are all resolved by the single-module compile-from-source architecture introduced in 9.2.0. Added a new Troubleshooting subsection `#### \`Could not resolve app.notifee:core:+\` — does not apply to this fork` to capture direct Google searches for the error string. Applied identically to the root `README.md` and `packages/react-native/README.md`. Motivation: the upstream repo was archived on April 7, 2026 and issue commenting is no longer possible, so README/npm SEO is now the only discovery path for users still blocked by these issues.
+
 ## [10.0.0] - 2026-04-17
 
 ### Added

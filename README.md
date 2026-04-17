@@ -369,7 +369,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 | `!=` reference equality on String comparison in `NotificationPendingIntent` (latent — would activate when `getLaunchActivity()` returns a non-null value for `id=default`) | Android | Pre-existing (latent) | 9.1.19 |
 | `pressAction.launchActivity` not defaulted at native layer when `pressAction.id === 'default'` | Android | N/A (defense-in-depth) | 9.1.19 |
 | Duplicate symbols linker error when using NSE (`$NotifeeExtension = true`) with static frameworks — `NotifeeExtensionHelper` compiled by both `RNNotifee` and `RNNotifeeCore` pods | iOS | Pre-existing | 9.1.22 |
-| `FAIL_ON_PROJECT_REPOS` rejection on RN 0.74+ — library injected a Maven repository into the consumer's `rootProject.allprojects` block, rejected by `dependencyResolutionManagement` mode | Android | N/A (architectural) | 9.2.0 |
+| `Could not resolve app.notifee:core:+` / `FAIL_ON_PROJECT_REPOS` rejection — library injected a Maven repository into the consumer's `rootProject.allprojects` block, which broke on (a) RN 0.74+ with `dependencyResolutionManagement`, (b) Expo SDK 53/54 where `extraMavenRepos` is not propagated to subprojects, and (c) Gradle 8 dependency locking with legacy XML parsers | Android | [#1079](https://github.com/invertase/notifee/issues/1079), [#1226](https://github.com/invertase/notifee/issues/1226), [#1262](https://github.com/invertase/notifee/issues/1262) | 9.2.0 |
 | Stale Gradle cache could serve outdated AAR bytecode after `yarn upgrade` — same Maven coordinate reused across releases violated Gradle's coordinate-immutability assumption | Android | N/A (architectural) | 9.2.0 |
 | `EventType.DELIVERED` not emitted for `displayNotification()` in foreground (only for trigger notifications) — `notifeeTrigger != nil` guard in `willPresentNotification:` suppressed the event, breaking iOS/Android symmetry | iOS | Pre-existing | 9.3.0 |
 | Tapping a notification without explicit `pressAction` does nothing (app doesn't open) — `NotificationPendingIntent.createIntent()` creates a tap-less PendingIntent when `pressActionModelBundle` is null, especially visible on trigger notifications after app kill | Android | Pre-existing (latent) | 9.3.0 |
@@ -717,6 +717,23 @@ An advanced alternative on Android is to switch the backend to an FCM **data-onl
 **Local notifications are different.** This limitation only affects **remote pushes** delivered by FCM/APNs while the app is killed. Notifications scheduled locally via `notifee.displayNotification()` or `notifee.createTriggerNotification()` — for example, a timer firing after the user closed the app — *do* honor the JS-side `sound` parameter, because the library itself wakes up and presents the notification (via `AlarmManager` on Android or `UNUserNotificationCenter` on iOS). The usual platform rules still apply: on Android the `NotificationChannel` sound is immutable after creation and wins over the per-notification `sound`; on iOS the sound file must be bundled in the app (`.wav`/`.aiff`/`.caf`, under 30 seconds, in the main bundle). For reliable local timer notifications on OEM devices that aggressively kill background work, prefer `AlarmType.SET_ALARM_CLOCK` — see the [Timers: foreground service or `SET_ALARM_CLOCK`?](#timers-foreground-service-or-set_alarm_clock) section.
 
 Reference: [invertase/notifee#927](https://github.com/invertase/notifee/issues/927).
+
+#### `Could not resolve app.notifee:core:+` — does not apply to this fork
+
+If you arrived here from a Google search for this error, note: the error is specific
+to `@notifee/react-native` (the archived upstream package), where the native core was
+distributed as a pre-compiled AAR inside a bundled Maven repo at
+`node_modules/@notifee/react-native/android/libs/`. The fork eliminated that
+distribution model in 9.2.0 — the core compiles from source as part of the bridge
+module, so there is no Maven coordinate to resolve, no `extraMavenRepos` to configure
+on Expo, and no `FAIL_ON_PROJECT_REPOS` conflict on RN 0.74+. Migrating from
+`@notifee/react-native` to `react-native-notify-kit` removes the error with no
+additional `build.gradle` patching, no config plugin, and no Expo `extraMavenRepos`
+entry.
+
+References: upstream issues [#1079](https://github.com/invertase/notifee/issues/1079),
+[#1226](https://github.com/invertase/notifee/issues/1226),
+[#1262](https://github.com/invertase/notifee/issues/1262).
 
 ### Manual warmup control
 
