@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 MD041 -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/marcocrupi/react-native-notify-kit/main/assets/logo.png" alt="react-native-notify-kit" width="160" />
+  <img src="https://raw.githubusercontent.com/marcocrupi/react-native-notify-kit/main/docs/assets/logo.png" alt="react-native-notify-kit" width="160" />
 </p>
 
 # react-native-notify-kit
