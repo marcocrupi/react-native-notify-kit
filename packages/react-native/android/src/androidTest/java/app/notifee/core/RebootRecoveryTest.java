@@ -405,16 +405,16 @@ public class RebootRecoveryTest {
    * fire time is still in the future at boot must be re-armed with their original anchor preserved.
    *
    * <p>The existing #734 tests cover the past-stale branches of {@code
-   * handleStaleNonRepeatingTrigger}; this fills the happy-path gap. Seeds a non-repeating
-   * trigger 5 minutes in the future, invokes reboot recovery, and asserts that:
+   * handleStaleNonRepeatingTrigger}; this fills the happy-path gap. Seeds a non-repeating trigger 5
+   * minutes in the future, invokes reboot recovery, and asserts that:
    *
    * <ul>
    *   <li>the Room row survives (not stale → not deleted),
    *   <li>the timestamp is unchanged (non-repeating → {@code setNextTimestamp} early-returns at
    *       {@code TimestampTriggerModel.java:136-139}),
-   *   <li>an {@code AlarmManager} {@code PendingIntent} has been re-registered for the row,
-   *       proving {@code rescheduleNotification} → {@code scheduleTimestampTriggerNotification}
-   *       reached the alarm-set call.
+   *   <li>an {@code AlarmManager} {@code PendingIntent} has been re-registered for the row, proving
+   *       {@code rescheduleNotification} → {@code scheduleTimestampTriggerNotification} reached the
+   *       alarm-set call.
    * </ul>
    */
   @Test

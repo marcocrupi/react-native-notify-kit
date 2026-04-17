@@ -30,8 +30,8 @@ import org.robolectric.RobolectricTestRunner;
 /**
  * Unit coverage for {@link ResourceUtils#getFallbackSmallIconId(Context)} — the three-layer
  * fallback that keeps a notification valid when the user-supplied {@code smallIcon} string cannot
- * be resolved. Guards the invariant that the method never returns 0 and never throws, which is
- * what {@link app.notifee.core.NotificationManager} relies on to avoid the {@code
+ * be resolved. Guards the invariant that the method never returns 0 and never throws, which is what
+ * {@link app.notifee.core.NotificationManager} relies on to avoid the {@code
  * IllegalArgumentException: Invalid notification (no valid small icon)} crash that motivated the
  * fix (upstream invertase/notifee#733).
  */
