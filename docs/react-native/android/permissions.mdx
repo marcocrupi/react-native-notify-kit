@@ -44,7 +44,9 @@ For each level, you can check whether notifications are permitted through a dire
 
 ### Application wide
 
-To check whether the user has enabled notifications for your app, call [`getNotificationSettings`](/react-native/reference/getnotificationsettings). The `authorizationStatus` attributes will returns `DENIED` if user has denied the permission, and `AUTHORIZED` if it's granted.
+To check whether the user has enabled notifications for your app, call [`getNotificationSettings`](/react-native/reference/getnotificationsettings). The `authorizationStatus` attribute returns `AUTHORIZED` when notifications are enabled and `DENIED` when the permission is not granted after the permission request flow has run.
+
+On Android 13+ (`POST_NOTIFICATIONS` runtime permission), a fresh install can return `AuthorizationStatus.NOT_DETERMINED` before `requestPermission()` has been called. After the permission request flow has run, a non-granted permission is reported as `AuthorizationStatus.DENIED`. This lets apps distinguish a user who has not seen the prompt yet from a user who already denied notifications. Notify Kit tracks this internally with persistent state, so apps do not need native workarounds for this distinction.
 
 ```js
 import notifee, {AuthorizationStatus} from 'react-native-notify-kit';
