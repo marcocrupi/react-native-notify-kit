@@ -17,6 +17,7 @@
 
 #import <UIKit/UIKit.h>
 #import <dispatch/dispatch.h>
+#include <math.h>
 
 #import "Intents/Intents.h"
 #import "NotifeeCore+UNUserNotificationCenter.h"
@@ -25,7 +26,509 @@
 #import "NotifeeCoreExtensionHelper.h"
 #import "NotifeeCoreUtil.h"
 
+static NSString *const kNotifeeRollingPublicId = @"notifee_rolling_public_id";
+static NSString *const kNotifeeRollingOccurrenceMs = @"notifee_rolling_occurrence_ms";
+static NSString *const kNotifeeRollingInternalId = @"notifee_rolling_internal_id";
+static NSString *const kNotifeeRollingInternalIdPrefix = @"__notifee_rolling__";
+static NSString *const kNotifeeCoreErrorDomain = @"app.notifee.core";
+
+typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
+  NotifeeCoreRollingErrorCodeInvalidTrigger = 1,
+  NotifeeCoreRollingErrorCodeBudgetExceeded = 2,
+  NotifeeCoreRollingErrorCodeStorageFailed = 3,
+};
+
 @implementation NotifeeCore
+
++ (dispatch_queue_t)rollingTimestampQueue {
+  static dispatch_queue_t queue;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    queue = dispatch_queue_create("app.notifee.core.rollingTimestamp", DISPATCH_QUEUE_SERIAL);
+  });
+  return queue;
+}
+
++ (NSError *)rollingTimestampErrorWithCode:(NotifeeCoreRollingErrorCode)code
+                                   message:(NSString *)message {
+  return [NSError errorWithDomain:kNotifeeCoreErrorDomain
+                             code:code
+                         userInfo:@{NSLocalizedDescriptionKey : message}];
+}
+
++ (NSNumber *)currentTimestampMs {
+  return @((long long)llround([[NSDate date] timeIntervalSince1970] * 1000.0));
+}
+
++ (void)resolveBlock:(notifeeMethodVoidBlock)block withError:(NSError *)error {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    block(error);
+  });
+}
+
++ (NSArray<UNNotificationRequest *> *)pendingNotificationRequests:
+    (UNUserNotificationCenter *)center {
+  __block NSArray<UNNotificationRequest *> *pendingRequests = @[];
+  dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+  [center getPendingNotificationRequestsWithCompletionHandler:^(
+              NSArray<UNNotificationRequest *> *_Nonnull requests) {
+    pendingRequests = requests != nil ? requests : @[];
+    dispatch_semaphore_signal(semaphore);
+  }];
+
+  dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+  return pendingRequests;
+}
+
++ (NSArray<UNNotification *> *)deliveredNotifications:(UNUserNotificationCenter *)center {
+  __block NSArray<UNNotification *> *deliveredNotifications = @[];
+  dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+  [center getDeliveredNotificationsWithCompletionHandler:^(
+              NSArray<UNNotification *> *_Nonnull notifications) {
+    deliveredNotifications = notifications != nil ? notifications : @[];
+    dispatch_semaphore_signal(semaphore);
+  }];
+
+  dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
+  return deliveredNotifications;
+}
+
++ (NSString *)rollingPublicIdForNotification:(NSDictionary *)notification {
+  NSString *publicId = notification[@"id"];
+  if (![publicId isKindOfClass:NSString.class] || [publicId length] == 0) {
+    return nil;
+  }
+
+  return publicId;
+}
+
++ (BOOL)isPotentialRollingInternalNotificationId:(NSString *)notificationId {
+  return [notificationId isKindOfClass:NSString.class] &&
+         [notificationId hasPrefix:kNotifeeRollingInternalIdPrefix];
+}
+
++ (NSString *)rollingPublicIdForRequest:(UNNotificationRequest *)request {
+  NSString *identifier = request.identifier;
+  NSString *mappedPublicId =
+      [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:identifier];
+  if ([mappedPublicId isKindOfClass:NSString.class] && [mappedPublicId length] > 0) {
+    return mappedPublicId;
+  }
+
+  if ([self isPotentialRollingInternalNotificationId:identifier]) {
+    NSString *metadataPublicId = request.content.userInfo[kNotifeeRollingPublicId];
+    if ([metadataPublicId isKindOfClass:NSString.class] && [metadataPublicId length] > 0) {
+      return metadataPublicId;
+    }
+
+    NSDictionary *notification = request.content.userInfo[kNotifeeUserInfoNotification];
+    if ([notification isKindOfClass:NSDictionary.class]) {
+      NSString *payloadPublicId = notification[@"id"];
+      if ([payloadPublicId isKindOfClass:NSString.class] && [payloadPublicId length] > 0) {
+        return payloadPublicId;
+      }
+    }
+  }
+
+  return nil;
+}
+
++ (NSString *)publicIdentifierForRequest:(UNNotificationRequest *)request {
+  NSString *rollingPublicId = [self rollingPublicIdForRequest:request];
+  if (rollingPublicId != nil) {
+    return rollingPublicId;
+  }
+
+  NSString *identifier = request.identifier;
+  if ([self isPotentialRollingInternalNotificationId:identifier]) {
+    return nil;
+  }
+
+  return identifier;
+}
+
++ (void)addString:(NSString *)string toOrderedSet:(NSMutableOrderedSet<NSString *> *)orderedSet {
+  if ([string isKindOfClass:NSString.class] && [string length] > 0) {
+    [orderedSet addObject:string];
+  }
+}
+
++ (NSMutableOrderedSet<NSString *> *)rollingIdentifiersForPublicId:(NSString *)publicId
+                                                    pendingRequests:
+                                                        (NSArray<UNNotificationRequest *> *)
+                                                            pendingRequests
+                                                            record:(NSDictionary *)record {
+  NSMutableOrderedSet<NSString *> *identifiers = [NSMutableOrderedSet orderedSet];
+
+  NSArray *scheduledIds = record[@"scheduledIds"];
+  if ([scheduledIds isKindOfClass:NSArray.class]) {
+    for (id scheduledId in scheduledIds) {
+      [self addString:scheduledId toOrderedSet:identifiers];
+    }
+  }
+
+  for (UNNotificationRequest *request in pendingRequests) {
+    NSString *identifier = request.identifier;
+    if ([identifier isEqualToString:publicId]) {
+      [self addString:identifier toOrderedSet:identifiers];
+      continue;
+    }
+
+    NSString *mappedPublicId =
+        [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:identifier];
+    if ([mappedPublicId isEqualToString:publicId]) {
+      [self addString:identifier toOrderedSet:identifiers];
+    }
+  }
+
+  return identifiers;
+}
+
++ (NSMutableOrderedSet<NSString *> *)rollingDeliveredIdentifiersForPublicId:
+                                      (NSString *)publicId
+                                                   deliveredNotifications:
+                                                       (NSArray<UNNotification *> *)
+                                                           deliveredNotifications
+                                                                 record:(NSDictionary *)record {
+  NSMutableOrderedSet<NSString *> *identifiers = [NSMutableOrderedSet orderedSet];
+
+  NSArray *scheduledIds = record[@"scheduledIds"];
+  if ([scheduledIds isKindOfClass:NSArray.class]) {
+    for (id scheduledId in scheduledIds) {
+      [self addString:scheduledId toOrderedSet:identifiers];
+    }
+  }
+
+  for (UNNotification *notification in deliveredNotifications) {
+    UNNotificationRequest *request = notification.request;
+    NSString *identifier = request.identifier;
+    if ([identifier isEqualToString:publicId]) {
+      [self addString:identifier toOrderedSet:identifiers];
+      continue;
+    }
+
+    NSString *mappedPublicId = [self rollingPublicIdForRequest:request];
+    if ([mappedPublicId isEqualToString:publicId]) {
+      [self addString:identifier toOrderedSet:identifiers];
+    }
+  }
+
+  return identifiers;
+}
+
++ (NSUInteger)pendingRequestCountForIdentifiers:(NSOrderedSet<NSString *> *)identifiers
+                                pendingRequests:
+                                    (NSArray<UNNotificationRequest *> *)pendingRequests {
+  NSUInteger count = 0;
+  for (UNNotificationRequest *request in pendingRequests) {
+    if ([identifiers containsObject:request.identifier]) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
++ (UNCalendarNotificationTrigger *)rollingOneShotTriggerForOccurrenceMs:
+    (NSNumber *)occurrenceMs {
+  NSDate *date = [NSDate dateWithTimeIntervalSince1970:([occurrenceMs doubleValue] / 1000.0)];
+  NSDateComponents *components =
+      [[NSCalendar currentCalendar] components:NSCalendarUnitYear | NSCalendarUnitMonth |
+                                   NSCalendarUnitDay | NSCalendarUnitHour |
+                                   NSCalendarUnitMinute | NSCalendarUnitSecond
+                                      fromDate:date];
+
+  return [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:components repeats:NO];
+}
+
++ (UNMutableNotificationContent *)rollingContentFromContent:(UNMutableNotificationContent *)content
+                                                   publicId:(NSString *)publicId
+                                               occurrenceMs:(NSNumber *)occurrenceMs
+                                                 internalId:(NSString *)internalId {
+  UNMutableNotificationContent *rollingContent = [content mutableCopy];
+  NSMutableDictionary *userInfo = [rollingContent.userInfo mutableCopy];
+  userInfo[kNotifeeRollingPublicId] = publicId;
+  userInfo[kNotifeeRollingOccurrenceMs] = occurrenceMs;
+  userInfo[kNotifeeRollingInternalId] = internalId;
+  rollingContent.userInfo = userInfo;
+
+  return rollingContent;
+}
+
++ (void)removeRollingPendingRequestsForIds:(NSArray<NSString *> *)identifiers
+                                    center:(UNUserNotificationCenter *)center {
+  if ([identifiers count] > 0) {
+    [center removePendingNotificationRequestsWithIdentifiers:identifiers];
+  }
+}
+
++ (void)createRollingTriggerNotification:(NSDictionary *)notification
+                             withTrigger:(NSDictionary *)trigger
+                             withContent:(UNMutableNotificationContent *)content
+                  withNotificationDetail:(NSDictionary *)notificationDetail
+                                  center:(UNUserNotificationCenter *)center
+                                   block:(notifeeMethodVoidBlock)block {
+  dispatch_async([self rollingTimestampQueue], ^{
+    NSString *publicId = [self rollingPublicIdForNotification:notification];
+    if (publicId == nil) {
+      NSError *error = [self
+          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                message:@"NotifeeCore: Rolling timestamp trigger requires a "
+                                        @"notification id."];
+      [self resolveBlock:block withError:error];
+      return;
+    }
+
+    NSArray<UNNotificationRequest *> *pendingRequests = [self pendingNotificationRequests:center];
+    NSMutableDictionary *records = [NotifeeCoreUtil getRollingTimestampTriggers];
+    NSDictionary *existingRecord = records[publicId];
+    NSMutableOrderedSet<NSString *> *replacementIdentifiers =
+        [self rollingIdentifiersForPublicId:publicId
+                            pendingRequests:pendingRequests
+                                     record:existingRecord];
+    NSUInteger replacingPendingCount =
+        [self pendingRequestCountForIdentifiers:replacementIdentifiers
+                                pendingRequests:pendingRequests];
+    NSInteger pendingAfterReplacement =
+        (NSInteger)[pendingRequests count] - (NSInteger)replacingPendingCount;
+    NSInteger availableBudget = [NotifeeCoreUtil rollingPendingBudget] - pendingAfterReplacement;
+
+    if (availableBudget <= 0) {
+      NSError *error = [self
+          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeBudgetExceeded
+                                message:@"NotifeeCore: iOS rolling timestamp trigger pending "
+                                        @"notification budget exhausted."];
+      [self resolveBlock:block withError:error];
+      return;
+    }
+
+    NSInteger maxCount = MIN([NotifeeCoreUtil rollingTargetPerTrigger], availableBudget);
+    NSNumber *nowMs = [self currentTimestampMs];
+    NSArray<NSNumber *> *occurrences =
+        [NotifeeCoreUtil rollingTimestampOccurrencesFromTrigger:trigger
+                                                          nowMs:nowMs
+                                                       maxCount:maxCount];
+    if ([occurrences count] == 0) {
+      NSError *error = [self
+          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                message:@"NotifeeCore: Rolling timestamp trigger did not produce "
+                                        @"any future occurrences."];
+      [self resolveBlock:block withError:error];
+      return;
+    }
+
+    NSMutableArray<UNNotificationRequest *> *requestsToAdd = [NSMutableArray array];
+    NSMutableArray<NSString *> *scheduledIds = [NSMutableArray array];
+    for (NSNumber *occurrenceMs in occurrences) {
+      NSString *internalId = [NotifeeCoreUtil rollingInternalNotificationIdForPublicId:publicId
+                                                                          occurrenceMs:occurrenceMs];
+      if (internalId == nil) {
+        NSError *error = [self
+            rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                  message:@"NotifeeCore: Failed to create rolling timestamp "
+                                          @"notification identifier."];
+        [self resolveBlock:block withError:error];
+        return;
+      }
+
+      UNMutableNotificationContent *rollingContent = [self rollingContentFromContent:content
+                                                                            publicId:publicId
+                                                                        occurrenceMs:occurrenceMs
+                                                                          internalId:internalId];
+      UNNotificationRequest *request = [UNNotificationRequest
+          requestWithIdentifier:internalId
+                        content:rollingContent
+                        trigger:[self rollingOneShotTriggerForOccurrenceMs:occurrenceMs]];
+      [requestsToAdd addObject:request];
+      [scheduledIds addObject:internalId];
+    }
+
+    NSMutableOrderedSet<NSString *> *identifiersToRemove =
+        [NSMutableOrderedSet orderedSetWithOrderedSet:replacementIdentifiers];
+    [self addString:publicId toOrderedSet:identifiersToRemove];
+    for (NSString *scheduledId in scheduledIds) {
+      [identifiersToRemove removeObject:scheduledId];
+    }
+
+    [NotifeeCoreUtil removeRollingTimestampTriggerRecordForPublicId:publicId];
+    [self removeRollingPendingRequestsForIds:[identifiersToRemove array] center:center];
+
+    dispatch_group_t group = dispatch_group_create();
+    NSObject *scheduleLock = [[NSObject alloc] init];
+    __block NSError *scheduleError = nil;
+
+    for (UNNotificationRequest *request in requestsToAdd) {
+      dispatch_group_enter(group);
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      for (UNNotificationRequest *request in requestsToAdd) {
+        [center addNotificationRequest:request
+                 withCompletionHandler:^(NSError *_Nullable error) {
+                   if (error != nil) {
+                     @synchronized(scheduleLock) {
+                       if (scheduleError == nil) {
+                         scheduleError = error;
+                       }
+                     }
+                   }
+                   dispatch_group_leave(group);
+                 }];
+      }
+    });
+
+    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+
+    if (scheduleError != nil) {
+      [self removeRollingPendingRequestsForIds:scheduledIds center:center];
+      [self resolveBlock:block withError:scheduleError];
+      return;
+    }
+
+    NSDictionary *record = @{
+      @"publicId" : publicId,
+      @"notification" : notification,
+      @"trigger" : trigger,
+      @"lastScheduledOccurrenceMs" : [occurrences lastObject],
+      @"scheduledIds" : scheduledIds,
+      @"createdAtMs" : nowMs
+    };
+    [NotifeeCoreUtil upsertRollingTimestampTriggerRecord:record publicId:publicId];
+
+    NSDictionary *persistedRecords = [NotifeeCoreUtil getRollingTimestampTriggers];
+    if (persistedRecords[publicId] == nil) {
+      [self removeRollingPendingRequestsForIds:scheduledIds center:center];
+      NSError *error = [self
+          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeStorageFailed
+                                message:@"NotifeeCore: Failed to persist rolling timestamp "
+                                        @"trigger record."];
+      [self resolveBlock:block withError:error];
+      return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
+        @"type" : @(NotifeeCoreEventTypeTriggerNotificationCreated),
+        @"detail" : @{
+          @"notification" : notificationDetail,
+        }
+      }];
+      block(nil);
+    });
+  });
+}
+
++ (void)cancelRollingNotification:(NSString *)notificationId
+             withNotificationType:(NSInteger)notificationType
+                            block:(notifeeMethodVoidBlock)block {
+  UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+  BOOL cancelDisplayed = notificationType == NotifeeCoreNotificationTypeDisplayed ||
+                         notificationType == NotifeeCoreNotificationTypeAll;
+  BOOL cancelTrigger = notificationType == NotifeeCoreNotificationTypeTrigger ||
+                       notificationType == NotifeeCoreNotificationTypeAll;
+
+  if (!cancelDisplayed && !cancelTrigger) {
+    block(nil);
+    return;
+  }
+
+  dispatch_async([self rollingTimestampQueue], ^{
+    NSDictionary *records = [NotifeeCoreUtil getRollingTimestampTriggers];
+    NSDictionary *record = records[notificationId];
+
+    if (cancelDisplayed) {
+      NSArray<UNNotification *> *deliveredNotifications = [self deliveredNotifications:center];
+      NSMutableOrderedSet<NSString *> *deliveredIdentifiersToRemove =
+          [self rollingDeliveredIdentifiersForPublicId:notificationId
+                               deliveredNotifications:deliveredNotifications
+                                               record:record];
+      [self addString:notificationId toOrderedSet:deliveredIdentifiersToRemove];
+      if ([deliveredIdentifiersToRemove count] > 0) {
+        [center removeDeliveredNotificationsWithIdentifiers:[deliveredIdentifiersToRemove array]];
+      }
+    }
+
+    if (cancelTrigger) {
+      NSArray<UNNotificationRequest *> *pendingRequests = [self pendingNotificationRequests:center];
+      NSMutableOrderedSet<NSString *> *pendingIdentifiersToRemove =
+          [self rollingIdentifiersForPublicId:notificationId
+                              pendingRequests:pendingRequests
+                                       record:record];
+      [self addString:notificationId toOrderedSet:pendingIdentifiersToRemove];
+
+      [self removeRollingPendingRequestsForIds:[pendingIdentifiersToRemove array] center:center];
+      if (record != nil) {
+        [NotifeeCoreUtil removeRollingTimestampTriggerRecordForPublicId:notificationId];
+      }
+    }
+
+    [self resolveBlock:block withError:nil];
+  });
+}
+
++ (void)cancelRollingNotificationsWithIds:(NSArray<NSString *> *)ids
+                     withNotificationType:(NSInteger)notificationType
+                                    block:(notifeeMethodVoidBlock)block {
+  UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+  BOOL cancelDisplayed = notificationType == NotifeeCoreNotificationTypeDisplayed ||
+                         notificationType == NotifeeCoreNotificationTypeAll;
+  BOOL cancelTrigger = notificationType == NotifeeCoreNotificationTypeTrigger ||
+                       notificationType == NotifeeCoreNotificationTypeAll;
+
+  NSMutableOrderedSet<NSString *> *publicIds = [NSMutableOrderedSet orderedSet];
+  for (id notificationId in ids) {
+    [self addString:notificationId toOrderedSet:publicIds];
+  }
+
+  if (!cancelDisplayed && !cancelTrigger) {
+    block(nil);
+    return;
+  }
+
+  dispatch_async([self rollingTimestampQueue], ^{
+    NSDictionary *records = [NotifeeCoreUtil getRollingTimestampTriggers];
+    NSArray<UNNotification *> *deliveredNotifications =
+        cancelDisplayed ? [self deliveredNotifications:center] : @[];
+    NSArray<UNNotificationRequest *> *pendingRequests =
+        cancelTrigger ? [self pendingNotificationRequests:center] : @[];
+    NSMutableOrderedSet<NSString *> *deliveredIdentifiersToRemove =
+        [NSMutableOrderedSet orderedSet];
+    NSMutableOrderedSet<NSString *> *pendingIdentifiersToRemove =
+        [NSMutableOrderedSet orderedSet];
+
+    for (NSString *publicId in publicIds) {
+      NSDictionary *record = records[publicId];
+
+      if (cancelDisplayed) {
+        NSMutableOrderedSet<NSString *> *rollingDeliveredIdentifiers =
+            [self rollingDeliveredIdentifiersForPublicId:publicId
+                                 deliveredNotifications:deliveredNotifications
+                                                 record:record];
+        [deliveredIdentifiersToRemove unionOrderedSet:rollingDeliveredIdentifiers];
+        [self addString:publicId toOrderedSet:deliveredIdentifiersToRemove];
+      }
+
+      if (cancelTrigger) {
+        NSMutableOrderedSet<NSString *> *rollingPendingIdentifiers =
+            [self rollingIdentifiersForPublicId:publicId
+                                pendingRequests:pendingRequests
+                                         record:record];
+        [pendingIdentifiersToRemove unionOrderedSet:rollingPendingIdentifiers];
+        [self addString:publicId toOrderedSet:pendingIdentifiersToRemove];
+        if (record != nil) {
+          [NotifeeCoreUtil removeRollingTimestampTriggerRecordForPublicId:publicId];
+        }
+      }
+    }
+
+    if ([deliveredIdentifiersToRemove count] > 0) {
+      [center removeDeliveredNotificationsWithIdentifiers:[deliveredIdentifiersToRemove array]];
+    }
+    [self removeRollingPendingRequestsForIds:[pendingIdentifiersToRemove array] center:center];
+    [self resolveBlock:block withError:nil];
+  });
+}
 
 #pragma mark - Library Methods
 
@@ -42,17 +545,9 @@
 + (void)cancelNotification:(NSString *)notificationId
       withNotificationType:(NSInteger)notificationType
                  withBlock:(notifeeMethodVoidBlock)block {
-  UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-  // cancel displayed notification
-  if (notificationType == NotifeeCoreNotificationTypeDisplayed ||
-      notificationType == NotifeeCoreNotificationTypeAll)
-    [center removeDeliveredNotificationsWithIdentifiers:@[ notificationId ]];
-
-  // cancel trigger notification
-  if (notificationType == NotifeeCoreNotificationTypeTrigger ||
-      notificationType == NotifeeCoreNotificationTypeAll)
-    [center removePendingNotificationRequestsWithIdentifiers:@[ notificationId ]];
-  block(nil);
+  [self cancelRollingNotification:notificationId
+             withNotificationType:notificationType
+                            block:block];
 }
 
 /**
@@ -69,11 +564,17 @@
       notificationType == NotifeeCoreNotificationTypeAll)
     [center removeAllDeliveredNotifications];
 
-  // cancel trigger notifications
-  if (notificationType == NotifeeCoreNotificationTypeTrigger ||
-      notificationType == NotifeeCoreNotificationTypeAll)
+  if (notificationType != NotifeeCoreNotificationTypeTrigger &&
+      notificationType != NotifeeCoreNotificationTypeAll) {
+    block(nil);
+    return;
+  }
+
+  dispatch_async([self rollingTimestampQueue], ^{
     [center removeAllPendingNotificationRequests];
-  block(nil);
+    [NotifeeCoreUtil clearRollingTimestampTriggerRecords];
+    [self resolveBlock:block withError:nil];
+  });
 }
 
 /**
@@ -86,18 +587,7 @@
 + (void)cancelAllNotificationsWithIds:(NSInteger)notificationType
                               withIds:(NSArray<NSString *> *)ids
                             withBlock:(notifeeMethodVoidBlock)block {
-  UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-
-  // cancel displayed notifications
-  if (notificationType == NotifeeCoreNotificationTypeDisplayed ||
-      notificationType == NotifeeCoreNotificationTypeAll)
-    [center removeDeliveredNotificationsWithIdentifiers:ids];
-
-  // cancel trigger notifications
-  if (notificationType == NotifeeCoreNotificationTypeTrigger ||
-      notificationType == NotifeeCoreNotificationTypeAll)
-    [center removePendingNotificationRequestsWithIdentifiers:ids];
-  block(nil);
+  [self cancelRollingNotificationsWithIds:ids withNotificationType:notificationType block:block];
 }
 
 + (void)getDisplayedNotifications:(notifeeMethodNSArrayBlock)block {
@@ -106,20 +596,33 @@
   [center getDeliveredNotificationsWithCompletionHandler:^(
               NSArray<UNNotification *> *_Nonnull deliveredNotifications) {
     for (UNNotification *deliveredNotification in deliveredNotifications) {
+      UNNotificationRequest *request = deliveredNotification.request;
+      NSString *notificationId = [self publicIdentifierForRequest:request];
+      if (notificationId == nil) {
+        continue;
+      }
+
       NSMutableDictionary *triggerNotification = [NSMutableDictionary dictionary];
-      triggerNotification[@"id"] = deliveredNotification.request.identifier;
+      triggerNotification[@"id"] = notificationId;
 
       triggerNotification[@"date"] =
           [NotifeeCoreUtil convertToTimestamp:deliveredNotification.date];
       triggerNotification[@"notification"] =
-          deliveredNotification.request.content.userInfo[kNotifeeUserInfoNotification];
+          request.content.userInfo[kNotifeeUserInfoNotification];
       triggerNotification[@"trigger"] =
-          deliveredNotification.request.content.userInfo[kNotifeeUserInfoTrigger];
+          request.content.userInfo[kNotifeeUserInfoTrigger];
 
       if (triggerNotification[@"notification"] == nil) {
         // parse remote notification
-        triggerNotification[@"notification"] =
-            [NotifeeCoreUtil parseUNNotificationRequest:deliveredNotification.request];
+        triggerNotification[@"notification"] = [NotifeeCoreUtil parseUNNotificationRequest:request];
+      }
+
+      NSString *rollingPublicId = [self rollingPublicIdForRequest:request];
+      NSDictionary *notification = triggerNotification[@"notification"];
+      if (rollingPublicId != nil && [notification isKindOfClass:NSDictionary.class]) {
+        NSMutableDictionary *publicNotification = [notification mutableCopy];
+        publicNotification[@"id"] = rollingPublicId;
+        triggerNotification[@"notification"] = publicNotification;
       }
 
       [triggerNotifications addObject:triggerNotification];
@@ -133,9 +636,41 @@
 
   [center getPendingNotificationRequestsWithCompletionHandler:^(
               NSArray<UNNotificationRequest *> *_Nonnull requests) {
+    NSDictionary *rollingRecords = [NotifeeCoreUtil getRollingTimestampTriggers];
+    NSMutableSet<NSString *> *rollingPublicIds = [NSMutableSet set];
     NSMutableArray *triggerNotifications = [[NSMutableArray alloc] init];
 
+    for (id publicId in rollingRecords) {
+      if (![publicId isKindOfClass:NSString.class]) {
+        continue;
+      }
+
+      NSDictionary *record = rollingRecords[publicId];
+      NSDictionary *notification = record[@"notification"];
+      NSDictionary *trigger = record[@"trigger"];
+      if (![notification isKindOfClass:NSDictionary.class] ||
+          ![trigger isKindOfClass:NSDictionary.class]) {
+        continue;
+      }
+
+      NSMutableDictionary *triggerNotification = [NSMutableDictionary dictionary];
+      triggerNotification[@"notification"] = notification;
+      triggerNotification[@"trigger"] = trigger;
+      [triggerNotifications addObject:triggerNotification];
+      [rollingPublicIds addObject:publicId];
+    }
+
     for (UNNotificationRequest *request in requests) {
+      NSString *rollingPublicId =
+          [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:request.identifier];
+      if (rollingPublicId != nil) {
+        continue;
+      }
+
+      if ([rollingPublicIds containsObject:request.identifier]) {
+        continue;
+      }
+
       NSMutableDictionary *triggerNotification = [NSMutableDictionary dictionary];
 
       triggerNotification[@"notification"] = request.content.userInfo[kNotifeeUserInfoNotification];
@@ -158,14 +693,22 @@
   UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
   [center getPendingNotificationRequestsWithCompletionHandler:^(
               NSArray<UNNotificationRequest *> *_Nonnull requests) {
-    NSMutableArray<NSString *> *idsArray = [[NSMutableArray alloc] init];
+    NSMutableOrderedSet<NSString *> *ids = [NSMutableOrderedSet orderedSet];
 
     for (UNNotificationRequest *request in requests) {
       NSString *notificationId = request.identifier;
-      [idsArray addObject:notificationId];
+      NSString *rollingPublicId =
+          [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:notificationId];
+      [self addString:(rollingPublicId != nil ? rollingPublicId : notificationId)
+          toOrderedSet:ids];
     }
 
-    block(nil, idsArray);
+    NSDictionary *rollingRecords = [NotifeeCoreUtil getRollingTimestampTriggers];
+    for (id publicId in rollingRecords) {
+      [self addString:publicId toOrderedSet:ids];
+    }
+
+    block(nil, [ids array]);
   }];
 }
 
@@ -255,15 +798,6 @@
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     UNMutableNotificationContent *content = [self buildNotificationContent:notification
                                                                withTrigger:trigger];
-    UNNotificationTrigger *unTrigger = [NotifeeCoreUtil triggerFromDictionary:trigger];
-
-    if (unTrigger == nil) {
-      // do nothing if trigger is null
-      return dispatch_async(dispatch_get_main_queue(), ^{
-        block(nil);
-      });
-    }
-
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
 
     NSMutableDictionary *notificationDetail = [notification mutableCopy];
@@ -294,6 +828,25 @@
           content = [updatedContent mutableCopy];
         }
       }
+    }
+
+    if ([NotifeeCoreUtil isRollingTimestampTrigger:trigger]) {
+      [self createRollingTriggerNotification:notification
+                                 withTrigger:trigger
+                                 withContent:content
+                      withNotificationDetail:notificationDetail
+                                      center:center
+                                       block:block];
+      return;
+    }
+
+    UNNotificationTrigger *unTrigger = [NotifeeCoreUtil triggerFromDictionary:trigger];
+
+    if (unTrigger == nil) {
+      // do nothing if trigger is null
+      return dispatch_async(dispatch_get_main_queue(), ^{
+        block(nil);
+      });
     }
 
     UNNotificationRequest *request =
