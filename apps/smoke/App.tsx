@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, Pressable, Platform, StyleSheet, View, Alert } from 'react-native';
+import {
+  ScrollView,
+  Text,
+  Pressable,
+  Platform,
+  StyleSheet,
+  View,
+  Alert,
+  Linking,
+} from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import notifee, {
   TriggerType,
@@ -17,6 +26,7 @@ import {
   getInitialNotification,
 } from '@react-native-firebase/messaging/lib/modular';
 import { DeliveredTestScreen } from './DeliveredTestScreen';
+import { Feature15RepeatIntervalScreen } from './Feature15RepeatIntervalScreen';
 import { TriggerRaceTestScreen } from './TriggerRaceTestScreen';
 
 // VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
@@ -34,6 +44,31 @@ type Section = {
   title: string;
   buttons: Array<{ label: string; onPress: () => void; testID?: string }>;
 };
+
+type Screen = 'main' | 'delivered' | 'race549' | 'feature15';
+
+type Feature15Request = {
+  scenario: string;
+  nonce: number;
+};
+
+function extractFeature15Scenario(url: string): string | null {
+  const prefix = 'notifykit://feature15/run/';
+  if (!url.startsWith(prefix)) {
+    return null;
+  }
+
+  const rawScenario = url.slice(prefix.length).split(/[?#]/)[0];
+  if (rawScenario.length === 0) {
+    return '';
+  }
+
+  try {
+    return decodeURIComponent(rawScenario);
+  } catch {
+    return rawScenario;
+  }
+}
 
 function extractForegroundFcmTitle(remoteMessage: {
   notification?: { title?: string | null } | null;
@@ -56,12 +91,48 @@ function extractForegroundFcmTitle(remoteMessage: {
 }
 
 function App() {
-  const [screen, setScreen] = useState<'main' | 'delivered' | 'race549'>(
-    VERIFY_549_AUTO_RUN ? 'race549' : 'main',
-  );
+  const [screen, setScreen] = useState<Screen>(VERIFY_549_AUTO_RUN ? 'race549' : 'main');
+  const [feature15Request, setFeature15Request] = useState<Feature15Request | null>(null);
   const log = useCallback((msg: string) => {
     console.log(`[Notifee] ${msg}`);
   }, []);
+
+  // Feature #15 Android smoke harness deep links:
+  // notifykit://feature15/run/<scenario>
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const scenario = extractFeature15Scenario(url);
+      if (scenario == null) {
+        return;
+      }
+
+      log(`Feature15 deep link scenario: ${scenario}`);
+      setScreen('feature15');
+      setFeature15Request(prev => ({
+        scenario,
+        nonce: (prev?.nonce ?? 0) + 1,
+      }));
+    };
+
+    Linking.getInitialURL()
+      .then(url => {
+        if (url) {
+          handleUrl(url);
+        }
+      })
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        log(`Feature15 initial URL error: ${message}`);
+      });
+
+    const subscription = Linking.addEventListener('url', event => {
+      handleUrl(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [log]);
 
   // Check initial notification (cold start test for #1128)
   useEffect(() => {
@@ -665,6 +736,10 @@ function App() {
       buttons: [{ label: 'Open #549 Race Test', onPress: () => setScreen('race549') }],
     },
     {
+      title: 'Feature #15 Repeat Interval Tests',
+      buttons: [{ label: 'Open Feature #15 Tests', onPress: () => setScreen('feature15') }],
+    },
+    {
       title: 'Bug #1128 Tests',
       buttons: [
         { label: 'Display with Data', onPress: displayWithData },
@@ -689,6 +764,17 @@ function App() {
     return (
       <SafeAreaProvider>
         <TriggerRaceTestScreen onBack={() => setScreen('main')} autoRun={VERIFY_549_AUTO_RUN} />
+      </SafeAreaProvider>
+    );
+  }
+
+  if (screen === 'feature15') {
+    return (
+      <SafeAreaProvider>
+        <Feature15RepeatIntervalScreen
+          onBack={() => setScreen('main')}
+          request={feature15Request}
+        />
       </SafeAreaProvider>
     );
   }
