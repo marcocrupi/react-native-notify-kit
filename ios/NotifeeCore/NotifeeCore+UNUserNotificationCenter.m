@@ -17,8 +17,13 @@
 
 #import "NotifeeCore+UNUserNotificationCenter.h"
 
+#import "NotifeeCore.h"
 #import "NotifeeCoreDelegateHolder.h"
 #import "NotifeeCoreUtil.h"
+
+@interface NotifeeCore (RollingTimestampTopUp)
++ (void)topUpRollingTimestampTriggersWithCompletion:(void (^)(NSError *error))completion;
+@end
 
 @implementation NotifeeCoreUNUserNotificationCenter
 
@@ -89,6 +94,24 @@ struct {
   return nil;
 }
 
+- (BOOL)isRollingTimestampNotificationRequest:(UNNotificationRequest *)request {
+  if ([NotifeeCoreUtil isRollingInternalNotificationId:request.identifier]) {
+    return YES;
+  }
+
+  NSDictionary *trigger = request.content.userInfo[kNotifeeUserInfoTrigger];
+  return [NotifeeCoreUtil isRollingTimestampTrigger:trigger];
+}
+
+- (void)topUpRollingTimestampTriggersForLifecycleEvent:(NSString *)eventName {
+  [NotifeeCore topUpRollingTimestampTriggersWithCompletion:^(NSError *error) {
+    if (error != nil) {
+      NSLog(@"NotifeeCore: Failed to top up rolling timestamp triggers after %@: %@",
+            eventName, error);
+    }
+  }];
+}
+
 #pragma mark - UNUserNotificationCenter Delegate Methods
 
 // The method will be called on the delegate only if the application is in the
@@ -103,6 +126,8 @@ struct {
              (void (^)(UNNotificationPresentationOptions options))completionHandler {
   NSDictionary *notifeeNotification =
       notification.request.content.userInfo[kNotifeeUserInfoNotification];
+  BOOL isRollingTimestampNotification =
+      [self isRollingTimestampNotificationRequest:notification.request];
 
   // we only care about notifications created through notifee
   if (notifeeNotification != nil) {
@@ -160,6 +185,9 @@ struct {
     }];
 
     completionHandler(presentationOptions);
+    if (isRollingTimestampNotification) {
+      [self topUpRollingTimestampTriggersForLifecycleEvent:@"foreground delivery"];
+    }
 
   } else if (_originalDelegate != nil && originalUNCDelegateRespondsTo.willPresentNotification) {
     [_originalDelegate userNotificationCenter:center
@@ -195,6 +223,8 @@ struct {
              withCompletionHandler:(void (^)(void))completionHandler {
   NSDictionary *notifeeNotification =
       response.notification.request.content.userInfo[kNotifeeUserInfoNotification];
+  BOOL isRollingTimestampNotification =
+      [self isRollingTimestampNotificationRequest:response.notification.request];
 
   _notificationOpenedAppID = notifeeNotification[@"id"];
 
@@ -234,6 +264,9 @@ struct {
         }
       }];
       completionHandler();
+      if (isRollingTimestampNotification) {
+        [self topUpRollingTimestampTriggersForLifecycleEvent:@"notification response"];
+      }
       return;
     }
 
@@ -282,6 +315,9 @@ struct {
     [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:event];
 
     completionHandler();
+    if (isRollingTimestampNotification) {
+      [self topUpRollingTimestampTriggersForLifecycleEvent:@"notification response"];
+    }
   } else {
     // Defensive: parseUNNotificationRequest: currently never returns nil,
     // but if it did, the completionHandler contract must still be honored.

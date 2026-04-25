@@ -18,6 +18,11 @@
 #import <UIKit/UIKit.h>
 #import "NotifeeCore+NSNotificationCenter.h"
 #import "NotifeeCore+UNUserNotificationCenter.h"
+#import "NotifeeCore.h"
+
+@interface NotifeeCore (RollingTimestampTopUp)
++ (void)topUpRollingTimestampTriggersWithCompletion:(void (^)(NSError *error))completion;
+@end
 
 @implementation NotifeeCoreNSNotificationCenter
 
@@ -41,6 +46,11 @@
         addObserver:strongSelf
            selector:@selector(application_onDidFinishLaunchingNotification:)
                name:UIApplicationDidFinishLaunchingNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:strongSelf
+           selector:@selector(application_didBecomeActiveNotification:)
+               name:UIApplicationDidBecomeActiveNotification
              object:nil];
     [[NSNotificationCenter defaultCenter]
         addObserver:strongSelf
@@ -71,6 +81,15 @@
   [[NotifeeCoreUNUserNotificationCenter instance] getInitialNotification];
 
   [[NotifeeCoreUNUserNotificationCenter instance] observe];
+}
+
+- (void)application_didBecomeActiveNotification:(nonnull NSNotification *)notification {
+  [NotifeeCore topUpRollingTimestampTriggersWithCompletion:^(NSError *error) {
+    if (error != nil) {
+      NSLog(@"NotifeeCore: Failed to top up rolling timestamp triggers after app became active: %@",
+            error);
+    }
+  }];
 }
 
 - (void)messaging_didReceiveRemoteNotification:(nonnull NSNotification *)notification {
