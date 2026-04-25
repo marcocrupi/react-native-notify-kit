@@ -39,9 +39,11 @@ typedef NS_ENUM(NSInteger, NotifeeCoreTriggerType) {
 
 // Enum representing repeat frequency for TimestampTrigger
 typedef NS_ENUM(NSInteger, NotifeeCoreRepeatFrequency) {
+  NotifeeCoreRepeatFrequencyNone = -1,
   NotifeeCoreRepeatFrequencyHourly = 0,
   NotifeeCoreRepeatFrequencyDaily = 1,
-  NotifeeCoreRepeatFrequencyWeekly = 2
+  NotifeeCoreRepeatFrequencyWeekly = 2,
+  NotifeeCoreRepeatFrequencyMonthly = 3
 };
 
 @interface NotifeeCoreUtil : NSObject
@@ -64,6 +66,39 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRepeatFrequency) {
 + (NSMutableArray<NSString *> *)intentIdentifiersFromNumberArray:(NSArray<NSNumber *> *)identifiers;
 
 + (UNNotificationTrigger *)triggerFromDictionary:(NSDictionary *)triggerDict;
+
++ (BOOL)isRollingTimestampTrigger:(nullable NSDictionary *)triggerDict;
+
++ (NSArray<NSNumber *> *)rollingTimestampOccurrencesFromTrigger:(nullable NSDictionary *)triggerDict
+                                                          nowMs:(nullable NSNumber *)nowMs
+                                                       maxCount:(NSInteger)maxCount;
+
++ (nullable NSString *)rollingInternalNotificationIdForPublicId:(nullable NSString *)publicId
+                                                   occurrenceMs:(nullable NSNumber *)occurrenceMs;
+
++ (nullable NSString *)rollingPublicIdFromInternalNotificationId:(nullable NSString *)internalId;
+
++ (nullable NSNumber *)rollingOccurrenceMsFromInternalNotificationId:
+    (nullable NSString *)internalId;
+
++ (BOOL)isRollingInternalNotificationId:(nullable NSString *)notificationId;
+
++ (NSInteger)rollingPendingBudget;
+
++ (NSInteger)rollingTargetPerTrigger;
+
++ (NSMutableDictionary *)getRollingTimestampTriggers;
+
++ (void)setRollingTimestampTriggers:(nullable NSDictionary *)records;
+
++ (void)upsertRollingTimestampTriggerRecord:(nullable NSDictionary *)record
+                                   publicId:(nullable NSString *)publicId;
+
++ (void)removeRollingTimestampTriggerRecordForPublicId:(nullable NSString *)publicId;
+
++ (void)clearRollingTimestampTriggerRecords;
+
++ (nullable NSNumber *)rollingLastScheduledOccurrenceMsForRecord:(nullable NSDictionary *)record;
 
 + (NSNumber *)convertToTimestamp:(NSDate *)date;
 

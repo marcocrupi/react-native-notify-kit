@@ -19,7 +19,38 @@
 #include <CoreGraphics/CGGeometry.h>
 #import <Intents/INIntentIdentifiers.h>
 #import <UIKit/UIKit.h>
+#include <limits.h>
+#include <math.h>
 #import "NotifeeCore+NSURLSession.h"
+
+static NSString *const kNotifeeRollingTimestampTriggersStorageKey =
+    @"app.notifee.core.rollingTimestampTriggers.v1";
+static NSString *const kNotifeeRollingInternalIdPrefix = @"__notifee_rolling__";
+static NSString *const kNotifeeRollingInternalIdSeparator = @"__";
+static NSInteger const kNotifeeRollingPendingBudget = 60;
+static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
+
+@interface NotifeeCoreUtil ()
+
++ (nullable NSNumber *)rollingIntegerNumberFromObject:(nullable id)value
+                                        allowNegative:(BOOL)allowNegative
+                                            allowZero:(BOOL)allowZero;
++ (BOOL)isSupportedRollingRepeatFrequency:(NSInteger)repeatFrequency;
++ (NSInteger)rollingRepeatIntervalFromTrigger:(NSDictionary *)triggerDict;
++ (nullable NSDate *)rollingDateByAddingRepeatFrequency:(NSInteger)repeatFrequency
+                                               interval:(NSInteger)interval
+                                                 toDate:(NSDate *)date;
++ (nullable NSDictionary *)rollingPartsFromInternalNotificationId:(nullable NSString *)internalId;
++ (nullable NSMutableDictionary *)
+    rollingSanitizedTimestampTriggerRecord:(nullable NSDictionary *)record
+                                  publicId:(nullable NSString *)publicId
+                   defaultMissingCreatedAt:(BOOL)defaultMissingCreatedAt;
++ (NSMutableDictionary *)rollingSanitizedTimestampTriggerRecords:(nullable NSDictionary *)records
+                                         defaultMissingCreatedAt:(BOOL)defaultMissingCreatedAt;
++ (nullable id)rollingJSONObjectFromObject:(nullable id)object;
++ (NSNumber *)rollingCurrentTimestampMs;
+
+@end
 
 @implementation NotifeeCoreUtil
 
@@ -317,6 +348,499 @@
   }
 
   return trigger;
+}
+
++ (BOOL)isRollingTimestampTrigger:(NSDictionary *)triggerDict {
+  if (![triggerDict isKindOfClass:NSDictionary.class]) {
+    return NO;
+  }
+
+  NSNumber *triggerType = [self rollingIntegerNumberFromObject:triggerDict[@"type"]
+                                                 allowNegative:NO
+                                                     allowZero:YES];
+  if (triggerType == nil || [triggerType integerValue] != NotifeeCoreTriggerTypeTimestamp) {
+    return NO;
+  }
+
+  NSNumber *timestamp = [self rollingIntegerNumberFromObject:triggerDict[@"timestamp"]
+                                               allowNegative:NO
+                                                   allowZero:NO];
+  if (timestamp == nil) {
+    return NO;
+  }
+
+  if (triggerDict[@"repeatFrequency"] == nil) {
+    return NO;
+  }
+
+  NSNumber *repeatFrequencyNumber =
+      [self rollingIntegerNumberFromObject:triggerDict[@"repeatFrequency"]
+                             allowNegative:YES
+                                 allowZero:YES];
+  if (repeatFrequencyNumber == nil) {
+    return NO;
+  }
+
+  NSInteger repeatFrequency = [repeatFrequencyNumber integerValue];
+  if (repeatFrequency == NotifeeCoreRepeatFrequencyNone ||
+      ![self isSupportedRollingRepeatFrequency:repeatFrequency]) {
+    return NO;
+  }
+
+  if (triggerDict[@"repeatInterval"] != nil) {
+    NSNumber *repeatInterval = [self rollingIntegerNumberFromObject:triggerDict[@"repeatInterval"]
+                                                      allowNegative:NO
+                                                          allowZero:NO];
+    if (repeatInterval == nil || [repeatInterval doubleValue] > NSIntegerMax) {
+      return NO;
+    }
+  }
+
+  return YES;
+}
+
++ (NSArray<NSNumber *> *)rollingTimestampOccurrencesFromTrigger:(NSDictionary *)triggerDict
+                                                          nowMs:(NSNumber *)nowMs
+                                                       maxCount:(NSInteger)maxCount {
+  if (maxCount <= 0 || ![triggerDict isKindOfClass:NSDictionary.class]) {
+    return @[];
+  }
+
+  NSNumber *triggerType = [self rollingIntegerNumberFromObject:triggerDict[@"type"]
+                                                 allowNegative:NO
+                                                     allowZero:YES];
+  if (triggerType == nil || [triggerType integerValue] != NotifeeCoreTriggerTypeTimestamp) {
+    return @[];
+  }
+
+  NSNumber *timestampNumber = [self rollingIntegerNumberFromObject:triggerDict[@"timestamp"]
+                                                     allowNegative:NO
+                                                         allowZero:NO];
+  NSNumber *nowNumber = [self rollingIntegerNumberFromObject:nowMs allowNegative:NO allowZero:YES];
+  NSNumber *repeatFrequencyNumber =
+      [self rollingIntegerNumberFromObject:triggerDict[@"repeatFrequency"]
+                             allowNegative:YES
+                                 allowZero:YES];
+  if (timestampNumber == nil || nowNumber == nil || repeatFrequencyNumber == nil) {
+    return @[];
+  }
+
+  NSInteger repeatFrequency = [repeatFrequencyNumber integerValue];
+  if (repeatFrequency == NotifeeCoreRepeatFrequencyNone ||
+      ![self isSupportedRollingRepeatFrequency:repeatFrequency]) {
+    return @[];
+  }
+
+  NSInteger repeatInterval = [self rollingRepeatIntervalFromTrigger:triggerDict];
+  long long nowMsValue = [nowNumber longLongValue];
+  NSDate *candidateDate =
+      [NSDate dateWithTimeIntervalSince1970:([timestampNumber doubleValue] / 1000.0)];
+  NSMutableArray<NSNumber *> *occurrences = [NSMutableArray array];
+
+  while (candidateDate != nil &&
+         (long long)llround([candidateDate timeIntervalSince1970] * 1000.0) <= nowMsValue) {
+    NSDate *nextDate = [self rollingDateByAddingRepeatFrequency:repeatFrequency
+                                                       interval:repeatInterval
+                                                         toDate:candidateDate];
+    if (nextDate == nil || [nextDate timeIntervalSinceDate:candidateDate] <= 0) {
+      return @[];
+    }
+    candidateDate = nextDate;
+  }
+
+  while (candidateDate != nil && [occurrences count] < (NSUInteger)maxCount) {
+    long long occurrenceMs = (long long)llround([candidateDate timeIntervalSince1970] * 1000.0);
+    if (occurrenceMs > nowMsValue) {
+      [occurrences addObject:@(occurrenceMs)];
+    }
+
+    NSDate *nextDate = [self rollingDateByAddingRepeatFrequency:repeatFrequency
+                                                       interval:repeatInterval
+                                                         toDate:candidateDate];
+    if (nextDate == nil || [nextDate timeIntervalSinceDate:candidateDate] <= 0) {
+      break;
+    }
+    candidateDate = nextDate;
+  }
+
+  return occurrences;
+}
+
++ (NSString *)rollingInternalNotificationIdForPublicId:(NSString *)publicId
+                                          occurrenceMs:(NSNumber *)occurrenceMs {
+  if (![publicId isKindOfClass:NSString.class] || [publicId length] == 0) {
+    return nil;
+  }
+
+  NSNumber *occurrenceNumber = [self rollingIntegerNumberFromObject:occurrenceMs
+                                                      allowNegative:NO
+                                                          allowZero:NO];
+  if (occurrenceNumber == nil) {
+    return nil;
+  }
+
+  NSMutableCharacterSet *allowedCharacters =
+      [NSMutableCharacterSet characterSetWithCharactersInString:@"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                                                @"abcdefghijklmnopqrstuvwxyz"
+                                                                @"0123456789-._~"];
+  NSString *escapedPublicId =
+      [publicId stringByAddingPercentEncodingWithAllowedCharacters:allowedCharacters];
+  if (escapedPublicId == nil || [escapedPublicId length] == 0) {
+    return nil;
+  }
+
+  return [NSString stringWithFormat:@"%@%@%@%lld", kNotifeeRollingInternalIdPrefix, escapedPublicId,
+                                    kNotifeeRollingInternalIdSeparator,
+                                    [occurrenceNumber longLongValue]];
+}
+
++ (NSString *)rollingPublicIdFromInternalNotificationId:(NSString *)internalId {
+  NSDictionary *parts = [self rollingPartsFromInternalNotificationId:internalId];
+  return parts[@"publicId"];
+}
+
++ (NSNumber *)rollingOccurrenceMsFromInternalNotificationId:(NSString *)internalId {
+  NSDictionary *parts = [self rollingPartsFromInternalNotificationId:internalId];
+  return parts[@"occurrenceMs"];
+}
+
++ (BOOL)isRollingInternalNotificationId:(NSString *)notificationId {
+  return [self rollingPartsFromInternalNotificationId:notificationId] != nil;
+}
+
++ (NSInteger)rollingPendingBudget {
+  return kNotifeeRollingPendingBudget;
+}
+
++ (NSInteger)rollingTargetPerTrigger {
+  return kNotifeeRollingTargetPerTrigger;
+}
+
++ (NSMutableDictionary *)getRollingTimestampTriggers {
+  id storedRecords = [[NSUserDefaults standardUserDefaults]
+      objectForKey:kNotifeeRollingTimestampTriggersStorageKey];
+  NSDictionary *records = nil;
+
+  if ([storedRecords isKindOfClass:NSData.class]) {
+    NSError *error = nil;
+    id jsonObject = [NSJSONSerialization JSONObjectWithData:storedRecords options:0 error:&error];
+    if (error != nil || ![jsonObject isKindOfClass:NSDictionary.class]) {
+      return [NSMutableDictionary dictionary];
+    }
+    records = jsonObject;
+  } else if ([storedRecords isKindOfClass:NSDictionary.class]) {
+    records = storedRecords;
+  } else {
+    return [NSMutableDictionary dictionary];
+  }
+
+  return [self rollingSanitizedTimestampTriggerRecords:records defaultMissingCreatedAt:YES];
+}
+
++ (void)setRollingTimestampTriggers:(NSDictionary *)records {
+  NSMutableDictionary *sanitizedRecords = [self rollingSanitizedTimestampTriggerRecords:records
+                                                                defaultMissingCreatedAt:YES];
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+  if ([sanitizedRecords count] == 0) {
+    [defaults removeObjectForKey:kNotifeeRollingTimestampTriggersStorageKey];
+    return;
+  }
+
+  NSError *error = nil;
+  NSData *jsonData = [NSJSONSerialization dataWithJSONObject:sanitizedRecords
+                                                     options:0
+                                                       error:&error];
+  if (error != nil || jsonData == nil) {
+    [defaults removeObjectForKey:kNotifeeRollingTimestampTriggersStorageKey];
+    return;
+  }
+
+  [defaults setObject:jsonData forKey:kNotifeeRollingTimestampTriggersStorageKey];
+}
+
++ (void)upsertRollingTimestampTriggerRecord:(NSDictionary *)record publicId:(NSString *)publicId {
+  NSMutableDictionary *sanitizedRecord = [self rollingSanitizedTimestampTriggerRecord:record
+                                                                             publicId:publicId
+                                                              defaultMissingCreatedAt:YES];
+  if (sanitizedRecord == nil) {
+    return;
+  }
+
+  NSMutableDictionary *records = [self getRollingTimestampTriggers];
+  records[sanitizedRecord[@"publicId"]] = sanitizedRecord;
+  [self setRollingTimestampTriggers:records];
+}
+
++ (void)removeRollingTimestampTriggerRecordForPublicId:(NSString *)publicId {
+  if (![publicId isKindOfClass:NSString.class] || [publicId length] == 0) {
+    return;
+  }
+
+  NSMutableDictionary *records = [self getRollingTimestampTriggers];
+  [records removeObjectForKey:publicId];
+  [self setRollingTimestampTriggers:records];
+}
+
++ (void)clearRollingTimestampTriggerRecords {
+  [[NSUserDefaults standardUserDefaults]
+      removeObjectForKey:kNotifeeRollingTimestampTriggersStorageKey];
+}
+
++ (NSNumber *)rollingLastScheduledOccurrenceMsForRecord:(NSDictionary *)record {
+  if (![record isKindOfClass:NSDictionary.class]) {
+    return nil;
+  }
+
+  NSNumber *lastScheduledOccurrence =
+      [self rollingIntegerNumberFromObject:record[@"lastScheduledOccurrenceMs"]
+                             allowNegative:NO
+                                 allowZero:NO];
+  if (lastScheduledOccurrence != nil) {
+    return lastScheduledOccurrence;
+  }
+
+  NSDictionary *trigger = record[@"trigger"];
+  if (![trigger isKindOfClass:NSDictionary.class]) {
+    return nil;
+  }
+
+  return [self rollingIntegerNumberFromObject:trigger[@"timestamp"] allowNegative:NO allowZero:NO];
+}
+
++ (NSNumber *)rollingIntegerNumberFromObject:(id)value
+                               allowNegative:(BOOL)allowNegative
+                                   allowZero:(BOOL)allowZero {
+  if (![value isKindOfClass:NSNumber.class] ||
+      CFGetTypeID((__bridge CFTypeRef)value) == CFBooleanGetTypeID()) {
+    return nil;
+  }
+
+  double number = [value doubleValue];
+  if (!isfinite(number) || floor(number) != number || number > LLONG_MAX || number < LLONG_MIN) {
+    return nil;
+  }
+
+  if (!allowNegative && number < 0) {
+    return nil;
+  }
+
+  if (!allowZero && number == 0) {
+    return nil;
+  }
+
+  return @((long long)number);
+}
+
++ (BOOL)isSupportedRollingRepeatFrequency:(NSInteger)repeatFrequency {
+  return repeatFrequency == NotifeeCoreRepeatFrequencyHourly ||
+         repeatFrequency == NotifeeCoreRepeatFrequencyDaily ||
+         repeatFrequency == NotifeeCoreRepeatFrequencyWeekly ||
+         repeatFrequency == NotifeeCoreRepeatFrequencyMonthly;
+}
+
++ (NSInteger)rollingRepeatIntervalFromTrigger:(NSDictionary *)triggerDict {
+  NSNumber *repeatInterval = [self rollingIntegerNumberFromObject:triggerDict[@"repeatInterval"]
+                                                    allowNegative:NO
+                                                        allowZero:NO];
+  if (repeatInterval == nil || [repeatInterval doubleValue] > NSIntegerMax) {
+    return 1;
+  }
+
+  return [repeatInterval integerValue];
+}
+
++ (NSDate *)rollingDateByAddingRepeatFrequency:(NSInteger)repeatFrequency
+                                      interval:(NSInteger)interval
+                                        toDate:(NSDate *)date {
+  NSDateComponents *components = [[NSDateComponents alloc] init];
+
+  if (repeatFrequency == NotifeeCoreRepeatFrequencyHourly) {
+    components.hour = interval;
+  } else if (repeatFrequency == NotifeeCoreRepeatFrequencyDaily) {
+    components.day = interval;
+  } else if (repeatFrequency == NotifeeCoreRepeatFrequencyWeekly) {
+    components.weekOfYear = interval;
+  } else if (repeatFrequency == NotifeeCoreRepeatFrequencyMonthly) {
+    components.month = interval;
+  } else {
+    return nil;
+  }
+
+  return [[NSCalendar currentCalendar] dateByAddingComponents:components toDate:date options:0];
+}
+
++ (NSDictionary *)rollingPartsFromInternalNotificationId:(NSString *)internalId {
+  if (![internalId isKindOfClass:NSString.class] ||
+      ![internalId hasPrefix:kNotifeeRollingInternalIdPrefix]) {
+    return nil;
+  }
+
+  NSString *suffix = [internalId substringFromIndex:[kNotifeeRollingInternalIdPrefix length]];
+  NSRange separatorRange = [suffix rangeOfString:kNotifeeRollingInternalIdSeparator
+                                         options:NSBackwardsSearch];
+  if (separatorRange.location == NSNotFound || separatorRange.location == 0) {
+    return nil;
+  }
+
+  NSString *escapedPublicId = [suffix substringToIndex:separatorRange.location];
+  NSString *occurrenceString = [suffix substringFromIndex:NSMaxRange(separatorRange)];
+  if ([escapedPublicId length] == 0 || [occurrenceString length] == 0) {
+    return nil;
+  }
+
+  NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+  if ([occurrenceString rangeOfCharacterFromSet:nonDigits].location != NSNotFound) {
+    return nil;
+  }
+
+  long long occurrenceMs = [occurrenceString longLongValue];
+  if (occurrenceMs <= 0 ||
+      ![[NSString stringWithFormat:@"%lld", occurrenceMs] isEqualToString:occurrenceString]) {
+    return nil;
+  }
+
+  NSString *publicId = [escapedPublicId stringByRemovingPercentEncoding];
+  if (![publicId isKindOfClass:NSString.class] || [publicId length] == 0) {
+    return nil;
+  }
+
+  return @{@"publicId" : publicId, @"occurrenceMs" : @(occurrenceMs)};
+}
+
++ (NSMutableDictionary *)rollingSanitizedTimestampTriggerRecord:(NSDictionary *)record
+                                                       publicId:(NSString *)publicId
+                                        defaultMissingCreatedAt:(BOOL)defaultMissingCreatedAt {
+  if (![record isKindOfClass:NSDictionary.class]) {
+    return nil;
+  }
+
+  NSString *resolvedPublicId = publicId;
+  if (![resolvedPublicId isKindOfClass:NSString.class] || [resolvedPublicId length] == 0) {
+    resolvedPublicId = record[@"publicId"];
+  }
+  if (![resolvedPublicId isKindOfClass:NSString.class] || [resolvedPublicId length] == 0) {
+    return nil;
+  }
+
+  id notification = [self rollingJSONObjectFromObject:record[@"notification"]];
+  id trigger = [self rollingJSONObjectFromObject:record[@"trigger"]];
+  if (![notification isKindOfClass:NSDictionary.class] ||
+      ![trigger isKindOfClass:NSDictionary.class]) {
+    return nil;
+  }
+  if (![self isRollingTimestampTrigger:trigger]) {
+    return nil;
+  }
+
+  NSMutableDictionary *sanitizedRecord = [NSMutableDictionary dictionary];
+  sanitizedRecord[@"publicId"] = resolvedPublicId;
+  sanitizedRecord[@"notification"] = notification;
+  sanitizedRecord[@"trigger"] = trigger;
+
+  NSNumber *lastScheduledOccurrence =
+      [self rollingIntegerNumberFromObject:record[@"lastScheduledOccurrenceMs"]
+                             allowNegative:NO
+                                 allowZero:NO];
+  if (lastScheduledOccurrence != nil) {
+    sanitizedRecord[@"lastScheduledOccurrenceMs"] = lastScheduledOccurrence;
+  }
+
+  NSMutableArray<NSString *> *scheduledIds = [NSMutableArray array];
+  NSArray *rawScheduledIds = record[@"scheduledIds"];
+  if ([rawScheduledIds isKindOfClass:NSArray.class]) {
+    for (id scheduledId in rawScheduledIds) {
+      if ([scheduledId isKindOfClass:NSString.class] && [scheduledId length] > 0) {
+        [scheduledIds addObject:scheduledId];
+      }
+    }
+  }
+  sanitizedRecord[@"scheduledIds"] = scheduledIds;
+
+  NSNumber *createdAt = [self rollingIntegerNumberFromObject:record[@"createdAtMs"]
+                                               allowNegative:NO
+                                                   allowZero:NO];
+  if (createdAt != nil) {
+    sanitizedRecord[@"createdAtMs"] = createdAt;
+  } else if (defaultMissingCreatedAt) {
+    sanitizedRecord[@"createdAtMs"] = [self rollingCurrentTimestampMs];
+  }
+
+  return sanitizedRecord;
+}
+
++ (NSMutableDictionary *)rollingSanitizedTimestampTriggerRecords:(NSDictionary *)records
+                                         defaultMissingCreatedAt:(BOOL)defaultMissingCreatedAt {
+  NSMutableDictionary *sanitizedRecords = [NSMutableDictionary dictionary];
+  if (![records isKindOfClass:NSDictionary.class]) {
+    return sanitizedRecords;
+  }
+
+  for (id key in records) {
+    if (![key isKindOfClass:NSString.class] || [key length] == 0) {
+      continue;
+    }
+
+    NSMutableDictionary *record =
+        [self rollingSanitizedTimestampTriggerRecord:records[key]
+                                            publicId:key
+                             defaultMissingCreatedAt:defaultMissingCreatedAt];
+    if (record != nil) {
+      sanitizedRecords[key] = record;
+    }
+  }
+
+  return sanitizedRecords;
+}
+
++ (id)rollingJSONObjectFromObject:(id)object {
+  if (object == nil || object == [NSNull null]) {
+    return [NSNull null];
+  }
+
+  if ([object isKindOfClass:NSString.class]) {
+    return object;
+  }
+
+  if ([object isKindOfClass:NSNumber.class]) {
+    double number = [object doubleValue];
+    if (!isfinite(number)) {
+      return nil;
+    }
+    return object;
+  }
+
+  if ([object isKindOfClass:NSArray.class]) {
+    NSMutableArray *array = [NSMutableArray array];
+    for (id value in (NSArray *)object) {
+      id sanitizedValue = [self rollingJSONObjectFromObject:value];
+      if (sanitizedValue != nil) {
+        [array addObject:sanitizedValue];
+      }
+    }
+    return array;
+  }
+
+  if ([object isKindOfClass:NSDictionary.class]) {
+    NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+    for (id key in (NSDictionary *)object) {
+      if (![key isKindOfClass:NSString.class]) {
+        continue;
+      }
+
+      id sanitizedValue = [self rollingJSONObjectFromObject:((NSDictionary *)object)[key]];
+      if (sanitizedValue != nil) {
+        dictionary[key] = sanitizedValue;
+      }
+    }
+    return dictionary;
+  }
+
+  return nil;
+}
+
++ (NSNumber *)rollingCurrentTimestampMs {
+  return @((long long)llround([[NSDate date] timeIntervalSince1970] * 1000.0));
 }
 
 /**
