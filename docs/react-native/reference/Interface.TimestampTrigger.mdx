@@ -1,6 +1,6 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / TimestampTrigger
 
@@ -18,23 +18,25 @@ View the [Triggers](/react-native/triggers) documentation to learn more.
 
 > `optional` **alarmManager**: `boolean` | [`TimestampTriggerAlarmManager`](react-native/reference/Interface.TimestampTriggerAlarmManager)
 
-Defined in: [packages/react-native/src/types/Trigger.ts:34](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L34)
+Defined in: [packages/react-native/src/types/Trigger.ts:56](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L56)
 
 Choose to schedule your trigger notification with Android's AlarmManager API.
 
-By default, trigger notifications are created with Android's WorkManager API.
+By default, timestamp trigger notifications use AlarmManager on Android. Set
+this to `false` to opt out to WorkManager. `RepeatFrequency.MONTHLY` is not
+supported when this is `false`.
 
 #### Platform
 
 android
 
-***
+---
 
 ### repeatFrequency?
 
 > `optional` **repeatFrequency**: [`RepeatFrequency`](react-native/reference/Enumeration.RepeatFrequency)
 
-Defined in: [packages/react-native/src/types/Trigger.ts:25](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L25)
+Defined in: [packages/react-native/src/types/Trigger.ts:28](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L28)
 
 The frequency at which the trigger repeats.
 If unset, the notification will only be displayed once.
@@ -43,8 +45,33 @@ For example:
 if set to `RepeatFrequency.HOURLY`, the notification will repeat every hour from the timestamp specified.
 if set to `RepeatFrequency.DAILY`, the notification will repeat every day from the timestamp specified.
 if set to `RepeatFrequency.WEEKLY`, the notification will repeat every week from the timestamp specified.
+if set to `RepeatFrequency.MONTHLY`, the notification will repeat every calendar month from the timestamp specified.
 
-***
+Yearly recurrence is not supported.
+
+---
+
+### repeatInterval?
+
+> `optional` **repeatInterval**: `number`
+
+Defined in: [packages/react-native/src/types/Trigger.ts:45](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L45)
+
+Multiplier applied to `repeatFrequency` for timestamp triggers.
+
+For example, `repeatFrequency: RepeatFrequency.DAILY` with
+`repeatInterval: 2` repeats every 2 days. `RepeatFrequency.WEEKLY`
+with `repeatInterval: 2` repeats every 2 weeks, and
+`RepeatFrequency.MONTHLY` with `repeatInterval: 3` repeats every
+3 months.
+
+Valid only when `repeatFrequency` is set to a repeating value. It is
+not valid without `repeatFrequency` or with `RepeatFrequency.NONE`.
+Must be a positive integer.
+
+Defaults to `1` when `repeatFrequency` is set.
+
+---
 
 ### timestamp
 
@@ -54,7 +81,7 @@ Defined in: [packages/react-native/src/types/Trigger.ts:14](https://github.com/m
 
 The timestamp when the notification should first be shown, in milliseconds since 1970.
 
-***
+---
 
 ### type
 

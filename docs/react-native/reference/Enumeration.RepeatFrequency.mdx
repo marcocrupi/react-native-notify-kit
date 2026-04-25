@@ -1,14 +1,16 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / RepeatFrequency
 
 # Enumeration: RepeatFrequency
 
-Defined in: [packages/react-native/src/types/Trigger.ts:77](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L77)
+Defined in: [packages/react-native/src/types/Trigger.ts:101](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L101)
 
 An interface representing the different frequencies which can be used with `TimestampTrigger.repeatFrequency`.
+Supported timestamp repeat frequencies are hourly, daily, weekly, and monthly.
+Yearly recurrence is not supported.
 
 View the [Triggers](/react-native/triggers) documentation to learn more.
 
@@ -18,28 +20,50 @@ View the [Triggers](/react-native/triggers) documentation to learn more.
 
 > **DAILY**: `1`
 
-Defined in: [packages/react-native/src/types/Trigger.ts:80](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L80)
+Defined in: [packages/react-native/src/types/Trigger.ts:113](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L113)
 
-***
+Repeat every calendar day from the timestamp.
+
+---
 
 ### HOURLY
 
 > **HOURLY**: `0`
 
-Defined in: [packages/react-native/src/types/Trigger.ts:79](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L79)
+Defined in: [packages/react-native/src/types/Trigger.ts:109](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L109)
 
-***
+Repeat every calendar hour from the timestamp.
+
+---
+
+### MONTHLY
+
+> **MONTHLY**: `3`
+
+Defined in: [packages/react-native/src/types/Trigger.ts:125](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L125)
+
+Repeat every calendar month from the timestamp.
+
+Use `TimestampTrigger.repeatInterval` for intervals such as every 3 months.
+Monthly repeats use native calendar semantics; dates that do not exist in a
+target month are adjusted by the platform calendar.
+
+---
 
 ### NONE
 
 > **NONE**: `-1`
 
-Defined in: [packages/react-native/src/types/Trigger.ts:78](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L78)
+Defined in: [packages/react-native/src/types/Trigger.ts:105](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L105)
 
-***
+Do not repeat. `TimestampTrigger.repeatInterval` cannot be used with `NONE`.
+
+---
 
 ### WEEKLY
 
 > **WEEKLY**: `2`
 
-Defined in: [packages/react-native/src/types/Trigger.ts:81](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L81)
+Defined in: [packages/react-native/src/types/Trigger.ts:117](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Trigger.ts#L117)
+
+Repeat every calendar week from the timestamp.

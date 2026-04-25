@@ -113,7 +113,7 @@ It's also possible to cancel all of your trigger notifications, by calling [canc
 
 ### Timestamp Trigger
 
-The [`TimestampTrigger`](/react-native/reference/timestamptrigger) allows you to create a trigger that displays a notification at a specific time and date, using the property `timestamp` (milliseconds since epoch) and an optional `repeatFrequency` property:
+The [`TimestampTrigger`](/react-native/reference/timestamptrigger) allows you to create a trigger that displays a notification at a specific time and date, using the property `timestamp` (milliseconds since epoch) and optional `repeatFrequency` and `repeatInterval` properties:
 
 ```js
 import notifee, {
@@ -130,6 +130,98 @@ const trigger: TimestampTrigger = {
   repeatFrequency: RepeatFrequency.WEEKLY, // repeat once a week
 };
 ```
+
+### Custom repeat intervals
+
+Timestamp triggers now support custom repeat intervals. Use `repeatFrequency` to choose the calendar unit and `repeatInterval` as a positive integer multiplier for that unit.
+
+`repeatInterval` defaults to `1` when `repeatFrequency` is set. `repeatInterval` is only valid with a repeating `repeatFrequency`; it is not valid without `repeatFrequency` or with `RepeatFrequency.NONE`. Supported timestamp repeat frequencies are `HOURLY`, `DAILY`, `WEEKLY`, and `MONTHLY`; `YEARLY` is not supported.
+
+| `repeatFrequency`         | `repeatInterval` | Result         |
+| ------------------------- | ---------------- | -------------- |
+| `RepeatFrequency.DAILY`   | `2`              | every 2 days   |
+| `RepeatFrequency.WEEKLY`  | `2`              | every 2 weeks  |
+| `RepeatFrequency.MONTHLY` | `3`              | every 3 months |
+
+```ts
+const firstOccurrence = new Date();
+firstOccurrence.setHours(10, 0, 0, 0);
+
+await notifee.createTriggerNotification(
+  {
+    title: 'Reminder',
+    body: 'This reminder repeats every 2 days.',
+    android: { channelId: 'reminders' },
+  },
+  {
+    type: TriggerType.TIMESTAMP,
+    timestamp: firstOccurrence.getTime(),
+    repeatFrequency: RepeatFrequency.DAILY,
+    repeatInterval: 2,
+  },
+);
+```
+
+```ts
+const firstOccurrence = new Date();
+firstOccurrence.setHours(12, 45, 0, 0);
+
+await notifee.createTriggerNotification(
+  {
+    title: 'Quarterly reminder',
+    body: 'This reminder repeats every 3 months.',
+    android: { channelId: 'reminders' },
+  },
+  {
+    type: TriggerType.TIMESTAMP,
+    timestamp: firstOccurrence.getTime(),
+    repeatFrequency: RepeatFrequency.MONTHLY,
+    repeatInterval: 3,
+  },
+);
+```
+
+#### Android behavior
+
+On Android, `repeatInterval` is used together with `repeatFrequency` to advance the next timestamp with calendar-aware scheduling. For example, `RepeatFrequency.DAILY` with `repeatInterval: 2` advances by two calendar days, and `RepeatFrequency.MONTHLY` with `repeatInterval: 3` advances by three calendar months.
+
+AlarmManager is the default and recommended backend for timestamp triggers. `RepeatFrequency.MONTHLY` is supported with AlarmManager. `RepeatFrequency.MONTHLY` is not supported with `alarmManager: false`, because WorkManager uses duration-based intervals and does not provide calendar-month semantics.
+
+For reminders where the timing is important, consider `AlarmType.SET_ALARM_CLOCK`. It is not required for every timestamp trigger, but it uses Android's highest-priority scheduled alarm primitive.
+
+```ts
+const firstOccurrence = new Date();
+firstOccurrence.setHours(10, 0, 0, 0);
+
+await notifee.createTriggerNotification(
+  {
+    title: 'Reminder',
+    body: 'Your scheduled reminder is due.',
+    android: {
+      channelId: 'reminders',
+    },
+  },
+  {
+    type: TriggerType.TIMESTAMP,
+    timestamp: firstOccurrence.getTime(),
+    repeatFrequency: RepeatFrequency.DAILY,
+    repeatInterval: 2,
+    alarmManager: {
+      type: AlarmType.SET_ALARM_CLOCK,
+    },
+  },
+);
+```
+
+#### iOS behavior
+
+On iOS, custom repeat intervals are implemented as a bounded rolling schedule of one-shot local notifications. The library keeps upcoming occurrences scheduled and tops them up when the app becomes active, when the user interacts with a notification, or when a rolling notification is delivered while the app is in the foreground. iOS does not wake an app merely because a local notification was delivered while the app is killed or suspended, so the rolling window cannot be extended indefinitely unless the app runs again.
+
+This rolling schedule respects the selected start date. It does not use a native repeating `UNCalendarNotificationTrigger` for custom repeat intervals. Internal rolling notification IDs are not exposed through the JavaScript APIs; APIs such as `getTriggerNotificationIds()` and `getDisplayedNotifications()` use the public notification IDs.
+
+#### Monthly repeats and month-end dates
+
+Monthly repeats use native calendar semantics. Dates that do not exist in a target month are adjusted by the platform calendar. For example, a trigger starting on January 31 and repeating monthly may move to the last valid day of February, depending on platform calendar behavior.
 
 ### Android backend: AlarmManager (default) vs WorkManager
 
@@ -158,7 +250,7 @@ const customTrigger: TimestampTrigger = {
 
 #### `AlarmType.SET_ALARM_CLOCK` (strongest reliability)
 
-For medication reminders, recovery timers, or any notification where a miss is user-visible damage, use `AlarmType.SET_ALARM_CLOCK`. It is the strongest reliability guarantee Android exposes — it uses the same primitive as the stock Clock app, renders an alarm-clock icon in the status bar, and is the least susceptible to OEM aggressive-kill power management (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS).
+For time-sensitive reminders, recovery timers, or any notification where a miss is user-visible damage, consider `AlarmType.SET_ALARM_CLOCK`. It is the strongest reliability guarantee Android exposes — it uses the same primitive as the stock Clock app, renders an alarm-clock icon in the status bar, and is the least susceptible to OEM aggressive-kill power management (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS).
 
 ```js
 const reminderTrigger: TimestampTrigger = {
@@ -187,22 +279,18 @@ try {
 
 ### DST and reboot recovery
 
-Repeating triggers (`HOURLY` / `DAILY` / `WEEKLY`) honor wall-clock time across DST transitions on Android (fixed in v9.1.14 by replacing fixed-millisecond arithmetic with `Calendar.add()`). Scheduled alarms also self-heal after reboot: since v9.6.0 the library detects boot deltas via `Settings.Global.BOOT_COUNT` and reschedules persisted alarms on OEM devices that suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). Stale non-repeating triggers (timestamp already in the past at recovery time) fire once within a 24-hour grace period and are then deleted; beyond the grace period they're deleted silently.
+Repeating triggers (`HOURLY` / `DAILY` / `WEEKLY` / `MONTHLY`) honor wall-clock time across DST transitions on Android by using calendar-aware scheduling. Scheduled alarms also self-heal after reboot: since v9.6.0 the library detects boot deltas via `Settings.Global.BOOT_COUNT` and reschedules persisted alarms on OEM devices that suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). Stale non-repeating triggers (timestamp already in the past at recovery time) fire once within a 24-hour grace period and are then deleted; beyond the grace period they're deleted silently.
 
 #### Maximum TimestampTrigger Count
 
 Android has a system limit of 50 timestamp triggers active at one time.
 iOS appears to have a limit of [64 timestamp triggers active at one time](https://developer.apple.com/forums/thread/23288), but it is not in [the official documentation](https://developer.apple.com/documentation/usernotifications/unusernotificationcenter/1649508-add).
 
-#### iOS Initial Trigger Limitations
+#### iOS rolling schedule limitations
 
-Please note, for iOS, a repeating trigger does not work the same as Android - the initial trigger cannot be delayed:
+On iOS, repeating timestamp triggers for `HOURLY`, `DAILY`, `WEEKLY`, and `MONTHLY` are scheduled through the bounded rolling one-shot model described in [Custom repeat intervals](#custom-repeat-intervals). This preserves the selected start timestamp, including the first occurrence.
 
-- `HOURLY`: the starting date and hour will be ignored, and only the minutes and seconds will be taken into the account. If the timestamp is set to trigger in 3 hours and repeat every 5th minute of the hour, the alert will not fire in 3 hours, but will instead fire immediately on the next 5th minute of the hour.
-- `DAILY`: the starting day will be ignored, and only the time will be taken into account. If it is January 1 at 10 AM and you schedule a daily recurring notification for January 2 at 11 AM, it will fire on January 1 at 11 AM and every day thereafter.
-- `WEEKLY`: the starting week will be ignored, and only the day and time will be taken into account.
-
-> For more details, please see the discussion [here](https://github.com/notifee/react-native-notifee/issues/241).
+The rolling window is finite because iOS limits how many local notifications can be pending at one time. The library tops up future occurrences when it gets an app lifecycle, interaction, or foreground-delivery opportunity, but it cannot keep extending the schedule while the app remains killed/suspended and the user never interacts with notifications.
 
 #### Android 12 Limitations
 

@@ -349,6 +349,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
 - **35 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
+- **Custom repeat intervals for timestamp triggers** — `TimestampTrigger.repeatInterval` supports calendar-based recurrences such as every 2 days, every 2 weeks, or every 3 months from a selected start timestamp. See the [Triggers guide](docs/react-native/triggers.mdx#custom-repeat-intervals).
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 - **Baseline Profile** — the library AAR ships a Baseline Profile that instructs ART to AOT-compile the foreground service notification hot path at install time, eliminating JIT penalty on first invocation
 
@@ -552,7 +553,7 @@ if (Platform.OS === 'android') {
 
 For the authoritative vendor-by-vendor matrix of autostart, battery optimization, and background-restriction behavior, see [dontkillmyapp.com](https://dontkillmyapp.com/).
 
-> **Scope note:** the cold-start recovery path is best-effort. It runs as soon as Android invokes `InitProvider.onCreate` (before `Application.onCreate`), but may still be delayed by minutes or hours on a device where the user never opens your app after a reboot. For use cases that require guaranteed sub-second timing (alarm clocks, medication reminders, calendar events), also declare `USE_EXACT_ALARM` in your manifest (see the [note above](#bugs-fixed-from-upstream-notifee)) and prompt the user to whitelist your app via the vendor settings helper.
+> **Scope note:** the cold-start recovery path is best-effort. It runs as soon as Android invokes `InitProvider.onCreate` (before `Application.onCreate`), but may still be delayed by minutes or hours on a device where the user never opens your app after a reboot. For use cases that require guaranteed sub-second timing (alarm clocks, time-sensitive reminders, calendar events), also declare `USE_EXACT_ALARM` in your manifest (see the [note above](#bugs-fixed-from-upstream-notifee)) and prompt the user to whitelist your app via the vendor settings helper.
 >
 > **Defense in depth:** the cold-start `BOOT_COUNT` path and the traditional `RebootBroadcastReceiver` path both funnel into the same `NotifeeAlarmManager.rescheduleNotifications` entry point, which is guarded by a process-wide `AtomicBoolean` — whichever path runs first wins the reschedule cycle, and the second logs `Reschedule already in progress, skipping duplicate request` and exits cleanly. On real devices the two paths often _both_ fire, for a subtle reason observed during Step 6 smoke testing: when the system force-stops your app (during an install, crash recovery, or a `pm clear` from a QA tool) and then Android re-delivers `BOOT_COMPLETED` as soon as the package is launched again, the reboot receiver runs at the same time as `InitProvider.onCreate`'s cold-start check. You get both paths for free — proof of the race guard's design. On an OEM device that suppresses `BOOT_COMPLETED` outright, only the cold-start path runs. Either way the zombie re-fire loop is broken.
 
@@ -602,7 +603,7 @@ five `AlarmType` values — including `SET_ALARM_CLOCK`, which upstream Notifee 
   `setAlarmClock` even when they would otherwise drop `setExactAndAllowWhileIdle`. This is the
   same mechanism the stock Clock app uses.
 - **Intended for the same reliability problem as [invertase/notifee#734](https://github.com/invertase/notifee/issues/734).**
-  If your use case is a medication reminder, a rest-timer between gym sets, a cooking timer,
+  If your use case is a time-sensitive reminder, a rest-timer between gym sets, a cooking timer,
   or any recovery-timer scenario where a missed notification is user-visible damage, prefer
   `SET_ALARM_CLOCK` over the fork default.
 
