@@ -9,6 +9,7 @@ import {
   isValidEnum,
   isUndefined,
   isBoolean,
+  isAndroid,
 } from '../utils';
 import {
   Trigger,
@@ -100,6 +101,34 @@ function validateTimestampTrigger(trigger: TimestampTrigger): TimestampTrigger {
     out.repeatFrequency = trigger.repeatFrequency;
   }
 
+  const hasRepeatFrequency =
+    objectHasProperty(trigger, 'repeatFrequency') && !isUndefined(trigger.repeatFrequency);
+  const isRepeating =
+    hasRepeatFrequency && trigger.repeatFrequency !== RepeatFrequency.NONE;
+
+  if (objectHasProperty(trigger, 'repeatInterval') && !isUndefined(trigger.repeatInterval)) {
+    if (!hasRepeatFrequency) {
+      throw new Error("'trigger.repeatInterval' requires a repeatFrequency value.");
+    }
+
+    if (trigger.repeatFrequency === RepeatFrequency.NONE) {
+      throw new Error("'trigger.repeatInterval' requires a repeating repeatFrequency value.");
+    }
+
+    if (
+      !isNumber(trigger.repeatInterval) ||
+      !Number.isFinite(trigger.repeatInterval) ||
+      !Number.isInteger(trigger.repeatInterval) ||
+      trigger.repeatInterval <= 0
+    ) {
+      throw new Error("'trigger.repeatInterval' expected a positive integer value.");
+    }
+
+    out.repeatInterval = trigger.repeatInterval;
+  } else if (isRepeating) {
+    out.repeatInterval = 1;
+  }
+
   if (objectHasProperty(trigger, 'alarmManager') && !isUndefined(trigger.alarmManager)) {
     if (isBoolean(trigger.alarmManager)) {
       if (trigger.alarmManager) {
@@ -116,6 +145,16 @@ function validateTimestampTrigger(trigger: TimestampTrigger): TimestampTrigger {
   } else {
     // Default to AlarmManager for reliable delivery when app is killed
     out.alarmManager = validateTimestampAlarmManager();
+  }
+
+  if (
+    isAndroid &&
+    trigger.alarmManager === false &&
+    out.repeatFrequency === RepeatFrequency.MONTHLY
+  ) {
+    throw new Error(
+      "'trigger.repeatFrequency' MONTHLY is not supported when 'trigger.alarmManager' is false.",
+    );
   }
 
   return out;

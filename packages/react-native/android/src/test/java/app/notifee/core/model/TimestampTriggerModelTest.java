@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import android.os.Bundle;
 import java.util.Calendar;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -23,6 +24,7 @@ public class TimestampTriggerModelTest {
   private static final int REPEAT_FREQUENCY_HOURLY = 0;
   private static final int REPEAT_FREQUENCY_DAILY = 1;
   private static final int REPEAT_FREQUENCY_WEEKLY = 2;
+  private static final int REPEAT_FREQUENCY_MONTHLY = 3;
 
   private TimestampTriggerModel mTimestampTriggerModel = null;
   private TimeZone mOriginalTimeZone;
@@ -77,6 +79,42 @@ public class TimestampTriggerModelTest {
     return TimestampTriggerModel.fromBundle(trigger);
   }
 
+  private TimestampTriggerModel buildRepeatingTrigger(
+      long timestamp, int repeatFrequency, int repeatInterval) {
+    Bundle trigger = new Bundle();
+    trigger.putLong("timestamp", timestamp);
+    trigger.putInt("repeatFrequency", repeatFrequency);
+    trigger.putInt("repeatInterval", repeatInterval);
+    return TimestampTriggerModel.fromBundle(trigger);
+  }
+
+  private long expectedNextTimestamp(long timestamp, int field, int repeatInterval) {
+    Calendar cal = Calendar.getInstance();
+    cal.setTimeInMillis(timestamp);
+    while (cal.getTimeInMillis() < System.currentTimeMillis()) {
+      cal.add(field, repeatInterval);
+    }
+    return cal.getTimeInMillis();
+  }
+
+  @Test
+  public void repeatingTrigger_withoutRepeatInterval_defaultsToOne() {
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(mNow + ONE_DAY_MS, REPEAT_FREQUENCY_DAILY);
+
+    assertEquals("daily repeat interval should default to 1 day", 1, trigger.getInterval());
+    assertEquals("daily repeat time unit should be days", TimeUnit.DAYS, trigger.getTimeUnit());
+  }
+
+  @Test
+  public void repeatingTrigger_invalidNativeRepeatInterval_fallsBackToOne() {
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(mNow + ONE_DAY_MS, REPEAT_FREQUENCY_DAILY, 0);
+
+    assertEquals("invalid native repeatInterval should fall back to 1", 1, trigger.getInterval());
+    assertEquals(TimeUnit.DAYS, trigger.getTimeUnit());
+  }
+
   @Test
   public void setNextTimestamp_daily_advancesToTomorrowSameWallClock() {
     long original = mNow - ONE_MINUTE_MS;
@@ -102,6 +140,23 @@ public class TimestampTriggerModelTest {
   }
 
   @Test
+  public void setNextTimestamp_dailyEveryTwoDays_advancesByRepeatInterval() {
+    long original = mNow - ONE_MINUTE_MS;
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(original, REPEAT_FREQUENCY_DAILY, 2);
+
+    trigger.setNextTimestamp();
+    long next = trigger.getTimestamp();
+
+    assertEquals(
+        "daily repeatInterval=2 should use Calendar.add(DAY_OF_MONTH, 2)",
+        expectedNextTimestamp(original, Calendar.DAY_OF_MONTH, 2),
+        next);
+    assertEquals("WorkManager interval should be 2 days", 2, trigger.getInterval());
+    assertEquals("WorkManager time unit should be days", TimeUnit.DAYS, trigger.getTimeUnit());
+  }
+
+  @Test
   public void setNextTimestamp_daily_multipleMissedFires_skipsToFuture() {
     // Offset by 1 minute so the original does not land exactly on a multiple of 24h from mNow.
     // Otherwise, with a deterministic clock (e.g. Robolectric), the while-loop's `<` comparison
@@ -114,6 +169,23 @@ public class TimestampTriggerModelTest {
 
     assertTrue("next timestamp must be in the future after 3 missed fires", next > mNow);
     assertTrue("next timestamp must not be more than 25h ahead", next < mNow + 25L * ONE_HOUR_MS);
+  }
+
+  @Test
+  public void setNextTimestamp_weeklyEveryTwoWeeks_advancesByRepeatInterval() {
+    long original = mNow - ONE_MINUTE_MS;
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(original, REPEAT_FREQUENCY_WEEKLY, 2);
+
+    trigger.setNextTimestamp();
+    long next = trigger.getTimestamp();
+
+    assertEquals(
+        "weekly repeatInterval=2 should use Calendar.add(WEEK_OF_YEAR, 2)",
+        expectedNextTimestamp(original, Calendar.WEEK_OF_YEAR, 2),
+        next);
+    assertEquals("WorkManager interval should be 14 days", 14, trigger.getInterval());
+    assertEquals("WorkManager time unit should be days", TimeUnit.DAYS, trigger.getTimeUnit());
   }
 
   @Test
@@ -131,6 +203,50 @@ public class TimestampTriggerModelTest {
   }
 
   @Test
+  public void setNextTimestamp_monthlyEveryThreeMonths_advancesByRepeatInterval() {
+    long original = mNow - ONE_MINUTE_MS;
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(original, REPEAT_FREQUENCY_MONTHLY, 3);
+
+    trigger.setNextTimestamp();
+    long next = trigger.getTimestamp();
+
+    assertEquals(
+        "monthly repeatInterval=3 should use Calendar.add(MONTH, 3)",
+        expectedNextTimestamp(original, Calendar.MONTH, 3),
+        next);
+    assertEquals(TimestampTriggerModel.MONTHLY, trigger.getRepeatFrequency());
+  }
+
+  @Test
+  public void setNextTimestamp_monthlyEndOfMonth_usesCalendarClampSemantics() {
+    TimeZone utc = TimeZone.getTimeZone("UTC");
+    TimeZone.setDefault(utc);
+
+    Calendar start = Calendar.getInstance(utc);
+    start.clear();
+    start.set(2020, Calendar.JANUARY, 31, 12, 45, 0);
+    long original = start.getTimeInMillis();
+
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(original, REPEAT_FREQUENCY_MONTHLY, 1);
+
+    trigger.setNextTimestamp();
+    long next = trigger.getTimestamp();
+
+    assertEquals(
+        "monthly end-of-month should match native Calendar.add clamp behavior",
+        expectedNextTimestamp(original, Calendar.MONTH, 1),
+        next);
+
+    Calendar nextCal = Calendar.getInstance(utc);
+    nextCal.setTimeInMillis(next);
+    assertTrue(
+        "Calendar.add should clamp the Jan 31 anchor before future monthly repeats",
+        nextCal.get(Calendar.DAY_OF_MONTH) < 31);
+  }
+
+  @Test
   public void setNextTimestamp_hourly_advancesOneHour() {
     long original = mNow - ONE_MINUTE_MS;
     TimestampTriggerModel trigger = buildRepeatingTrigger(original, REPEAT_FREQUENCY_HOURLY);
@@ -142,6 +258,44 @@ public class TimestampTriggerModelTest {
     long upper = mNow + 61L * ONE_MINUTE_MS;
     assertTrue("hourly next timestamp must be >= now + 59m", next >= lower);
     assertTrue("hourly next timestamp must be <= now + 61m", next <= upper);
+  }
+
+  @Test
+  public void setNextTimestamp_dailyEveryTwoDaysAcrossDstSpringForward() {
+    TimeZone rome = TimeZone.getTimeZone("Europe/Rome");
+    TimeZone.setDefault(rome);
+
+    Calendar start = Calendar.getInstance(rome);
+    start.clear();
+    start.set(2026, Calendar.MARCH, 28, 4, 30, 0);
+    long originalTimestamp = start.getTimeInMillis();
+
+    Calendar windowStart = Calendar.getInstance(rome);
+    windowStart.clear();
+    windowStart.set(2026, Calendar.MARCH, 31, 0, 0, 0);
+    Calendar windowEnd = Calendar.getInstance(rome);
+    windowEnd.clear();
+    windowEnd.set(2026, Calendar.OCTOBER, 24, 23, 59, 59);
+    long now = System.currentTimeMillis();
+    Assume.assumeTrue(
+        "spring-forward repeatInterval discrimination requires current time in"
+            + " [2026-03-31, 2026-10-24] Europe/Rome",
+        now >= windowStart.getTimeInMillis() && now <= windowEnd.getTimeInMillis());
+
+    TimestampTriggerModel trigger =
+        buildRepeatingTrigger(originalTimestamp, REPEAT_FREQUENCY_DAILY, 2);
+    trigger.setNextTimestamp();
+    long next = trigger.getTimestamp();
+
+    Calendar nextCal = Calendar.getInstance(rome);
+    nextCal.setTimeInMillis(next);
+    assertTrue("next timestamp must be >= now", next >= now);
+    assertEquals(
+        "wall-clock hour must remain 4 with repeatInterval=2",
+        4,
+        nextCal.get(Calendar.HOUR_OF_DAY));
+    assertEquals("wall-clock minute must remain 30", 30, nextCal.get(Calendar.MINUTE));
+    assertEquals("wall-clock second must remain 0", 0, nextCal.get(Calendar.SECOND));
   }
 
   @Test

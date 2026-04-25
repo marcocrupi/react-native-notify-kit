@@ -30,13 +30,13 @@ public class TimestampTriggerModel {
   private Boolean mWithAlarmManager = false;
   private AlarmType mAlarmType = AlarmType.SET_EXACT;
   private String mRepeatFrequency = null;
+  private int mRepeatInterval = 1;
   private Long mTimestamp = null;
 
   public static final String HOURLY = "HOURLY";
   public static final String DAILY = "DAILY";
   public static final String WEEKLY = "WEEKLY";
-
-  private static final long HOUR_IN_MS = 60L * 60 * 1000;
+  public static final String MONTHLY = "MONTHLY";
 
   private static final String TAG = "TimeTriggerModel";
 
@@ -47,6 +47,7 @@ public class TimestampTriggerModel {
     TimeUnit timeUnit = null;
     if (mTimeTriggerBundle.containsKey("repeatFrequency")) {
       int repeatFrequency = ObjectUtils.getInt(mTimeTriggerBundle.get("repeatFrequency"));
+      mRepeatInterval = getRepeatInterval(mTimeTriggerBundle.get("repeatInterval"));
       mTimestamp = ObjectUtils.getLong(mTimeTriggerBundle.get("timestamp"));
 
       switch (repeatFrequency) {
@@ -54,20 +55,23 @@ public class TimestampTriggerModel {
           // default value for one-time trigger
           break;
         case 0:
-          mInterval = 1;
+          mInterval = mRepeatInterval;
           mTimeUnit = TimeUnit.HOURS;
           mRepeatFrequency = HOURLY;
           break;
         case 1:
-          mInterval = 1;
+          mInterval = mRepeatInterval;
           mTimeUnit = TimeUnit.DAYS;
           mRepeatFrequency = DAILY;
           break;
         case 2:
           // weekly, 7 days
-          mInterval = 7;
+          mInterval = 7 * mRepeatInterval;
           mTimeUnit = TimeUnit.DAYS;
           mRepeatFrequency = WEEKLY;
+          break;
+        case 3:
+          mRepeatFrequency = MONTHLY;
           break;
       }
     }
@@ -139,33 +143,27 @@ public class TimestampTriggerModel {
       return;
     }
 
-    long timestamp = getTimestamp();
+    Calendar cal = Calendar.getInstance();
+    cal.setTimeInMillis(getTimestamp());
 
+    int field;
     if (HOURLY.equals(mRepeatFrequency)) {
-      // Hourly: fixed ms is correct — no wall-clock preservation needed
-      while (timestamp < System.currentTimeMillis()) {
-        timestamp += HOUR_IN_MS;
-      }
-      this.mTimestamp = timestamp;
+      field = Calendar.HOUR_OF_DAY;
+    } else if (DAILY.equals(mRepeatFrequency)) {
+      field = Calendar.DAY_OF_MONTH;
+    } else if (WEEKLY.equals(mRepeatFrequency)) {
+      field = Calendar.WEEK_OF_YEAR;
+    } else if (MONTHLY.equals(mRepeatFrequency)) {
+      field = Calendar.MONTH;
     } else {
-      // Daily/Weekly: use Calendar.add() to preserve local wall-clock time across DST boundaries.
-      // Adding fixed ms (86,400,000) breaks when a calendar day is 23 or 25 hours during DST.
-      Calendar cal = Calendar.getInstance();
-      cal.setTimeInMillis(timestamp);
-
-      int field;
-      if (WEEKLY.equals(mRepeatFrequency)) {
-        field = Calendar.WEEK_OF_YEAR;
-      } else {
-        field = Calendar.DAY_OF_MONTH;
-      }
-
-      while (cal.getTimeInMillis() < System.currentTimeMillis()) {
-        cal.add(field, 1);
-      }
-
-      this.mTimestamp = cal.getTimeInMillis();
+      return;
     }
+
+    while (cal.getTimeInMillis() < System.currentTimeMillis()) {
+      cal.add(field, mRepeatInterval);
+    }
+
+    this.mTimestamp = cal.getTimeInMillis();
   }
 
   public enum AlarmType {
@@ -194,6 +192,23 @@ public class TimestampTriggerModel {
 
   public String getRepeatFrequency() {
     return mRepeatFrequency;
+  }
+
+  private int getRepeatInterval(Object repeatInterval) {
+    if (!(repeatInterval instanceof Number)) {
+      return 1;
+    }
+
+    double interval = ((Number) repeatInterval).doubleValue();
+    if (Double.isNaN(interval)
+        || Double.isInfinite(interval)
+        || interval <= 0
+        || interval % 1 != 0
+        || interval > Integer.MAX_VALUE) {
+      return 1;
+    }
+
+    return (int) interval;
   }
 
   public Bundle toBundle() {

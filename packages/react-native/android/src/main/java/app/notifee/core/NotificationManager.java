@@ -818,6 +818,12 @@ class NotificationManager {
     Boolean withAlarmManager = trigger.getWithAlarmManager();
     Context context = getApplicationContext();
 
+    if (!withAlarmManager && TimestampTriggerModel.MONTHLY.equals(trigger.getRepeatFrequency())) {
+      String message = "RepeatFrequency.MONTHLY is not supported without AlarmManager.";
+      Logger.e(TAG, message);
+      return Futures.immediateFailedFuture(new IllegalArgumentException(message));
+    }
+
     ListenableFuture<Void> insertFuture =
         WorkDataRepository.insertTriggerNotification(
             context, notificationModel, triggerBundle, withAlarmManager);

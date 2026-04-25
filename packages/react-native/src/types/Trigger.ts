@@ -25,6 +25,11 @@ export interface TimestampTrigger {
   repeatFrequency?: RepeatFrequency;
 
   /**
+   * The interval at which the trigger repeats.
+   */
+  repeatInterval?: number;
+
+  /**
    * Choose to schedule your trigger notification with Android's AlarmManager API.
    *
    * By default, trigger notifications are created with Android's WorkManager API.
@@ -79,6 +84,7 @@ export enum RepeatFrequency {
   HOURLY = 0,
   DAILY = 1,
   WEEKLY = 2,
+  MONTHLY = 3,
 }
 
 /**
