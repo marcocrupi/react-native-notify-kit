@@ -659,8 +659,9 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
           if (topUpError == nil) {
             topUpError = scheduleError;
           }
-          NSLog(@"NotifeeCore: Failed to schedule rolling timestamp top-up request %@: %@",
-                identifier, scheduleError);
+          NSLog(@"[NotifeeCore] Failed to schedule rolling timestamp occurrence. Error domain=%@ "
+                 @"code=%ld",
+                scheduleError.domain, (long)scheduleError.code);
           continue;
         }
 
