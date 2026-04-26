@@ -395,13 +395,28 @@ export interface IOSNotificationSettings {
 }
 
 /**
- * TODO docs, used to provide context to Siri
+ * Intent identifiers used to provide category context to Siri.
  *
  * @platform ios
  */
 export enum IOSIntentIdentifier {
+  /**
+   * Start a call intent.
+   *
+   * Maps to Apple's unified `INStartCallIntentIdentifier`.
+   */
+  START_CALL = 25,
+
+  /**
+   * @deprecated Use `START_CALL` instead. Apple deprecated the separate audio call
+   * intent identifier in favor of a unified start call identifier.
+   */
   START_AUDIO_CALL = 0,
 
+  /**
+   * @deprecated Use `START_CALL` instead. Apple deprecated the separate video call
+   * intent identifier in favor of a unified start call identifier.
+   */
   START_VIDEO_CALL = 1,
 
   SEARCH_CALL_HISTORY = 2,
@@ -511,6 +526,14 @@ export interface IOSNotificationCategory {
    */
   hiddenPreviewsBodyPlaceholder?: string;
 
+  /**
+   * Intent identifiers used by the system to provide category context to Siri.
+   *
+   * Use `IOSIntentIdentifier.START_CALL` for call categories. Legacy
+   * `START_AUDIO_CALL` and `START_VIDEO_CALL` values remain accepted for source
+   * compatibility, but both map to Apple's unified start call intent identifier.
+   * Categories read back from iOS can return `START_CALL` for call intents.
+   */
   intentIdentifiers?: IOSIntentIdentifier[];
 
   /*

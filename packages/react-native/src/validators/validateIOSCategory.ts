@@ -110,12 +110,14 @@ export default function validateIOSCategory(
       throw new Error("'category.intentIdentifiers' expected an array value.");
     }
 
-    const identifiers = Object.values(IOSIntentIdentifier);
+    const identifiers = Object.values(IOSIntentIdentifier).filter(
+      (identifier): identifier is IOSIntentIdentifier => typeof identifier === 'number',
+    );
 
     for (let i = 0; i < category.intentIdentifiers.length; i++) {
       const intentIdentifier = category.intentIdentifiers[i];
 
-      if (!identifiers.includes(intentIdentifier)) {
+      if (typeof intentIdentifier !== 'number' || !identifiers.includes(intentIdentifier)) {
         throw new Error(
           `'category.intentIdentifiers' unexpected intentIdentifier "${intentIdentifier}" at array index "${i}".`,
         );

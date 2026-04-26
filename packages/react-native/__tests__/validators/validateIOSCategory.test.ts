@@ -1,5 +1,8 @@
 import validateIOSCategory from 'react-native-notify-kit/src/validators/validateIOSCategory';
-import { IOSNotificationCategory } from 'react-native-notify-kit/src/types/NotificationIOS';
+import {
+  IOSIntentIdentifier,
+  IOSNotificationCategory,
+} from 'react-native-notify-kit/src/types/NotificationIOS';
 
 describe('Validate IOS Category', () => {
   describe('validateIOSCategory()', () => {
@@ -117,6 +120,44 @@ describe('Validate IOS Category', () => {
       expect(() => validateIOSCategory(category)).toThrowError(
         '\'category.intentIdentifiers\' unexpected intentIdentifier "test" at array index "0".',
       );
+
+      category = {
+        id: 'id',
+        intentIdentifiers: [999] as any,
+      };
+
+      expect(() => validateIOSCategory(category)).toThrowError(
+        '\'category.intentIdentifiers\' unexpected intentIdentifier "999" at array index "0".',
+      );
+
+      for (const intentIdentifier of ['START_CALL', 'START_AUDIO_CALL', 'START_VIDEO_CALL']) {
+        category = {
+          id: 'id',
+          intentIdentifiers: [intentIdentifier] as any,
+        };
+
+        expect(() => validateIOSCategory(category)).toThrowError(
+          `'category.intentIdentifiers' unexpected intentIdentifier "${intentIdentifier}" at array index "0".`,
+        );
+      }
+    });
+
+    test('returns valid call intentIdentifiers', () => {
+      const category: IOSNotificationCategory = {
+        id: 'id',
+        intentIdentifiers: [
+          IOSIntentIdentifier.START_CALL,
+          IOSIntentIdentifier.START_AUDIO_CALL,
+          IOSIntentIdentifier.START_VIDEO_CALL,
+        ],
+      };
+
+      const $ = validateIOSCategory(category);
+      expect($.intentIdentifiers).toEqual([
+        IOSIntentIdentifier.START_CALL,
+        IOSIntentIdentifier.START_AUDIO_CALL,
+        IOSIntentIdentifier.START_VIDEO_CALL,
+      ]);
     });
 
     test('throws an error with an invalid actions param', () => {

@@ -1,12 +1,12 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / IOSNotificationCategory
 
 # Interface: IOSNotificationCategory
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:463](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L463)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:478](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L478)
 
 A interface representing a notification category created via [`setNotificationCategories`](/react-native/reference/setnotificationcategories).
 
@@ -24,15 +24,15 @@ ios
 
 > `optional` **actions**: [`IOSNotificationCategoryAction`](react-native/reference/Interface.IOSNotificationCategoryAction)\[]
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:524](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L524)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:547](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L547)
 
-***
+---
 
 ### ~~allowAnnouncement?~~
 
 > `optional` **allowAnnouncement**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:491](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L491)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:506](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L506)
 
 Kept for compatibility. No-op on supported iOS versions because announcement category
 options are ignored by iOS 15+.
@@ -43,67 +43,74 @@ Defaults to `false`.
 
 May be removed in a future major release.
 
-***
+---
 
 ### allowInCarPlay?
 
 > `optional` **allowInCarPlay**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:481](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L481)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:496](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L496)
 
 Allow notifications in this category to be displayed in a CarPlay environment.
 
 Defaults to `false`.
 
-***
+---
 
 ### hiddenPreviewsBodyPlaceholder?
 
 > `optional` **hiddenPreviewsBodyPlaceholder**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:512](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L512)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:527](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L527)
 
-***
+---
 
 ### hiddenPreviewsShowSubtitle?
 
 > `optional` **hiddenPreviewsShowSubtitle**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:505](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L505)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:520](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L520)
 
-***
+---
 
 ### hiddenPreviewsShowTitle?
 
 > `optional` **hiddenPreviewsShowTitle**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:498](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L498)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:513](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L513)
 
-***
+---
 
 ### id
 
 > **id**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:467](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L467)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:482](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L482)
 
 The unique ID for the category.
 
-***
+---
 
 ### intentIdentifiers?
 
 > `optional` **intentIdentifiers**: [`IOSIntentIdentifier`](react-native/reference/Enumeration.IOSIntentIdentifier)\[]
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:514](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L514)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:537](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L537)
 
-***
+Intent identifiers used by the system to provide category context to Siri.
+
+Use `IOSIntentIdentifier.START_CALL` for call categories. Legacy
+`START_AUDIO_CALL` and `START_VIDEO_CALL` values remain accepted for source
+compatibility, but both map to Apple's unified start call intent identifier.
+Categories read back from iOS can return `START_CALL` for call intents.
+
+---
 
 ### summaryFormat?
 
 > `optional` **summaryFormat**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:474](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L474)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:489](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L489)
 
 Specify a custom format for the summary text, which is visible when notifications are grouped together.
 

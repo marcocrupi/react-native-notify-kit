@@ -932,12 +932,9 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
   NSMutableArray<NSNumber *> *intentIdentifiers = [[NSMutableArray alloc] init];
 
   for (NSString *identifier in identifiers) {
-    if ([identifier isEqualToString:INStartAudioCallIntentIdentifier]) {
-      // IOSIntentIdentifier.START_AUDIO_CALL
-      [intentIdentifiers addObject:@0];
-    } else if ([identifier isEqualToString:INStartVideoCallIntentIdentifier]) {
-      // IOSIntentIdentifier.START_VIDEO_CALL
-      [intentIdentifiers addObject:@1];
+    if ([identifier isEqualToString:INStartCallIntentIdentifier]) {
+      // IOSIntentIdentifier.START_CALL
+      [intentIdentifiers addObject:@25];
     } else if ([identifier isEqualToString:INSearchCallHistoryIntentIdentifier]) {
       // IOSIntentIdentifier.SEARCH_CALL_HISTORY
       [intentIdentifiers addObject:@2];
@@ -1018,12 +1015,15 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
   NSMutableArray<NSString *> *intentIdentifiers = [[NSMutableArray alloc] init];
 
   for (NSNumber *identifier in identifiers) {
-    if ([identifier isEqualToNumber:@0]) {
+    if ([identifier isEqualToNumber:@25]) {
+      // IOSIntentIdentifier.START_CALL
+      [intentIdentifiers addObject:INStartCallIntentIdentifier];
+    } else if ([identifier isEqualToNumber:@0]) {
       // IOSIntentIdentifier.START_AUDIO_CALL
-      [intentIdentifiers addObject:INStartAudioCallIntentIdentifier];
+      [intentIdentifiers addObject:INStartCallIntentIdentifier];
     } else if ([identifier isEqualToNumber:@1]) {
       // IOSIntentIdentifier.START_VIDEO_CALL
-      [intentIdentifiers addObject:INStartVideoCallIntentIdentifier];
+      [intentIdentifiers addObject:INStartCallIntentIdentifier];
     } else if ([identifier isEqualToNumber:@2]) {
       // IOSIntentIdentifier.SEARCH_CALL_HISTORY
       [intentIdentifiers addObject:INSearchCallHistoryIntentIdentifier];
