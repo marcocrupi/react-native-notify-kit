@@ -27,9 +27,25 @@ import android.content.Intent;
  */
 public class RebootBroadcastReceiver extends BroadcastReceiver {
   private static final String TAG = "RebootReceiver";
+  private static final String ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON";
+  private static final String ACTION_HTC_QUICKBOOT_POWERON =
+      "com.htc.intent.action.QUICKBOOT_POWERON";
 
   @Override
   public void onReceive(Context context, Intent intent) {
+    if (intent == null) {
+      Logger.w(TAG, "Ignoring reboot event with null intent");
+      return;
+    }
+
+    String action = intent.getAction();
+    if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
+        && !ACTION_QUICKBOOT_POWERON.equals(action)
+        && !ACTION_HTC_QUICKBOOT_POWERON.equals(action)) {
+      Logger.w(TAG, "Ignoring unsupported reboot event action: " + action);
+      return;
+    }
+
     PendingResult pendingResult = goAsync();
     // Tracks whether the synchronous section successfully handed off to the
     // async reschedule path. If not, the finally block must call finish() to

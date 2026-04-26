@@ -53,7 +53,7 @@ android {
   defaultConfig {
     minSdk = 24
     targetSdk = 35
-    multiDexEnabled true
+    multiDexEnabled = true
 
     testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -66,7 +66,7 @@ android {
 
   lint {
     disable 'GradleCompatible'
-    abortOnError false
+    abortOnError = false
   }
 
   compileOptions {

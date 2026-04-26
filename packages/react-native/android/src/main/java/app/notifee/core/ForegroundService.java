@@ -415,6 +415,7 @@ public class ForegroundService extends Service {
    * @return the raw {@code foregroundServiceType} bitmask from the manifest, or 0 if the service is
    *     not declared or has no explicit type
    */
+  @RequiresApi(Build.VERSION_CODES.Q)
   private int getDeclaredForegroundServiceType() {
     try {
       ComponentName component = new ComponentName(this, ForegroundService.class);

@@ -44,6 +44,7 @@ import com.facebook.imagepipeline.request.ImageRequestBuilder;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class ResourceUtils {
@@ -257,7 +258,7 @@ public class ResourceUtils {
       return 0;
     }
 
-    name = name.toLowerCase().replace("-", "_");
+    name = name.toLowerCase(Locale.ROOT).replace("-", "_");
 
     String key = name + "_" + type;
 
