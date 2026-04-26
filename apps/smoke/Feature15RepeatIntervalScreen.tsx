@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import notifee, {
   AlarmType,
@@ -41,6 +41,32 @@ const VALID_SCENARIOS = new Set([
   'get-notification-settings',
   'open-alarm-permission-settings',
 ]);
+
+function SmokeButton({
+  title,
+  onPress,
+  disabled,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled === true }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.button,
+        pressed && !disabled ? styles.buttonPressed : null,
+        disabled ? styles.buttonDisabled : null,
+      ]}
+    >
+      <Text style={[styles.buttonText, disabled ? styles.buttonTextDisabled : null]}>{title}</Text>
+    </Pressable>
+  );
+}
 
 function normalizeForJson(value: unknown): unknown {
   if (typeof value === 'number') {
@@ -607,7 +633,7 @@ export function Feature15RepeatIntervalScreen({ onBack, request }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Button title="Back" onPress={onBack} disabled={busy} />
+        <SmokeButton title="Back" onPress={onBack} disabled={busy} />
         <Text style={styles.title}>Feature #15 / Repeat Interval Tests</Text>
       </View>
 
@@ -624,57 +650,68 @@ export function Feature15RepeatIntervalScreen({ onBack, request }: Props) {
         </View>
 
         <View style={styles.buttons}>
-          <Button title="One-shot +60s" onPress={() => runScenario('one-shot')} disabled={busy} />
-          <Button
+          <SmokeButton
+            title="One-shot +60s"
+            onPress={() => runScenario('one-shot')}
+            disabled={busy}
+          />
+          <SmokeButton
             title="Daily repeatInterval 2 +60s"
             onPress={() => runScenario('daily-2')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Weekly repeatInterval 2 +60s"
             onPress={() => runScenario('weekly-2')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Monthly repeatInterval 3 +60s"
             onPress={() => runScenario('monthly-3')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Invalid monthly WorkManager"
             onPress={() => runScenario('invalid-monthly-workmanager')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Invalid repeatInterval cases"
             onPress={() => runScenario('invalid-repeat-interval')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Dump trigger notifications"
             onPress={() => runScenario('dump-triggers')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Cancel Feature #15 triggers"
             onPress={() => runScenario('cancel-feature')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Request notification permission"
             onPress={() => runScenario('request-permission')}
             disabled={busy}
           />
-          <Button
+          <SmokeButton
             title="Get notification settings"
             onPress={() => runScenario('get-notification-settings')}
             disabled={busy}
           />
-          <Button
-            title="Open alarm permission settings"
-            onPress={() => runScenario('open-alarm-permission-settings')}
-            disabled={busy}
-          />
+          {Platform.OS === 'android' ? (
+            <SmokeButton
+              title="Open alarm permission settings"
+              onPress={() => runScenario('open-alarm-permission-settings')}
+              disabled={busy}
+            />
+          ) : (
+            <Text style={styles.platformNote}>
+              Exact alarm settings are Android-only. iOS uses the normal notification permission for
+              local notifications.
+            </Text>
+          )}
         </View>
 
         <View style={styles.log}>
@@ -716,6 +753,31 @@ const styles = StyleSheet.create({
   },
   instructions: { marginTop: 8, color: '#444', fontSize: 13 },
   buttons: { gap: 8, marginBottom: 12 },
+  button: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 42,
+    borderRadius: 6,
+    backgroundColor: '#1565c0',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  buttonPressed: { backgroundColor: '#0d47a1' },
+  buttonDisabled: { backgroundColor: '#9e9e9e' },
+  buttonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  buttonTextDisabled: { color: '#eeeeee' },
+  platformNote: {
+    color: '#555',
+    fontSize: 13,
+    lineHeight: 18,
+    paddingHorizontal: 2,
+    paddingVertical: 6,
+  },
   log: { flex: 1, minHeight: 220, backgroundColor: '#111', borderRadius: 6, padding: 8 },
   line: {
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
