@@ -104,8 +104,8 @@ RCT_EXPORT_MODULE();
 - (void)sendNotifeeCoreEvent:(NSDictionary *_Nonnull)eventBody {
   dispatch_async(dispatch_get_main_queue(), ^{
     @synchronized(self) {
-      if (!hasListeners) {
-        [pendingCoreEvents addObject:eventBody];
+      if (!self->hasListeners) {
+        [self->pendingCoreEvents addObject:eventBody];
         return;
       }
     }

@@ -152,25 +152,16 @@ struct {
     // if list or banner is true, ignore alert property
     if (banner || list) {
       if (banner) {
-        if (@available(iOS 14, *)) {
-          presentationOptions |= UNNotificationPresentationOptionBanner;
-        } else {
-          // for iOS 13 we need to set alert
-          presentationOptions |= UNNotificationPresentationOptionAlert;
-        }
+        presentationOptions |= UNNotificationPresentationOptionBanner;
       }
 
       if (list) {
-        if (@available(iOS 14, *)) {
-          presentationOptions |= UNNotificationPresentationOptionList;
-        } else {
-          // for iOS 13 we need to set alert
-          presentationOptions |= UNNotificationPresentationOptionAlert;
-        }
+        presentationOptions |= UNNotificationPresentationOptionList;
       }
     } else if (alert) {
       // TODO: remove alert once it has been fully removed from the notifee API
-      presentationOptions |= UNNotificationPresentationOptionAlert;
+      presentationOptions |=
+          UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList;
     }
 
     // Emit DELIVERED for every Notifee-owned notification presented in foreground.
@@ -202,15 +193,8 @@ struct {
     // @react-native-firebase/messaging). Fall back to the platform default
     // presentation options instead so the system shows the notification as it
     // would if Notifee had not installed a delegate at all.
-    if (@available(iOS 14.0, *)) {
-      completionHandler(
-          UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |
-          UNNotificationPresentationOptionList | UNNotificationPresentationOptionBadge);
-    } else {
-      completionHandler(UNNotificationPresentationOptionAlert |
-                        UNNotificationPresentationOptionSound |
-                        UNNotificationPresentationOptionBadge);
-    }
+    completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |
+                      UNNotificationPresentationOptionList | UNNotificationPresentationOptionBadge);
   }
 }
 

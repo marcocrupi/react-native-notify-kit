@@ -180,16 +180,12 @@ export interface IOSForegroundPresentationOptions {
   /**
    * Present the notification as a banner
    *
-   * For iOS 13 and lower, will be equivalent to setting `alert` to true
-   *
    * Defaults to true
    */
   banner?: boolean;
 
   /**
    * Show the notification in Notification Center
-   *
-   * For iOS 13 and lower, will be equivalent to setting `alert` to true
    *
    * Defaults to true
    */
