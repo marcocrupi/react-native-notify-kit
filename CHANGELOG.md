@@ -15,7 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **iOS behavior change**: repeating `TimestampTrigger` notifications now use a bounded rolling schedule of one-shot local notifications instead of a native repeating `UNCalendarNotificationTrigger`. This makes custom repeat intervals (`repeatInterval`) and `RepeatFrequency.MONTHLY` possible, respects the selected start timestamp, and rebalances the rolling pending-notification budget across active series. Apps that relied on iOS native repeating calendar triggers being scheduled indefinitely should review the new iOS rolling-window behavior: the library keeps upcoming occurrences scheduled and tops them up when the app becomes active, when the user interacts with a notification, or when a rolling notification is delivered in foreground. iOS does not wake an app merely because a local notification was delivered while the app is killed or suspended, so the rolling window cannot be extended indefinitely unless the app runs again.
 - **Android**: timestamp trigger recurrence now advances by `repeatFrequency * repeatInterval` using calendar-aware scheduling. Existing triggers without `repeatInterval` keep the previous behavior with interval `1`.
+
+### Fixed
+
+- **iOS**: rolling timestamp triggers now rebalance the bounded pending-notification window across all active rolling series. This prevents earlier recurring triggers from consuming the entire iOS pending budget and blocking later triggers such as `DAILY + repeatInterval: 2`, `WEEKLY + repeatInterval: 2`, and `MONTHLY + repeatInterval: 3` from coexisting.
 
 ### Notes
 

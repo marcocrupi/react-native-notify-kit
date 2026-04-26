@@ -349,7 +349,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
 - **35 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted
-- **Custom repeat intervals for timestamp triggers** — `TimestampTrigger.repeatInterval` supports calendar-based recurrences such as every 2 days, every 2 weeks, or every 3 months from a selected start timestamp. See the [Triggers guide](docs/react-native/triggers.mdx#custom-repeat-intervals).
+- **Custom repeat intervals for timestamp triggers** — `TimestampTrigger.repeatInterval` supports calendar-based recurrences such as every 2 days, every 2 weeks, or every 3 months from a selected start timestamp. On iOS, repeating timestamp triggers now use a bounded rolling schedule of one-shot local notifications instead of native repeating calendar triggers; this enables custom repeat intervals and start-date-respecting recurrence, but apps that relied on native iOS repeating triggers being scheduled indefinitely should review the iOS notes in the [Triggers guide](docs/react-native/triggers.mdx#custom-repeat-intervals).
 - **New API: `setNotificationConfig()`** — opt-out flag to prevent Notifee from intercepting iOS remote notification handlers (see [New APIs](#new-apis) below)
 - **Baseline Profile** — the library AAR ships a Baseline Profile that instructs ART to AOT-compile the foreground service notification hot path at install time, eliminating JIT penalty on first invocation
 

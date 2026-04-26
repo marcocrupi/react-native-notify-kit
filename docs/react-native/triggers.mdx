@@ -213,9 +213,17 @@ await notifee.createTriggerNotification(
 );
 ```
 
-#### iOS behavior
+#### iOS behavior change for repeating timestamp triggers
 
-On iOS, custom repeat intervals are implemented as a bounded rolling schedule of one-shot local notifications. The library keeps upcoming occurrences scheduled and tops them up when the app becomes active, when the user interacts with a notification, or when a rolling notification is delivered while the app is in the foreground. iOS does not wake an app merely because a local notification was delivered while the app is killed or suspended, so the rolling window cannot be extended indefinitely unless the app runs again.
+On iOS, repeating timestamp triggers use a bounded rolling schedule of one-shot local notifications. This replaces the previous native repeating `UNCalendarNotificationTrigger` path for repeating timestamp triggers.
+
+This behavior change applies only to repeating `TimestampTrigger` notifications on iOS. Android scheduling and one-shot timestamp triggers keep their existing paths.
+
+This is intentional: native repeating calendar triggers cannot express custom intervals such as every 2 days or every 3 months from a selected start timestamp, and they can match the next wall-clock time even when the intended start date is in the future.
+
+The rolling schedule keeps upcoming occurrences pending and tops them up when the app becomes active, when the user interacts with a notification, or when a rolling notification is delivered while the app is in the foreground. Because iOS does not wake the app merely because a local notification was delivered while the app is killed or suspended, the rolling window cannot be extended indefinitely unless the app runs again.
+
+When multiple rolling timestamp triggers are active, the library rebalances the bounded rolling window across active rolling series. Earlier triggers do not consume the entire pending-notification budget and block later triggers. If the number of active rolling series exceeds the available rolling budget, scheduling fails with a clear error instead of silently dropping existing series. Non-rolling pending notifications created by the app still count against iOS' global pending-notification limits, so they reduce the space available for rolling timestamp triggers.
 
 This rolling schedule respects the selected start date. It does not use a native repeating `UNCalendarNotificationTrigger` for custom repeat intervals. Internal rolling notification IDs are not exposed through the JavaScript APIs; APIs such as `getTriggerNotificationIds()` and `getDisplayedNotifications()` use the public notification IDs.
 
