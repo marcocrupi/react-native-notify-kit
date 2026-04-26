@@ -1,12 +1,12 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / IOSNotificationPermissions
 
 # Interface: IOSNotificationPermissions
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:208](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L208)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:199](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L199)
 
 An interface representing all the available permissions that can be requested by your app via
 the [`requestPermission`](/react-native/reference/requestpermission) API.
@@ -24,21 +24,22 @@ ios
 
 > `optional` **alert**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:214](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L214)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:205](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L205)
 
 Request permission to display alerts.
 
 Defaults to true.
 
-***
+---
 
-### announcement?
+### ~~announcement?~~
 
 > `optional` **announcement**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:263](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L263)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:256](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L256)
 
-Request permission for Siri to automatically read out notification messages over AirPods.
+Explicit announcement authorization requests are no longer needed because announcement
+authorization is included by iOS on supported versions. Kept for API compatibility.
 
 Defaults to false.
 
@@ -46,37 +47,41 @@ Defaults to false.
 
 ios iOS >= 13
 
-***
+#### Deprecated
+
+May be removed in a future major release.
+
+---
 
 ### badge?
 
 > `optional` **badge**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:231](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L231)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:222](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L222)
 
 Request permission to update the application badge.
 
 Defaults to true.
 
-***
+---
 
 ### carPlay?
 
 > `optional` **carPlay**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:245](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L245)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:236](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L236)
 
 Request permission to display notifications in a CarPlay environment.
 
 Defaults to true.
 
-***
+---
 
 ### criticalAlert?
 
 > `optional` **criticalAlert**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:224](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L224)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:215](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L215)
 
 Request permission to display critical notifications.
 
@@ -85,13 +90,13 @@ and usage examples.
 
 Defaults to false.
 
-***
+---
 
 ### provisional?
 
 > `optional` **provisional**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:254](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L254)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:245](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L245)
 
 Request permission to provisionally create non-interrupting notifications.
 
@@ -101,13 +106,13 @@ Defaults to false.
 
 ios iOS >= 12
 
-***
+---
 
 ### sound?
 
 > `optional` **sound**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:238](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L238)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:229](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L229)
 
 Request permission to play sounds.
 

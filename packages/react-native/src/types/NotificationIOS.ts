@@ -79,25 +79,20 @@ export interface NotificationIOS {
   threadId?: string;
 
   /**
-   * The argument that is inserted in the IOSCategory.summaryFormat for this notification.
-   *
-   * See `IOSCategory.summaryFormat`.
+   * Kept for compatibility. No-op on supported iOS versions because notification summary
+   * arguments are ignored by iOS 15+.
    *
    * @platform ios iOS >= 12
+   * @deprecated May be removed in a future major release.
    */
   summaryArgument?: string;
 
   /**
-   * A number that indicates how many items in the summary are being represented.
-   *
-   * For example if a messages app sends one notification for 3 new messages in a group chat,
-   * the summaryArgument could be the name of the group chat and the summaryArgumentCount should be 3.
-   *
-   * If set, value cannot be 0 or less.
-   *
-   * See `IOSCategory.summaryFormat`.
+   * Kept for compatibility. No-op on supported iOS versions because notification summary
+   * arguments are ignored by iOS 15+.
    *
    * @platform ios iOS >= 12
+   * @deprecated May be removed in a future major release.
    */
   summaryArgumentCount?: number;
 
@@ -250,11 +245,13 @@ export interface IOSNotificationPermissions {
   provisional?: boolean;
 
   /**
-   * Request permission for Siri to automatically read out notification messages over AirPods.
+   * Explicit announcement authorization requests are no longer needed because announcement
+   * authorization is included by iOS on supported versions. Kept for API compatibility.
    *
    * Defaults to false.
    *
    * @platform ios iOS >= 13
+   * @deprecated May be removed in a future major release.
    */
   announcement?: boolean;
 
@@ -483,14 +480,13 @@ export interface IOSNotificationCategory {
    */
   allowInCarPlay?: boolean;
 
-  /*
-   * Allow notifications in this category to be announced to the user
-   * via 3rd party services such as Siri.
-   *
-   * For example, if the notification can be automatically read by Siri
-   * while the user is wearing AirPods.
+  /**
+   * Kept for compatibility. No-op on supported iOS versions because announcement category
+   * options are ignored by iOS 15+.
    *
    * Defaults to `false`.
+   *
+   * @deprecated May be removed in a future major release.
    */
   allowAnnouncement?: boolean;
 

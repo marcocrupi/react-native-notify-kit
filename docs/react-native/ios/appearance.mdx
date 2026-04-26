@@ -82,8 +82,11 @@ unread notifications are available:
 
 <Vimeo id="445185906" caption="Default Summary Text Example" />
 
-It is possible to override this default text by providing `summaryArgument` & `summaryArgumentCount` fields
-on the notification body combined with a [Category](/react-native/ios/categories) `summaryFormat`.
+You can customize category summary text with a [Category](/react-native/ios/categories) `summaryFormat`.
+
+The legacy `summaryArgument` and `summaryArgumentCount` notification fields are kept for compatibility, but they are
+no-ops on supported iOS versions because Apple ignores notification summary arguments on iOS 15+. They may be removed in a
+future major release, so avoid relying on them for summary text.
 
 To learn more, view the [Category Summary Text](/react-native/ios/categories#category-summary-text)
 documentation.

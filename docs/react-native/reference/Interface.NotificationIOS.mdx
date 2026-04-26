@@ -59,7 +59,7 @@ appropriate actions to display for the notification.
 
 > `optional` **communicationInfo**: [`IOSCommunicationInfo`](react-native/reference/Interface.IOSCommunicationInfo)
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:125](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L125)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:120](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L120)
 
 Optional property for communication notifications
 
@@ -104,11 +104,11 @@ ios iOS >= 12
 
 > `optional` **foregroundPresentationOptions**: [`IOSForegroundPresentationOptions`](react-native/reference/Interface.IOSForegroundPresentationOptions)
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:118](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L118)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:113](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L113)
 
 Optional property to customise how notifications are presented when the app is in the foreground.
 
-By default, Notify Kit will show iOS notifications in heads-up mode if your app is currently in the foreground.
+By default, Notifee will show iOS notifications in heads-up mode if your app is currently in the foreground.
 
 ***
 
@@ -151,40 +151,41 @@ Use 'default' to use the default system sound.
 
 ***
 
-### summaryArgument?
+### ~~summaryArgument?~~
 
 > `optional` **summaryArgument**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:88](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L88)
 
-The argument that is inserted in the IOSCategory.summaryFormat for this notification.
-
-See `IOSCategory.summaryFormat`.
+Kept for compatibility. No-op on supported iOS versions because notification summary
+arguments are ignored by iOS 15+.
 
 #### Platform
 
 ios iOS >= 12
+
+#### Deprecated
+
+May be removed in a future major release.
 
 ***
 
-### summaryArgumentCount?
+### ~~summaryArgumentCount?~~
 
 > `optional` **summaryArgumentCount**: `number`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:102](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L102)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:97](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L97)
 
-A number that indicates how many items in the summary are being represented.
-
-For example if a messages app sends one notification for 3 new messages in a group chat,
-the summaryArgument could be the name of the group chat and the summaryArgumentCount should be 3.
-
-If set, value cannot be 0 or less.
-
-See `IOSCategory.summaryFormat`.
+Kept for compatibility. No-op on supported iOS versions because notification summary
+arguments are ignored by iOS 15+.
 
 #### Platform
 
 ios iOS >= 12
+
+#### Deprecated
+
+May be removed in a future major release.
 
 ***
 
@@ -192,7 +193,7 @@ ios iOS >= 12
 
 > `optional` **targetContentId**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:111](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L111)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:106](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L106)
 
 The identifier for the window to be opened when the user taps a notification.
 

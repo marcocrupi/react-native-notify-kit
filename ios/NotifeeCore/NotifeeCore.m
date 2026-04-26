@@ -1412,18 +1412,6 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
     content.threadIdentifier = iosDict[@"threadId"];
   }
 
-  if (@available(iOS 12.0, *)) {
-    // summaryArgument
-    if (iosDict[@"summaryArgument"] != nil) {
-      content.summaryArgument = iosDict[@"summaryArgument"];
-    }
-
-    // summaryArgumentCount
-    if (iosDict[@"summaryArgumentCount"] != nil) {
-      content.summaryArgumentCount = [iosDict[@"summaryArgumentCount"] unsignedIntValue];
-    }
-  }
-
   if (@available(iOS 13.0, *)) {
     // targetContentId
     if (iosDict[@"targetContentId"] != nil) {
@@ -1477,12 +1465,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
         }
       }
 
-      if (@available(iOS 13.0, *)) {
-        categoryDictionary[@"allowAnnouncement"] = @(
-            ((notificationCategory.options & UNNotificationCategoryOptionAllowAnnouncement) != 0));
-      } else {
-        categoryDictionary[@"allowAnnouncement"] = @(NO);
-      }
+      categoryDictionary[@"allowAnnouncement"] = @(NO);
 
       categoryDictionary[@"actions"] =
           [NotifeeCoreUtil notificationActionsToDictionaryArray:notificationCategory.actions];
@@ -1532,12 +1515,6 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
       if ([categoryDictionary[@"hiddenPreviewsShowSubtitle"] isEqual:@(YES)]) {
         options |= UNNotificationCategoryOptionHiddenPreviewsShowSubtitle;
-      }
-    }
-
-    if (@available(iOS 13.0, *)) {
-      if ([categoryDictionary[@"allowAnnouncement"] isEqual:@(YES)]) {
-        options |= UNNotificationCategoryOptionAllowAnnouncement;
       }
     }
 
@@ -1603,12 +1580,6 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   if ([permissions[@"provisional"] isEqual:@(YES)]) {
     if (@available(iOS 12.0, *)) {
       options |= UNAuthorizationOptionProvisional;
-    }
-  }
-
-  if ([permissions[@"announcement"] isEqual:@(YES)]) {
-    if (@available(iOS 13.0, *)) {
-      options |= UNAuthorizationOptionAnnouncement;
     }
   }
 

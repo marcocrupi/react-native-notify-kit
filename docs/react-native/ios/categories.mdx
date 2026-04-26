@@ -70,14 +70,17 @@ unread notifications are available:
 
 This functionality is only available on iOS >= 12.
 
-If required, you can override the default summary text using the `summaryFormat` property. This string accepts two unique
-values which the system replaces with variable arguments:
+If required, you can override the default summary text using the `summaryFormat` property. This string accepts values
+which the system replaces with variable arguments:
 
 - `%u`: the notification count (the system handles this automatically).
-- `%@`: a custom argument provided to the notification body (see below).
+- `%@`: a legacy custom argument placeholder.
 
-These unique values can be placed inside of the `summaryFormat` field, and controlled via the `summaryArgument` and
-`summaryArgumentCount` properties on the notification body, for example:
+The legacy `summaryArgument` and `summaryArgumentCount` notification fields are kept for compatibility, but they are
+no-ops on supported iOS versions because Apple ignores notification summary arguments on iOS 15+. They may be removed in a
+future major release. Prefer summary text that does not depend on `%@`.
+
+For example:
 
 ```js
 import notifee from 'react-native-notify-kit';
@@ -85,7 +88,7 @@ import notifee from 'react-native-notify-kit';
 await notifee.setNotificationCategories([
   {
     id: 'post',
-    summaryFormat: 'You have %u+ unread messages from %@.',
+    summaryFormat: 'You have %u+ unread messages.',
     actions: [
       {
         id: 'reply',
@@ -100,8 +103,6 @@ notifee.displayNotification({
   body: 'Hey everyone! Check out my new blog post on my website.',
   ios: {
     categoryId: 'post',
-    summaryArgument: 'John',
-    summaryArgumentCount: 10,
   },
 });
 ```
