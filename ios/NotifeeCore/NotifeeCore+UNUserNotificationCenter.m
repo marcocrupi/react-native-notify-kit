@@ -68,12 +68,7 @@ struct {
   });
 }
 
-- (void)onDidFinishLaunchingNotification:(nonnull NSDictionary *)notifUserInfo {
-  if (notifUserInfo != nil) {
-    NSDictionary *notifeeNotification = notifUserInfo[kNotifeeUserInfoNotification];
-    _initialNoticationID = notifeeNotification[@"id"];
-  }
-
+- (void)markInitialNotificationGathered {
   _initialNotificationGathered = YES;
 }
 
@@ -106,8 +101,8 @@ struct {
 - (void)topUpRollingTimestampTriggersForLifecycleEvent:(NSString *)eventName {
   [NotifeeCore topUpRollingTimestampTriggersWithCompletion:^(NSError *error) {
     if (error != nil) {
-      NSLog(@"NotifeeCore: Failed to top up rolling timestamp triggers after %@: %@",
-            eventName, error);
+      NSLog(@"NotifeeCore: Failed to top up rolling timestamp triggers after %@: %@", eventName,
+            error);
     }
   }];
 }
@@ -193,8 +188,9 @@ struct {
     // @react-native-firebase/messaging). Fall back to the platform default
     // presentation options instead so the system shows the notification as it
     // would if Notifee had not installed a delegate at all.
-    completionHandler(UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |
-                      UNNotificationPresentationOptionList | UNNotificationPresentationOptionBadge);
+    completionHandler(UNNotificationPresentationOptionBanner |
+                      UNNotificationPresentationOptionSound | UNNotificationPresentationOptionList |
+                      UNNotificationPresentationOptionBadge);
   }
 }
 
@@ -288,13 +284,6 @@ struct {
 
     // store notification for getInitialNotification
     _initialNotification = [eventDetail copy];
-
-    // post PRESS/ACTION_PRESS event
-    // Set is initial notification to true
-    if (_notificationOpenedAppID != nil && _initialNoticationID != nil &&
-        [_initialNoticationID isEqualToString:_notificationOpenedAppID]) {
-      eventDetail[@"initialNotification"] = @1;
-    }
 
     [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:event];
 

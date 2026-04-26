@@ -30,7 +30,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property(strong, nullable) NSDictionary *initialNotification;
 @property bool initialNotificationGathered;
 @property(nullable) notifeeMethodNSDictionaryBlock initialNotificationBlock;
-@property NSString *initialNoticationID;
 @property NSString *notificationOpenedAppID;
 
 + (_Nonnull instancetype)instance;
@@ -39,7 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (nullable NSDictionary *)getInitialNotification;
 
-- (void)onDidFinishLaunchingNotification:(NSDictionary *)notification;
+- (void)markInitialNotificationGathered;
 
 @end
 
