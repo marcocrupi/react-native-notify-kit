@@ -463,9 +463,11 @@ Android 14 (API 34) requires all foreground services to declare an explicit `for
 
    ```xml
    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-   <!-- Replace SHORT_SERVICE with the type matching your use case -->
-   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SHORT_SERVICE" />
    ```
+
+   Some foreground service types require a matching `FOREGROUND_SERVICE_*` permission. `shortService` does not use a
+   dedicated `FOREGROUND_SERVICE_SHORT_SERVICE` permission; keep `FOREGROUND_SERVICE`, declare the service type that
+   matches your use case, and add any real type-specific permissions required by the Android platform.
 
 2. **Declare the service type on Notifee's ForegroundService:**
 

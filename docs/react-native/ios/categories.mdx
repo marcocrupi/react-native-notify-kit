@@ -37,6 +37,10 @@ async function setCategories() {
 To view more about the `actions` property, view the [Quick Actions](/react-native/ios/interaction#quick-actions)
 documentation.
 
+For call-related intent identifiers, use `IOSIntentIdentifier.START_CALL`. The legacy `START_AUDIO_CALL` and
+`START_VIDEO_CALL` values are kept for compatibility but map to Apple's unified call intent identifier, and
+`getNotificationCategories()` may return `START_CALL` when reading categories back from iOS.
+
 > It is also possible to group notifications via [threadId](/react-native/reference/notificationios#threadid).
 
 ## Assigning a category

@@ -5,179 +5,190 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+### Added
+
+- **Custom timestamp repeat intervals**: `TimestampTrigger.repeatInterval` supports calendar-based custom intervals such as every 2 days, every 2 weeks, and every 3 months from the selected start timestamp. `RepeatFrequency.MONTHLY` adds monthly timestamp recurrence; Android advances triggers with calendar-aware scheduling, while iOS uses a bounded rolling schedule of one-shot notifications that is topped up when the app runs or the user interacts with notifications.
+
+### Changed
+
+- **iOS compatibility cleanup**: deprecated notification summary and announcement fields are now compatibility no-ops on supported iOS versions, and `foregroundPresentationOptions.alert` uses modern banner/list presentation options instead of the deprecated native alert option.
+- **iOS call intents and launch handling**: use `IOSIntentIdentifier.START_CALL` for call-related category intent identifiers. Legacy `START_AUDIO_CALL` and `START_VIDEO_CALL` values remain accepted for compatibility, but map to Apple's unified call intent identifier and `getNotificationCategories()` may return `START_CALL`. The legacy `UILocalNotification` launch-options fallback was removed; `getInitialNotification()` remains supported through the modern `UNNotificationResponse` path.
+- **Android/build hardening**: small owned Android warning sources were cleaned up, including Gradle DSL assignment syntax, deprecated React Native activity access in the Kotlin bridge, `RebootBroadcastReceiver` action filtering, `Locale.ROOT` resource-name normalization, and removal of the invalid smoke-app `FOREGROUND_SERVICE_SHORT_SERVICE` permission.
+- **Tooling**: reference generation is now idempotent because generated docs are formatted with Prettier, and the smoke app has a lightweight Jest import/render gate.
+
 ## [10.0.0] (2026-04-17)
 
 ### Added
 
-* **FCM Mode**: end-to-end Firebase Cloud Messaging integration — a data-only Android payload plus an iOS alert + Notification Service Extension payload, built from a single server call. Introduces `notifee.handleFcmMessage(remoteMessage)` (one-liner client handler), `notifee.setFcmConfig(config)` (optional startup config with `defaultChannelId`, `defaultPressAction`, `fallbackBehavior`, and `ios.suppressForegroundBanner`). See the [FCM Mode guide](/fcm-mode) for the full architecture.
-* **Server SDK**: new `react-native-notify-kit/server` subpath export — a zero-runtime-dependency Node.js / Firebase Cloud Functions helper that builds FCM HTTP v1 message payloads. Public API: `buildNotifyKitPayload`, `buildIosApnsPayload`, `buildAndroidPayload`, `serializeNotifeeOptions`. 100% unit-test coverage.
-* **CLI `init-nse`**: `npx react-native-notify-kit init-nse` scaffolds an iOS Notification Service Extension target, patching `.pbxproj` and `Podfile` automatically. Ships in the main package — no extra install. Supports `--dry-run`, `--force`, `--target-name`, `--ios-path`, `--bundle-suffix`. Atomic writes with rollback on failure.
-* **Package exports**: `packages/react-native/package.json` now declares a formal `exports` map. Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`.
-* **Docs**: new [docs/fcm-mode.mdx](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/fcm-mode.mdx) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from the manual pattern, troubleshooting, and known limitations.
+- **FCM Mode**: end-to-end Firebase Cloud Messaging integration — a data-only Android payload plus an iOS alert + Notification Service Extension payload, built from a single server call. Introduces `notifee.handleFcmMessage(remoteMessage)` (one-liner client handler), `notifee.setFcmConfig(config)` (optional startup config with `defaultChannelId`, `defaultPressAction`, `fallbackBehavior`, and `ios.suppressForegroundBanner`). See the [FCM Mode guide](/fcm-mode) for the full architecture.
+- **Server SDK**: new `react-native-notify-kit/server` subpath export — a zero-runtime-dependency Node.js / Firebase Cloud Functions helper that builds FCM HTTP v1 message payloads. Public API: `buildNotifyKitPayload`, `buildIosApnsPayload`, `buildAndroidPayload`, `serializeNotifeeOptions`. 100% unit-test coverage.
+- **CLI `init-nse`**: `npx react-native-notify-kit init-nse` scaffolds an iOS Notification Service Extension target, patching `.pbxproj` and `Podfile` automatically. Ships in the main package — no extra install. Supports `--dry-run`, `--force`, `--target-name`, `--ios-path`, `--bundle-suffix`. Atomic writes with rollback on failure.
+- **Package exports**: `packages/react-native/package.json` now declares a formal `exports` map. Public entries: `.`, `./server`, `./jest-mock`, `./react-native.config.js`, `./package.json`.
+- **Docs**: new [docs/fcm-mode.mdx](https://github.com/marcocrupi/react-native-notify-kit/blob/main/docs/fcm-mode.mdx) — comprehensive FCM Mode guide covering architecture, server SDK reference, client API reference, iOS NSE setup, Android specifics, payload schema, migration from the manual pattern, troubleshooting, and known limitations.
 
 ### Fixed
 
-* **Client**: `handleFcmMessage` filters out iOS attachments with missing/empty `url` instead of propagating to the validator.
-* **Client**: `reconstructNotification` emits a `console.warn` when a recognized Android style type (`BIG_TEXT` / `BIG_PICTURE`) is present but the required sub-field is missing.
-* **Client**: `setFcmConfig` and `handleFcmMessage` deep-copy the nested `ios` sub-object, preventing caller mutation.
-* **CLI**: Podfile patching rolls back atomically when it cannot locate the app target's closing `end`.
-* **CLI**: `--bundle-suffix` is validated against `/^\.[A-Za-z0-9\-.]+$/`.
-* **CLI**: bundle-ID detection is scoped to the app target's own `buildConfigurationList`, not all targets globally.
-* **CLI**: `$(PRODUCT_NAME)` / `$(TARGET_NAME)` variables are expanded when deriving the NSE bundle ID.
-* **CLI**: RNFB-style `INFOPLIST_FILE` input path is stripped from the host target after adding the NSE to avoid an Xcode build cycle.
-* **CLI**: Swift NSE template uses the correct `with:` selector label when calling `NotifeeExtensionHelper.populateNotificationContent`.
-* **iOS**: `RNNotifeeCore.podspec` declares `DEFINES_MODULE = YES` so the NSE target can `import RNNotifeeCore` as a Swift module.
+- **Client**: `handleFcmMessage` filters out iOS attachments with missing/empty `url` instead of propagating to the validator.
+- **Client**: `reconstructNotification` emits a `console.warn` when a recognized Android style type (`BIG_TEXT` / `BIG_PICTURE`) is present but the required sub-field is missing.
+- **Client**: `setFcmConfig` and `handleFcmMessage` deep-copy the nested `ios` sub-object, preventing caller mutation.
+- **CLI**: Podfile patching rolls back atomically when it cannot locate the app target's closing `end`.
+- **CLI**: `--bundle-suffix` is validated against `/^\.[A-Za-z0-9\-.]+$/`.
+- **CLI**: bundle-ID detection is scoped to the app target's own `buildConfigurationList`, not all targets globally.
+- **CLI**: `$(PRODUCT_NAME)` / `$(TARGET_NAME)` variables are expanded when deriving the NSE bundle ID.
+- **CLI**: RNFB-style `INFOPLIST_FILE` input path is stripped from the host target after adding the NSE to avoid an Xcode build cycle.
+- **CLI**: Swift NSE template uses the correct `with:` selector label when calling `NotifeeExtensionHelper.populateNotificationContent`.
+- **iOS**: `RNNotifeeCore.podspec` declares `DEFINES_MODULE = YES` so the NSE target can `import RNNotifeeCore` as a Swift module.
 
 ## [9.7.0] (2026-04-15)
 
 ### Added
 
-* **android:** `getDisplayedNotifications()` now exposes custom keys from `Notification.extras` as a top-level `data` field on the result, matching iOS behavior. Reserved keys (`android.*`, `google.*`, `gcm.*`, `fcm.*`, `notifee*`, plus `from`, `collapse_key`, `message_type`, `message_id`, `aps`, `fcm_options`) are filtered out. Note: this cannot surface custom `data` for FCM-auto-displayed push notifications because FCM routes those fields exclusively to the tap-action `PendingIntent` — use data-only messages and `notifee.displayNotification()` for full control on Android. (upstream: [invertase/notifee#393](https://github.com/invertase/notifee/issues/393))
-* **tests:** `GetDisplayedNotificationsDataTest` — 17 Robolectric tests covering the denylist filter, prefix precision, non-string value coercion, and `fcm_options` exact-match parity.
+- **android:** `getDisplayedNotifications()` now exposes custom keys from `Notification.extras` as a top-level `data` field on the result, matching iOS behavior. Reserved keys (`android.*`, `google.*`, `gcm.*`, `fcm.*`, `notifee*`, plus `from`, `collapse_key`, `message_type`, `message_id`, `aps`, `fcm_options`) are filtered out. Note: this cannot surface custom `data` for FCM-auto-displayed push notifications because FCM routes those fields exclusively to the tap-action `PendingIntent` — use data-only messages and `notifee.displayNotification()` for full control on Android. (upstream: [invertase/notifee#393](https://github.com/invertase/notifee/issues/393))
+- **tests:** `GetDisplayedNotificationsDataTest` — 17 Robolectric tests covering the denylist filter, prefix precision, non-string value coercion, and `fcm_options` exact-match parity.
 
 ## [9.6.0] (2026-04-15)
 
 ### Fixed
 
-* **android:** fixed `ObjectAlreadyConsumedException: Map already consumed` crash in `HeadlessTask.TaskConfig` when the same `WritableMap` instance is reused across headless events. `TaskConfig.init` now copies the map before mutating it. (upstream: [invertase/notifee#266](https://github.com/invertase/notifee/issues/266))
-* **android:** `RebootBroadcastReceiver`, `NotificationAlarmReceiver`, and `AlarmPermissionBroadcastReceiver` now wrap their synchronous section in a try/catch/finally so `PendingResult.finish()` is always called, even when a failure occurs before the async callback is registered. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
-* **android:** stale non-repeating trigger notifications (timestamp in the past at reboot time) no longer become "zombie" alarms that re-fire on every reboot. Within a 24-hour grace period the trigger fires once and the Room row is deleted; beyond the grace period the row is deleted silently. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
+- **android:** fixed `ObjectAlreadyConsumedException: Map already consumed` crash in `HeadlessTask.TaskConfig` when the same `WritableMap` instance is reused across headless events. `TaskConfig.init` now copies the map before mutating it. (upstream: [invertase/notifee#266](https://github.com/invertase/notifee/issues/266))
+- **android:** `RebootBroadcastReceiver`, `NotificationAlarmReceiver`, and `AlarmPermissionBroadcastReceiver` now wrap their synchronous section in a try/catch/finally so `PendingResult.finish()` is always called, even when a failure occurs before the async callback is registered. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
+- **android:** stale non-repeating trigger notifications (timestamp in the past at reboot time) no longer become "zombie" alarms that re-fire on every reboot. Within a 24-hour grace period the trigger fires once and the Room row is deleted; beyond the grace period the row is deleted silently. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
 
 ### Added
 
-* **android:** cold-start self-healing for scheduled alarms on OEM devices that suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). `InitProvider` reads `Settings.Global.BOOT_COUNT` on every app init and triggers a full alarm reschedule when a boot delta is detected. A process-wide `AtomicBoolean` race guard prevents double-advancement when both `BOOT_COMPLETED` and the cold-start path race. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
-* **android:** regression tests for DAILY/WEEKLY/HOURLY trigger rescheduling, including DST spring-forward and fall-back edge cases. (upstream: [invertase/notifee#839](https://github.com/invertase/notifee/issues/839), [#875](https://github.com/invertase/notifee/issues/875))
-* **tooling:** `scripts/smoke-test-734.sh` — composable manual smoke-test harness for #734 covering build, Room DB dump, BOOT_COUNT reads, logcat capture, reboot, state wipe, and the destructive `RebootRecoveryTest` suite (gated behind `--i-know`).
-* **docs:** new "OEM Background Restrictions" and expanded "Foreground Service Setup (Android 14+)" sections in the READMEs, plus a new "AlarmType guide" covering `AlarmType.SET_ALARM_CLOCK` — the strongest reliability guarantee Android exposes for a scheduled notification. (upstream: [invertase/notifee#410](https://github.com/invertase/notifee/issues/410), [#655](https://github.com/invertase/notifee/issues/655))
+- **android:** cold-start self-healing for scheduled alarms on OEM devices that suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). `InitProvider` reads `Settings.Global.BOOT_COUNT` on every app init and triggers a full alarm reschedule when a boot delta is detected. A process-wide `AtomicBoolean` race guard prevents double-advancement when both `BOOT_COMPLETED` and the cold-start path race. (upstream: [invertase/notifee#734](https://github.com/invertase/notifee/issues/734))
+- **android:** regression tests for DAILY/WEEKLY/HOURLY trigger rescheduling, including DST spring-forward and fall-back edge cases. (upstream: [invertase/notifee#839](https://github.com/invertase/notifee/issues/839), [#875](https://github.com/invertase/notifee/issues/875))
+- **tooling:** `scripts/smoke-test-734.sh` — composable manual smoke-test harness for #734 covering build, Room DB dump, BOOT_COUNT reads, logcat capture, reboot, state wipe, and the destructive `RebootRecoveryTest` suite (gated behind `--i-know`).
+- **docs:** new "OEM Background Restrictions" and expanded "Foreground Service Setup (Android 14+)" sections in the READMEs, plus a new "AlarmType guide" covering `AlarmType.SET_ALARM_CLOCK` — the strongest reliability guarantee Android exposes for a scheduled notification. (upstream: [invertase/notifee#410](https://github.com/invertase/notifee/issues/410), [#655](https://github.com/invertase/notifee/issues/655))
 
 ## [9.5.0] (2026-04-14)
 
 ### Fixed
 
-* **android:** resolved upstream issue [invertase/notifee#549](https://github.com/invertase/notifee/issues/549) — `cancelTriggerNotifications()` and `createTriggerNotification()` JS Promises resolved before the underlying Room database write completed, causing a race where a cancel-then-create pattern could leave inconsistent state. All five `WorkDataRepository` mutation methods now return `ListenableFuture<Void>` and are chained into the outer future at every call site. Empirical reproduction rate before fix: ~3.3% per attempt, <50 ms window. Post-fix: 0 inconsistencies across 150 attempts.
-* **android:** fixed a reboot-recovery data-loss bug surfaced by the read-only caller audit. `NotifeeAlarmManager.rescheduleNotification` (invoked on `BOOT_COMPLETED`) fire-and-forgot the `WorkDataRepository.update(...)` that persists the next-fire timestamp for each recurring alarm. If Android killed the receiver's process before Room drained, the updated anchors were lost and the next reboot rescheduled from stale timestamps. The receiver now collects all per-entity update futures, combines them with `Futures.allAsList`, waits with an 8-second `Futures.withTimeout` ANR safety net, then calls `pendingResult.finish()`.
-* **android:** fixed an ordering bug in `NotificationManager.doScheduledWork` where `completer.set(Result.success())` was called before the one-time trigger row was deleted from Room. The delete future now completes first.
-* **android:** `NotifeeAlarmManager.displayScheduledNotification` now awaits the Room update / delete before calling `BroadcastReceiver.PendingResult.finish()`.
-* **android:** `WorkDataRepository.insertTriggerNotification(...)` helper cleanup — explicit `Context` parameter, removing a fragile dependency on `NotifeeInitProvider` having populated the singleton before the first trigger creation.
+- **android:** resolved upstream issue [invertase/notifee#549](https://github.com/invertase/notifee/issues/549) — `cancelTriggerNotifications()` and `createTriggerNotification()` JS Promises resolved before the underlying Room database write completed, causing a race where a cancel-then-create pattern could leave inconsistent state. All five `WorkDataRepository` mutation methods now return `ListenableFuture<Void>` and are chained into the outer future at every call site. Empirical reproduction rate before fix: ~3.3% per attempt, <50 ms window. Post-fix: 0 inconsistencies across 150 attempts.
+- **android:** fixed a reboot-recovery data-loss bug surfaced by the read-only caller audit. `NotifeeAlarmManager.rescheduleNotification` (invoked on `BOOT_COMPLETED`) fire-and-forgot the `WorkDataRepository.update(...)` that persists the next-fire timestamp for each recurring alarm. If Android killed the receiver's process before Room drained, the updated anchors were lost and the next reboot rescheduled from stale timestamps. The receiver now collects all per-entity update futures, combines them with `Futures.allAsList`, waits with an 8-second `Futures.withTimeout` ANR safety net, then calls `pendingResult.finish()`.
+- **android:** fixed an ordering bug in `NotificationManager.doScheduledWork` where `completer.set(Result.success())` was called before the one-time trigger row was deleted from Room. The delete future now completes first.
+- **android:** `NotifeeAlarmManager.displayScheduledNotification` now awaits the Room update / delete before calling `BroadcastReceiver.PendingResult.finish()`.
+- **android:** `WorkDataRepository.insertTriggerNotification(...)` helper cleanup — explicit `Context` parameter, removing a fragile dependency on `NotifeeInitProvider` having populated the singleton before the first trigger creation.
 
 ### Changed
 
-* **android:** **BEHAVIOR CHANGE** — errors from `WorkDataRepository` mutations (e.g. `SQLiteFullException`, SQLite corruption, schema migration failures) now propagate as rejections on the JS Promises for `cancelTriggerNotifications`, `cancelTriggerNotification`, `createTriggerNotification`, and `cancelAllNotifications(ids)`. Previously these exceptions were silently swallowed.
-* **android:** **LATENCY CHANGE** — `cancelTriggerNotifications()` and `createTriggerNotification()` Promises now resolve only after the Room write has completed. On a warm database this adds roughly 5–15 ms on a Pixel 9 Pro XL.
+- **android:** **BEHAVIOR CHANGE** — errors from `WorkDataRepository` mutations (e.g. `SQLiteFullException`, SQLite corruption, schema migration failures) now propagate as rejections on the JS Promises for `cancelTriggerNotifications`, `cancelTriggerNotification`, `createTriggerNotification`, and `cancelAllNotifications(ids)`. Previously these exceptions were silently swallowed.
+- **android:** **LATENCY CHANGE** — `cancelTriggerNotifications()` and `createTriggerNotification()` Promises now resolve only after the Room write has completed. On a warm database this adds roughly 5–15 ms on a Pixel 9 Pro XL.
 
 ### Added
 
-* **android:** `WorkDataRepositoryFutureContractTest` — JVM unit test (Mockito + `CountDownLatch`) verifying all five mutation methods return non-null futures that only complete after the underlying DAO call has returned. 13 tests.
-* **android:** `WorkDataRepositoryRaceTest` — instrumented test under `androidTest/` with 100-iteration race scenarios. Not wired into CI yet; run manually via `./gradlew :react-native-notify-kit:connectedDebugAndroidTest`.
-* **tooling:** `scripts/verify-549-fix.sh` — automated 5-run harness verification script that writes `post-fix-549-verification.md` with a strict PASS/FAIL verdict.
-* **tooling:** `TriggerRaceTestScreen.tsx` harness emits one compact JSON line per scenario plus a `-DONE` terminator.
+- **android:** `WorkDataRepositoryFutureContractTest` — JVM unit test (Mockito + `CountDownLatch`) verifying all five mutation methods return non-null futures that only complete after the underlying DAO call has returned. 13 tests.
+- **android:** `WorkDataRepositoryRaceTest` — instrumented test under `androidTest/` with 100-iteration race scenarios. Not wired into CI yet; run manually via `./gradlew :react-native-notify-kit:connectedDebugAndroidTest`.
+- **tooling:** `scripts/verify-549-fix.sh` — automated 5-run harness verification script that writes `post-fix-549-verification.md` with a strict PASS/FAIL verdict.
+- **tooling:** `TriggerRaceTestScreen.tsx` harness emits one compact JSON line per scenario plus a `-DONE` terminator.
 
 ## [9.4.0] (2026-04-10)
 
 ### Fixed
 
-* **android:** foreground service notifications on Android 12+ (API 31+) were subject to a system-imposed display delay of up to 10 seconds because the library never called `setForegroundServiceBehavior(FOREGROUND_SERVICE_IMMEDIATE)`. This is now set by default when `asForegroundService: true`. Opt out via `foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED`. (upstream: [invertase/notifee#272](https://github.com/invertase/notifee/issues/272), [invertase/notifee#1242](https://github.com/invertase/notifee/issues/1242))
-* **android:** ANR-proofed the foreground service STOP path. When a `ForegroundService` instance receives a STOP intent without `startForeground()` having been called, the service now emits a minimal placeholder via `startForeground()` before `stopSelf()`, preventing `ForegroundServiceDidNotStartInTimeException`. The placeholder is immediately torn down and not visible to the user.
-* **android:** reset stale `mCurrentNotification`, `mCurrentHashCode`, and `mCurrentForegroundServiceType` on the foreground service NONE early return path (API 34+).
-* **android:** empty `foregroundServiceTypes` arrays that bypass the TypeScript validator (e.g. trigger notifications restored from the Room database after a library upgrade) are now treated as absent at the native layer.
-* **android:** `ForegroundService` defensive STOP path fails fast with a clear error message and documentation URL when the consumer's manifest is missing required `foregroundServiceType` declarations on API 34+.
-* **android:** `ForegroundService` NONE early return path honors Android's 5-second `startForeground()` contract via the same tracked-boolean defensive pattern as the STOP path.
-* **android:** `ForegroundService.stop()` now logs a warning via `Logger.w` when `startService()` throws `IllegalStateException` and falls back to `stopService()`.
-* **android:** `getLights()` and `cancelAllNotificationsWithIds()` preserve exception stack traces in their error logs.
-* **typescript:** numeric enum validators now correctly reject reverse-mapped string keys across all numeric enum types (`AndroidBadgeIconType`, `AndroidDefaults`, `AndroidFlags`, `AndroidGroupAlertBehavior`, `AndroidImportance`, `AndroidVisibility`, `AndroidForegroundServiceType`, `AndroidForegroundServiceBehavior`, `RepeatFrequency`, `AlarmType`). Previously, strings like `importance: "HIGH"` passed validation but were silently ignored by `Bundle.getInt()`.
-* **tests:** `setPlatform` test helper no longer fails silently on repeated calls within a single test block.
-* **ios:** `didReceiveNotificationResponse:withCompletionHandler:` now calls the completion handler immediately after emitting the PRESS/ACTION_PRESS event, instead of delaying it by 15 seconds via `dispatch_after`.
-* **ios:** `requestPermission:` propagates the `NSError` from `requestAuthorizationWithOptions:completionHandler:` to the JS promise. Previously the error was silently swallowed.
-* **ios:** `displayNotification:` and `createTriggerNotification:` now capture and log errors from `contentByUpdatingWithProvider:error:`. On failure, the notification is displayed with the original content rather than potentially nil content.
-* **ios:** `getBadgeCount:` calls the completion block with `(nil, 0)` when running in an app extension, preventing the JS promise from hanging.
-* **ios:** fixed a race in `NotifeeCoreDelegateHolder.didReceiveNotifeeCoreEvent:` where a notification event could be silently dropped when the weak delegate reference was zeroed while the `delegateRespondsTo` bitfield still indicated it was available. Locked path now checks the resolved delegate for nil and falls back to buffering.
-* **ios:** added `@synchronized(self)` guards around all access to `hasListeners` and `pendingCoreEvents` in `NotifeeApiModule.mm`.
-* **ios:** replaced placeholder `// update me with logic` comment on the empty `messaging_didReceiveRemoteNotification:` handler with documentation explaining the intent.
-* **ios:** Notification Service Extension attachment downloads now cap the `NSURLSession` request and resource timeouts at 25 seconds, leaving a 5-second margin before the NSE budget expires.
+- **android:** foreground service notifications on Android 12+ (API 31+) were subject to a system-imposed display delay of up to 10 seconds because the library never called `setForegroundServiceBehavior(FOREGROUND_SERVICE_IMMEDIATE)`. This is now set by default when `asForegroundService: true`. Opt out via `foregroundServiceBehavior: AndroidForegroundServiceBehavior.DEFERRED`. (upstream: [invertase/notifee#272](https://github.com/invertase/notifee/issues/272), [invertase/notifee#1242](https://github.com/invertase/notifee/issues/1242))
+- **android:** ANR-proofed the foreground service STOP path. When a `ForegroundService` instance receives a STOP intent without `startForeground()` having been called, the service now emits a minimal placeholder via `startForeground()` before `stopSelf()`, preventing `ForegroundServiceDidNotStartInTimeException`. The placeholder is immediately torn down and not visible to the user.
+- **android:** reset stale `mCurrentNotification`, `mCurrentHashCode`, and `mCurrentForegroundServiceType` on the foreground service NONE early return path (API 34+).
+- **android:** empty `foregroundServiceTypes` arrays that bypass the TypeScript validator (e.g. trigger notifications restored from the Room database after a library upgrade) are now treated as absent at the native layer.
+- **android:** `ForegroundService` defensive STOP path fails fast with a clear error message and documentation URL when the consumer's manifest is missing required `foregroundServiceType` declarations on API 34+.
+- **android:** `ForegroundService` NONE early return path honors Android's 5-second `startForeground()` contract via the same tracked-boolean defensive pattern as the STOP path.
+- **android:** `ForegroundService.stop()` now logs a warning via `Logger.w` when `startService()` throws `IllegalStateException` and falls back to `stopService()`.
+- **android:** `getLights()` and `cancelAllNotificationsWithIds()` preserve exception stack traces in their error logs.
+- **typescript:** numeric enum validators now correctly reject reverse-mapped string keys across all numeric enum types (`AndroidBadgeIconType`, `AndroidDefaults`, `AndroidFlags`, `AndroidGroupAlertBehavior`, `AndroidImportance`, `AndroidVisibility`, `AndroidForegroundServiceType`, `AndroidForegroundServiceBehavior`, `RepeatFrequency`, `AlarmType`). Previously, strings like `importance: "HIGH"` passed validation but were silently ignored by `Bundle.getInt()`.
+- **tests:** `setPlatform` test helper no longer fails silently on repeated calls within a single test block.
+- **ios:** `didReceiveNotificationResponse:withCompletionHandler:` now calls the completion handler immediately after emitting the PRESS/ACTION_PRESS event, instead of delaying it by 15 seconds via `dispatch_after`.
+- **ios:** `requestPermission:` propagates the `NSError` from `requestAuthorizationWithOptions:completionHandler:` to the JS promise. Previously the error was silently swallowed.
+- **ios:** `displayNotification:` and `createTriggerNotification:` now capture and log errors from `contentByUpdatingWithProvider:error:`. On failure, the notification is displayed with the original content rather than potentially nil content.
+- **ios:** `getBadgeCount:` calls the completion block with `(nil, 0)` when running in an app extension, preventing the JS promise from hanging.
+- **ios:** fixed a race in `NotifeeCoreDelegateHolder.didReceiveNotifeeCoreEvent:` where a notification event could be silently dropped when the weak delegate reference was zeroed while the `delegateRespondsTo` bitfield still indicated it was available. Locked path now checks the resolved delegate for nil and falls back to buffering.
+- **ios:** added `@synchronized(self)` guards around all access to `hasListeners` and `pendingCoreEvents` in `NotifeeApiModule.mm`.
+- **ios:** replaced placeholder `// update me with logic` comment on the empty `messaging_didReceiveRemoteNotification:` handler with documentation explaining the intent.
+- **ios:** Notification Service Extension attachment downloads now cap the `NSURLSession` request and resource timeouts at 25 seconds, leaving a 5-second margin before the NSE budget expires.
 
 ### Added
 
-* **android:** new `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`.
-* **android:** `android.os.Trace` instrumentation on the foreground service notification path — custom trace sections visible in Perfetto traces.
-* **android:** `notifee.prewarmForegroundService()` opt-in API for manual warmup control. Idempotent, safe to call multiple times. Resolves immediately as a no-op on iOS.
-* **android:** Baseline Profile shipped in the library AAR covering the foreground service notification cold-start path. AGP 8.3+ merges it automatically.
+- **android:** new `AndroidForegroundServiceBehavior` enum (`DEFAULT`, `IMMEDIATE`, `DEFERRED`) and `foregroundServiceBehavior` property on `NotificationAndroid`.
+- **android:** `android.os.Trace` instrumentation on the foreground service notification path — custom trace sections visible in Perfetto traces.
+- **android:** `notifee.prewarmForegroundService()` opt-in API for manual warmup control. Idempotent, safe to call multiple times. Resolves immediately as a no-op on iOS.
+- **android:** Baseline Profile shipped in the library AAR covering the foreground service notification cold-start path. AGP 8.3+ merges it automatically.
 
 ### Changed
 
-* **android:** `InitProvider` now pre-loads critical foreground service classes and pre-warms the `INotificationManager` Binder proxy on a low-priority background thread during app startup. Opt out via `<meta-data android:name="notifee_init_warmup_enabled" android:value="false" />`.
-* **android:** `androidx.profileinstaller:profileinstaller:1.4.1` is now a transitive (`api`) dependency of the library.
+- **android:** `InitProvider` now pre-loads critical foreground service classes and pre-warms the `INotificationManager` Binder proxy on a low-priority background thread during app startup. Opt out via `<meta-data android:name="notifee_init_warmup_enabled" android:value="false" />`.
+- **android:** `androidx.profileinstaller:profileinstaller:1.4.1` is now a transitive (`api`) dependency of the library.
 
 ## [9.3.0] (2026-04-09)
 
 ### Changed
 
-* **android:** `pressAction` now defaults to `{ id: 'default', launchActivity: 'default' }` when omitted. Previously, notifications without an explicit `pressAction` displayed correctly but tapping them did nothing. Apps that want a non-tappable notification can pass `pressAction: null` explicitly. Implemented via a reserved sentinel id (`__NOTIFEE_OPT_OUT__`) at the TS→native boundary.
-* **ios:** **BEHAVIOR CHANGE** — `EventType.DELIVERED` is now emitted to `onForegroundEvent` for **all** Notifee-owned notifications displayed in foreground, not just trigger notifications. Previously the `willPresentNotification:` guard suppressed DELIVERED for immediate-display notifications. Android already behaved this way, so this also closes a long-standing iOS/Android asymmetry. DELIVERED emission in `displayNotification:withBlock:` is now gated to non-foreground states. Known limitation: trigger notifications firing in background/killed still do not emit DELIVERED on iOS (platform limitation).
+- **android:** `pressAction` now defaults to `{ id: 'default', launchActivity: 'default' }` when omitted. Previously, notifications without an explicit `pressAction` displayed correctly but tapping them did nothing. Apps that want a non-tappable notification can pass `pressAction: null` explicitly. Implemented via a reserved sentinel id (`__NOTIFEE_OPT_OUT__`) at the TS→native boundary.
+- **ios:** **BEHAVIOR CHANGE** — `EventType.DELIVERED` is now emitted to `onForegroundEvent` for **all** Notifee-owned notifications displayed in foreground, not just trigger notifications. Previously the `willPresentNotification:` guard suppressed DELIVERED for immediate-display notifications. Android already behaved this way, so this also closes a long-standing iOS/Android asymmetry. DELIVERED emission in `displayNotification:withBlock:` is now gated to non-foreground states. Known limitation: trigger notifications firing in background/killed still do not emit DELIVERED on iOS (platform limitation).
 
 ### Fixed
 
-* **android:** fixed `NotificationManager.displayNotification()` producing a tap-less PendingIntent when `pressAction` is absent from the notification bundle. Native path now synthesizes the default press action bundle.
-* **ios:** fixed potential loss of notification events at cold start when the RN bridge takes longer than 1 second to initialize. Replaced `dispatch_after(1 sec) + dispatch_once` with an event-driven synchronous flush triggered when `setDelegate:` installs a valid delegate.
-* **ios:** corrected error message in `validateIOSPermissions` for the `badge` field (was `'alert' badge a boolean value.`).
+- **android:** fixed `NotificationManager.displayNotification()` producing a tap-less PendingIntent when `pressAction` is absent from the notification bundle. Native path now synthesizes the default press action bundle.
+- **ios:** fixed potential loss of notification events at cold start when the RN bridge takes longer than 1 second to initialize. Replaced `dispatch_after(1 sec) + dispatch_once` with an event-driven synchronous flush triggered when `setDelegate:` installs a valid delegate.
+- **ios:** corrected error message in `validateIOSPermissions` for the `badge` field (was `'alert' badge a boolean value.`).
 
 ### Removed
 
-* Removed unused `.buckconfig` (Buck no longer used by RN since 0.74).
-* Removed unused `.flowconfig` (project is TypeScript-only).
-* **android:** removed unused EventBus annotation processor and `eventBusIndex` build option.
+- Removed unused `.buckconfig` (Buck no longer used by RN since 0.74).
+- Removed unused `.flowconfig` (project is TypeScript-only).
+- **android:** removed unused EventBus annotation processor and `eventBusIndex` build option.
 
 ## [9.2.1] (2026-04-08)
 
 ### Fixed
 
-* **ios:** PRESS events from notification taps while the app was in background were incorrectly routed to `onForegroundEvent` instead of `onBackgroundEvent`. Three issues were addressed: a leftover `dispatch_after(1 second)` from the TurboModule migration (9.1.0), an incorrect `== UIApplicationStateBackground` check (iOS reports `Inactive` at the moment of tap — changed to `!= UIApplicationStateActive`), and a main-thread violation where `applicationState` was being read on a background thread. (#5)
+- **ios:** PRESS events from notification taps while the app was in background were incorrectly routed to `onForegroundEvent` instead of `onBackgroundEvent`. Three issues were addressed: a leftover `dispatch_after(1 second)` from the TurboModule migration (9.1.0), an incorrect `== UIApplicationStateBackground` check (iOS reports `Inactive` at the moment of tap — changed to `!= UIApplicationStateActive`), and a main-thread violation where `applicationState` was being read on a background thread. (#5)
 
 ## [9.2.0] (2026-04-08)
 
 ### Changed
 
-* **android:** **internal architecture change** — collapsed the standalone NotifeeCore AAR into the React Native bridge as a single Android library module. The bundled local Maven repo at `packages/react-native/android/libs/` and the frozen coordinate `app.notifee:core:202108261754` are gone. Core Java sources now live at `packages/react-native/android/src/main/java/app/notifee/core/` and are compiled from source. **No public API changes.** Migration from 9.1.x requires zero code changes.
+- **android:** **internal architecture change** — collapsed the standalone NotifeeCore AAR into the React Native bridge as a single Android library module. The bundled local Maven repo at `packages/react-native/android/libs/` and the frozen coordinate `app.notifee:core:202108261754` are gone. Core Java sources now live at `packages/react-native/android/src/main/java/app/notifee/core/` and are compiled from source. **No public API changes.** Migration from 9.1.x requires zero code changes.
 
 ### Fixed
 
-* **android:** `FAIL_ON_PROJECT_REPOS` rejection on React Native 0.74+. The library no longer injects a Maven repository into the consumer's `rootProject.allprojects`.
-* **android:** stale Gradle cache serving outdated bytecode after `yarn upgrade`. With the frozen Maven coordinate gone, the bytecode is rebuilt from source on every consumer build.
+- **android:** `FAIL_ON_PROJECT_REPOS` rejection on React Native 0.74+. The library no longer injects a Maven repository into the consumer's `rootProject.allprojects`.
+- **android:** stale Gradle cache serving outdated bytecode after `yarn upgrade`. With the frozen Maven coordinate gone, the bytecode is rebuilt from source on every consumer build.
 
 ## [9.1.22] (2026-04-08)
 
 ### Fixed
 
-* **ios:** fixed duplicate symbols linker error when using Notification Service Extension (`$NotifeeExtension = true`) with static frameworks (`use_frameworks! :linkage => :static`). Added `s.exclude_files` in the `$NotifeeExtension` branch of `RNNotifee.podspec` so `NotifeeExtensionHelper.{h,m}` is compiled only by `RNNotifeeCore`.
+- **ios:** fixed duplicate symbols linker error when using Notification Service Extension (`$NotifeeExtension = true`) with static frameworks (`use_frameworks! :linkage => :static`). Added `s.exclude_files` in the `$NotifeeExtension` branch of `RNNotifee.podspec` so `NotifeeExtensionHelper.{h,m}` is compiled only by `RNNotifeeCore`.
 
 ## [9.1.21] (2026-04-07)
 
 ### Changed
 
-* Updated README (root and npm) to reflect upstream archival: the original `invertase/notifee` repository was officially archived on April 7, 2026, and its README now recommends `react-native-notify-kit` as a community-maintained drop-in replacement.
+- Updated README (root and npm) to reflect upstream archival: the original `invertase/notifee` repository was officially archived on April 7, 2026, and its README now recommends `react-native-notify-kit` as a community-maintained drop-in replacement.
 
 ## [9.1.20] (2026-04-07)
 
 ### Fixed
 
-* **ios:** `willPresentNotification:` fallback no longer silently drops foreground notifications when no original `UNUserNotificationCenterDelegate` was captured. Previously the fallback path called `completionHandler(UNNotificationPresentationOptionNone)`, which told iOS to display nothing. It now returns the platform default presentation options (banner, sound, list, badge on iOS 14+). Affects apps using `react-native-notify-kit` without a library that also sets a `UNUserNotificationCenter` delegate — e.g. apps without `@react-native-firebase/messaging`, or apps using a different push provider. Apps using RN Firebase are unaffected.
-* **ios:** resolved upstream issue [invertase/notifee#828](https://github.com/invertase/notifee/issues/828) — "All notifications are dismissed when the app is opened". Verified on a real device with four FCM pushes sent in sequence; all four remained after app tap and backgrounding.
+- **ios:** `willPresentNotification:` fallback no longer silently drops foreground notifications when no original `UNUserNotificationCenterDelegate` was captured. Previously the fallback path called `completionHandler(UNNotificationPresentationOptionNone)`, which told iOS to display nothing. It now returns the platform default presentation options (banner, sound, list, badge on iOS 14+). Affects apps using `react-native-notify-kit` without a library that also sets a `UNUserNotificationCenter` delegate — e.g. apps without `@react-native-firebase/messaging`, or apps using a different push provider. Apps using RN Firebase are unaffected.
+- **ios:** resolved upstream issue [invertase/notifee#828](https://github.com/invertase/notifee/issues/828) — "All notifications are dismissed when the app is opened". Verified on a real device with four FCM pushes sent in sequence; all four remained after app tap and backgrounding.
 
 ## [9.1.19] (2026-04-07)
 
 ### Fixed
 
-* **android:** `pressAction.launchActivity` now defaults to `'default'` at the native layer when `pressAction.id === 'default'` and `launchActivity` is not explicitly set. Closes a gap where native code paths bypassing the JS validator (trigger notifications restored from Room after reboot, headless tasks, future bridge changes) could reach native with `launchActivity` unset. No user-facing behavior change for apps using the standard JS API.
-* **android:** fixed a pre-existing upstream bug in `NotificationPendingIntent` where String comparisons on line 155-157 used `!=` (reference equality) instead of `.equals()`. Dormant before this release because the null guard above always short-circuited — surfaced by the new native-layer default for `launchActivity`.
+- **android:** `pressAction.launchActivity` now defaults to `'default'` at the native layer when `pressAction.id === 'default'` and `launchActivity` is not explicitly set. Closes a gap where native code paths bypassing the JS validator (trigger notifications restored from Room after reboot, headless tasks, future bridge changes) could reach native with `launchActivity` unset. No user-facing behavior change for apps using the standard JS API.
+- **android:** fixed a pre-existing upstream bug in `NotificationPendingIntent` where String comparisons on line 155-157 used `!=` (reference equality) instead of `.equals()`. Dormant before this release because the null guard above always short-circuited — surfaced by the new native-layer default for `launchActivity`.
 
 ## [9.1.18] (2026-04-07)
 
 ### Fixed
 
-* **android:** fixed `AbstractMethodError` on `RoomDatabase.createOpenHelper` when consumer apps resolved `androidx.room:room-runtime` < 2.6.0. Root cause: the core AAR's Maven POM was empty (published via raw `artifact()` instead of `from(components.release)`), so Room and all other core dependencies were invisible to Gradle dependency resolution. The fix:
-  * Core AAR publishes a proper POM via `from(components.release)` with `android.publishing.singleVariant("release")`, exposing Room 2.8.4 and all runtime dependencies.
-  * React Native bridge module declares `room-runtime:2.8.4`, `sqlite:2.6.2`, and `sqlite-framework:2.6.2` as `api` dependencies.
-  * Fixed `fresco` incorrectly scoped as `api` in core `build.gradle` — changed to `implementation`.
-  * Aligned `guava` (33.3.1 → 33.5.0) and `work-runtime` (2.8.0 → 2.11.1) versions between core and bridge.
+- **android:** fixed `AbstractMethodError` on `RoomDatabase.createOpenHelper` when consumer apps resolved `androidx.room:room-runtime` < 2.6.0. Root cause: the core AAR's Maven POM was empty (published via raw `artifact()` instead of `from(components.release)`), so Room and all other core dependencies were invisible to Gradle dependency resolution. The fix:
+  - Core AAR publishes a proper POM via `from(components.release)` with `android.publishing.singleVariant("release")`, exposing Room 2.8.4 and all runtime dependencies.
+  - React Native bridge module declares `room-runtime:2.8.4`, `sqlite:2.6.2`, and `sqlite-framework:2.6.2` as `api` dependencies.
+  - Fixed `fresco` incorrectly scoped as `api` in core `build.gradle` — changed to `implementation`.
+  - Aligned `guava` (33.3.1 → 33.5.0) and `work-runtime` (2.8.0 → 2.11.1) versions between core and bridge.
 
   **Note for consumers with custom dependency pinning:** the core AAR POM now exposes its runtime dependencies. If you have `resolutionStrategy.force` or `strictly` constraints on any of these, verify compatibility after upgrading.
 
@@ -185,121 +196,121 @@ description: react-native-notify-kit API releases
 
 ### Changed
 
-* Softened tone in "Why this fork" README section.
-* Added Trademark Notice section to README.
+- Softened tone in "Why this fork" README section.
+- Added Trademark Notice section to README.
 
 ## [9.1.16] (2026-04-06)
 
 ### Changed
 
-* Synced npm README with changelog formatting updates.
+- Synced npm README with changelog formatting updates.
 
 ## [9.1.15] (2026-04-06)
 
 ### Changed
 
-* **android:** update Room 2.5.0 → 2.8.4, WorkManager 2.8.0 → 2.11.1, Guava 33.3.1 → 33.5.0.
-* **android:** cleaned up ProGuard rules — removed redundant entries, consolidated keep rules, suppressed pre-existing build warnings with targeted `@SuppressWarnings` annotations.
-* **android:** fixed raw `Class` type usage in `NotificationManager` (now `Class<?>`).
-* **ios:** align NotifeeCore Xcode project deployment target from iOS 10.0 to iOS 15.1, matching the podspec.
+- **android:** update Room 2.5.0 → 2.8.4, WorkManager 2.8.0 → 2.11.1, Guava 33.3.1 → 33.5.0.
+- **android:** cleaned up ProGuard rules — removed redundant entries, consolidated keep rules, suppressed pre-existing build warnings with targeted `@SuppressWarnings` annotations.
+- **android:** fixed raw `Class` type usage in `NotificationManager` (now `Class<?>`).
+- **ios:** align NotifeeCore Xcode project deployment target from iOS 10.0 to iOS 15.1, matching the podspec.
 
 ### Fixed
 
-* **android:** fixed ProGuard keep rules using `{ <init>(...); }` (constructor-only) instead of `{ *; }` (all members) — classes annotated with `@Keep` or `@KeepForSdk` could have non-constructor members stripped by R8.
-* **android:** fixed WakeLock leak in `PowerManagerUtils.lightUpScreenIfNeeded` — `acquire()` without timeout or `release()` prevented the device from sleeping; now uses `acquire(3000L)`.
-* **android:** fixed potential NPE in `NotificationAndroidModel.getDefaults` when the `defaults` array is present but empty.
-* **android:** added `-keeppackagenames app.notifee.core.**` to ProGuard rules to prevent `-repackageclasses` from relocating `InitProvider` and sub-package classes.
-* **android:** fixed missing `return` after null context check in `IntentUtils.startActivityOnUiThread`.
+- **android:** fixed ProGuard keep rules using `{ <init>(...); }` (constructor-only) instead of `{ *; }` (all members) — classes annotated with `@Keep` or `@KeepForSdk` could have non-constructor members stripped by R8.
+- **android:** fixed WakeLock leak in `PowerManagerUtils.lightUpScreenIfNeeded` — `acquire()` without timeout or `release()` prevented the device from sleeping; now uses `acquire(3000L)`.
+- **android:** fixed potential NPE in `NotificationAndroidModel.getDefaults` when the `defaults` array is present but empty.
+- **android:** added `-keeppackagenames app.notifee.core.**` to ProGuard rules to prevent `-repackageclasses` from relocating `InitProvider` and sub-package classes.
+- **android:** fixed missing `return` after null context check in `IntentUtils.startActivityOnUiThread`.
 
 ## [9.1.14] (2026-04-06)
 
 ### Changed
 
-* **android:** `ongoing` now defaults to `true` when `asForegroundService: true` and `ongoing` is not explicitly set. Prevents foreground service notifications from being dismissed on Android 13, matching pre-Android 13 behavior. (upstream: [invertase/notifee#1248](https://github.com/invertase/notifee/issues/1248))
-* **android:** on Android 14+, foreground service notifications are automatically re-posted when dismissed by the user. Android 14 ignores `FLAG_ONGOING_EVENT` for most foreground service types (except `mediaPlayback`, `phoneCall`, and enterprise DPC); the library detects the dismissal and immediately re-displays the notification. (upstream: [invertase/notifee#1248](https://github.com/invertase/notifee/issues/1248))
+- **android:** `ongoing` now defaults to `true` when `asForegroundService: true` and `ongoing` is not explicitly set. Prevents foreground service notifications from being dismissed on Android 13, matching pre-Android 13 behavior. (upstream: [invertase/notifee#1248](https://github.com/invertase/notifee/issues/1248))
+- **android:** on Android 14+, foreground service notifications are automatically re-posted when dismissed by the user. Android 14 ignores `FLAG_ONGOING_EVENT` for most foreground service types (except `mediaPlayback`, `phoneCall`, and enterprise DPC); the library detects the dismissal and immediately re-displays the notification. (upstream: [invertase/notifee#1248](https://github.com/invertase/notifee/issues/1248))
 
 ### Fixed
 
-* **android:** fixed DST (daylight saving time) shifting repeating notifications by ±1 hour — replaced fixed-millisecond arithmetic with `Calendar.add()`. (upstream: [invertase/notifee#875](https://github.com/invertase/notifee/issues/875))
-* **android:** fixed repeating trigger timestamp not persisted to database after recalculation — after reboot, notifications could fire at stale times.
+- **android:** fixed DST (daylight saving time) shifting repeating notifications by ±1 hour — replaced fixed-millisecond arithmetic with `Calendar.add()`. (upstream: [invertase/notifee#875](https://github.com/invertase/notifee/issues/875))
+- **android:** fixed repeating trigger timestamp not persisted to database after recalculation — after reboot, notifications could fire at stale times.
 
 ## [9.1.13] (2026-04-05)
 
 ### Changed
 
-* **android:** **BREAKING** — removed hardcoded `foregroundServiceType="shortService"` from the library's `AndroidManifest.xml`. Apps using `asForegroundService: true` on Android 14+ must now declare their own `foregroundServiceType` on `app.notifee.core.ForegroundService` in their app manifest. See the "Foreground Service Setup" section in the README for migration instructions. (upstream: [invertase/notifee#1108](https://github.com/invertase/notifee/issues/1108))
+- **android:** **BREAKING** — removed hardcoded `foregroundServiceType="shortService"` from the library's `AndroidManifest.xml`. Apps using `asForegroundService: true` on Android 14+ must now declare their own `foregroundServiceType` on `app.notifee.core.ForegroundService` in their app manifest. See the "Foreground Service Setup" section in the README for migration instructions. (upstream: [invertase/notifee#1108](https://github.com/invertase/notifee/issues/1108))
 
 ### Fixed
 
-* **android:** implemented `onTimeout(int)` (API 34) and `onTimeout(int, int)` (API 35+) in `ForegroundService` to gracefully stop the service when Android's foreground service timeout fires. Previously the missing handler caused an ANR crash when using `shortService`. (upstream: [invertase/notifee#703](https://github.com/invertase/notifee/issues/703))
-* **android:** added early abort with clear error logging when `foregroundServiceType` is not declared on Android 14+, preventing Android's cryptic `MissingForegroundServiceTypeException` crash.
-* **android:** fixed bitwise `&` used instead of logical `&&` in `ForegroundService.onStartCommand()` null check.
-* **android:** replaced deprecated `stopForeground(boolean)` with `stopForeground(STOP_FOREGROUND_REMOVE)` on API 33+ via compat helper.
-* **android:** added `synchronized` blocks around `ForegroundService` static field cleanup to prevent races between the STOP handler, headless task completion callback, and `onTimeout()` paths.
-* **android:** `ForegroundService.onTimeout()` now emits a `TYPE_FG_TIMEOUT` (9) event via `EventBus` with the notification data, `startId`, and `fgsType` — previously the service died silently with no event reaching JS.
+- **android:** implemented `onTimeout(int)` (API 34) and `onTimeout(int, int)` (API 35+) in `ForegroundService` to gracefully stop the service when Android's foreground service timeout fires. Previously the missing handler caused an ANR crash when using `shortService`. (upstream: [invertase/notifee#703](https://github.com/invertase/notifee/issues/703))
+- **android:** added early abort with clear error logging when `foregroundServiceType` is not declared on Android 14+, preventing Android's cryptic `MissingForegroundServiceTypeException` crash.
+- **android:** fixed bitwise `&` used instead of logical `&&` in `ForegroundService.onStartCommand()` null check.
+- **android:** replaced deprecated `stopForeground(boolean)` with `stopForeground(STOP_FOREGROUND_REMOVE)` on API 33+ via compat helper.
+- **android:** added `synchronized` blocks around `ForegroundService` static field cleanup to prevent races between the STOP handler, headless task completion callback, and `onTimeout()` paths.
+- **android:** `ForegroundService.onTimeout()` now emits a `TYPE_FG_TIMEOUT` (9) event via `EventBus` with the notification data, `startId`, and `fgsType` — previously the service died silently with no event reaching JS.
 
 ## [9.1.12] (2026-04-05)
 
 ### Changed
 
-* **android:** changed default AlarmType from `SET_EXACT` to `SET_EXACT_AND_ALLOW_WHILE_IDLE` for better Doze mode compatibility. (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
-* **android:** AlarmManager is now the default backend for trigger notifications instead of WorkManager, ensuring reliable delivery when the app is killed. Developers can opt out with `alarmManager: false` in the trigger config. (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
+- **android:** changed default AlarmType from `SET_EXACT` to `SET_EXACT_AND_ALLOW_WHILE_IDLE` for better Doze mode compatibility. (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
+- **android:** AlarmManager is now the default backend for trigger notifications instead of WorkManager, ensuring reliable delivery when the app is killed. Developers can opt out with `alarmManager: false` in the trigger config. (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
 
 ### Fixed — Android
 
-* fixed `getNotificationSettings()` returning `DENIED` instead of `NOT_DETERMINED` on Android 13+ before the user has responded to the `POST_NOTIFICATIONS` permission dialog — now uses `SharedPreferences` to track whether `requestPermission()` has been called. (upstream: [invertase/notifee#1237](https://github.com/invertase/notifee/issues/1237))
-* fixed trigger notifications not firing on Android 14-15 when app is killed — added `goAsync()` to `NotificationAlarmReceiver`, `RebootBroadcastReceiver`, and `AlarmPermissionBroadcastReceiver`. (upstream: [invertase/notifee#1100](https://github.com/invertase/notifee/issues/1100))
-* fixed `ContextHolder` not initialized in `NotificationAlarmReceiver`, causing potential `NullPointerException` on OEM Android 14+ implementations.
-* fixed `SCHEDULE_EXACT_ALARM` permission denial silently dropping scheduled alarms — now falls back to inexact alarm via `setAndAllowWhileIdle` with a warning log.
-* added `SecurityException` catch around `AlarmManager` scheduling — if exact alarm permission is revoked between check and call, falls back to inexact alarm instead of crashing.
-* fixed potential NPE in alarm scheduling when `PendingIntent` creation fails.
-* fixed `getInitialNotification()` returning `null` when notification has no `pressAction` configured — `InitialNotificationEvent` sticky event is now posted regardless. (upstream: [invertase/notifee#1128](https://github.com/invertase/notifee/issues/1128))
-* added event buffering in `NotifeeReactUtils` to prevent foreground press events from being silently dropped when the React instance is not yet ready. (upstream: [invertase/notifee#1279](https://github.com/invertase/notifee/issues/1279))
-* fixed `AlarmType.SET` using `RTC` instead of `RTC_WAKEUP`, which prevented the device from waking to show the notification. (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
+- fixed `getNotificationSettings()` returning `DENIED` instead of `NOT_DETERMINED` on Android 13+ before the user has responded to the `POST_NOTIFICATIONS` permission dialog — now uses `SharedPreferences` to track whether `requestPermission()` has been called. (upstream: [invertase/notifee#1237](https://github.com/invertase/notifee/issues/1237))
+- fixed trigger notifications not firing on Android 14-15 when app is killed — added `goAsync()` to `NotificationAlarmReceiver`, `RebootBroadcastReceiver`, and `AlarmPermissionBroadcastReceiver`. (upstream: [invertase/notifee#1100](https://github.com/invertase/notifee/issues/1100))
+- fixed `ContextHolder` not initialized in `NotificationAlarmReceiver`, causing potential `NullPointerException` on OEM Android 14+ implementations.
+- fixed `SCHEDULE_EXACT_ALARM` permission denial silently dropping scheduled alarms — now falls back to inexact alarm via `setAndAllowWhileIdle` with a warning log.
+- added `SecurityException` catch around `AlarmManager` scheduling — if exact alarm permission is revoked between check and call, falls back to inexact alarm instead of crashing.
+- fixed potential NPE in alarm scheduling when `PendingIntent` creation fails.
+- fixed `getInitialNotification()` returning `null` when notification has no `pressAction` configured — `InitialNotificationEvent` sticky event is now posted regardless. (upstream: [invertase/notifee#1128](https://github.com/invertase/notifee/issues/1128))
+- added event buffering in `NotifeeReactUtils` to prevent foreground press events from being silently dropped when the React instance is not yet ready. (upstream: [invertase/notifee#1279](https://github.com/invertase/notifee/issues/1279))
+- fixed `AlarmType.SET` using `RTC` instead of `RTC_WAKEUP`, which prevented the device from waking to show the notification. (upstream: [invertase/notifee#961](https://github.com/invertase/notifee/issues/961))
 
 ### Fixed — iOS
 
-* fixed `getInitialNotification()` returning `null` on cold start due to deprecated `UIApplicationLaunchOptionsLocalNotificationKey` check. (upstream: [invertase/notifee#1128](https://github.com/invertase/notifee/issues/1128))
-* added `setNotificationConfig({ ios: { handleRemoteNotifications: false } })` opt-out flag to prevent Notifee from intercepting remote notification tap handlers — restores `onNotificationOpenedApp()` and `getInitialNotification()` for React Native Firebase Messaging. (upstream: [invertase/notifee#912](https://github.com/invertase/notifee/issues/912))
-* fixed `completionHandler` not being called on notification dismiss path in `didReceiveNotificationResponse:`, preventing potential handler leaks.
-* fixed `completionHandler` not being called in `willPresentNotification:` fallback path when no original delegate is available.
-* added missing `return` after forwarding to `_originalDelegate` in `didReceiveNotificationResponse:`.
+- fixed `getInitialNotification()` returning `null` on cold start due to deprecated `UIApplicationLaunchOptionsLocalNotificationKey` check. (upstream: [invertase/notifee#1128](https://github.com/invertase/notifee/issues/1128))
+- added `setNotificationConfig({ ios: { handleRemoteNotifications: false } })` opt-out flag to prevent Notifee from intercepting remote notification tap handlers — restores `onNotificationOpenedApp()` and `getInitialNotification()` for React Native Firebase Messaging. (upstream: [invertase/notifee#912](https://github.com/invertase/notifee/issues/912))
+- fixed `completionHandler` not being called on notification dismiss path in `didReceiveNotificationResponse:`, preventing potential handler leaks.
+- fixed `completionHandler` not being called in `willPresentNotification:` fallback path when no original delegate is available.
+- added missing `return` after forwarding to `_originalDelegate` in `didReceiveNotificationResponse:`.
 
 ## [9.1.11] (2026-04-04)
 
 ### Fixed
 
-* fixed Maven metadata checksums for published Android artifacts.
+- fixed Maven metadata checksums for published Android artifacts.
 
 ### Added
 
-* added compatibility section to README documenting supported React Native versions.
+- added compatibility section to README documenting supported React Native versions.
 
 ## [9.1.10] (2026-04-04)
 
 ### Fixed
 
-* fixed Maven metadata checksums for published Android artifacts.
-* aligned package LICENSE with root repository LICENSE.
+- fixed Maven metadata checksums for published Android artifacts.
+- aligned package LICENSE with root repository LICENSE.
 
 ## [9.1.9] (2026-04-04)
 
 ### Changed
 
-* Renamed package from `@notifee/react-native` to `react-native-notify-kit` across all source, configs, and documentation.
-* **android:** replaced deprecated Kotlin APIs with current equivalents — `currentActivity` → `getCurrentActivity()`, `TurboReactPackage` → `BaseReactPackage`, `hasActiveCatalystInstance()` → `hasActiveReactInstance()`.
-* Moved Jest tests from `tests_react_native/` into `packages/react-native/__tests__/`.
-* Renamed `tests_react_native_new/` to `apps/smoke/`.
-* Simplified GitHub Actions CI by removing stale workflows.
+- Renamed package from `@notifee/react-native` to `react-native-notify-kit` across all source, configs, and documentation.
+- **android:** replaced deprecated Kotlin APIs with current equivalents — `currentActivity` → `getCurrentActivity()`, `TurboReactPackage` → `BaseReactPackage`, `hasActiveCatalystInstance()` → `hasActiveReactInstance()`.
+- Moved Jest tests from `tests_react_native/` into `packages/react-native/__tests__/`.
+- Renamed `tests_react_native_new/` to `apps/smoke/`.
+- Simplified GitHub Actions CI by removing stale workflows.
 
 ### Fixed
 
-* Removed `--provenance` flag from `publishConfig` to allow local `npm publish`.
-* Excluded test files from root `tsconfig.json` and fixed lint formatting.
+- Removed `--provenance` flag from `publishConfig` to allow local `npm publish`.
+- Excluded test files from root `tsconfig.json` and fixed lint formatting.
 
 ### Removed
 
-* Removed `notifee_platform_interface` package and its associated tests and dependencies (Flutter support dropped).
+- Removed `notifee_platform_interface` package and its associated tests and dependencies (Flutter support dropped).
 
 ## [9.1.8-rn084.0] (2026-03-30)
 
@@ -307,33 +318,33 @@ Initial fork release targeting React Native 0.84 with TurboModule (JSI) architec
 
 ### Added
 
-* **android:** migrated React Native bridge from legacy NativeModule to Kotlin TurboModule with JSI bindings.
-* **ios:** migrated React Native bridge from legacy NativeModule to TurboModule with JSI bindings.
-* Added React Native 0.84 smoke-test app with updated Jest configuration.
+- **android:** migrated React Native bridge from legacy NativeModule to Kotlin TurboModule with JSI bindings.
+- **ios:** migrated React Native bridge from legacy NativeModule to TurboModule with JSI bindings.
+- Added React Native 0.84 smoke-test app with updated Jest configuration.
 
 ## [9.1.8](https://github.com/invertase/notifee/compare/@notifee/react-native@9.1.7...@notifee/react-native@9.1.8) (2024-12-20)
 
 ### Bug Fixes
 
-* **android:** prevent headless task double-invocation ([a799167](https://github.com/marcocrupi/react-native-notify-kit/commit/a79916748f53ea7cdd66d60ba9054472aabc050b))
+- **android:** prevent headless task double-invocation ([a799167](https://github.com/marcocrupi/react-native-notify-kit/commit/a79916748f53ea7cdd66d60ba9054472aabc050b))
 
 ## [9.1.7](https://github.com/invertase/notifee/compare/@notifee/react-native@9.1.6...@notifee/react-native@9.1.7) (2024-12-17)
 
 ### Bug Fixes
 
-* **ios:** copy iOS NotifeeCore library more carefully during build ([68f230f](https://github.com/marcocrupi/react-native-notify-kit/commit/68f230f32ec75e993521b0feb8f9358fb008d3e5))
+- **ios:** copy iOS NotifeeCore library more carefully during build ([68f230f](https://github.com/marcocrupi/react-native-notify-kit/commit/68f230f32ec75e993521b0feb8f9358fb008d3e5))
 
 ## [9.1.6](https://github.com/invertase/notifee/compare/@notifee/react-native@9.1.5...@notifee/react-native@9.1.6) (2024-12-17)
 
 ### Bug Fixes
 
-* **android:** remove semantic-release test commit ([0b4ecdf](https://github.com/marcocrupi/react-native-notify-kit/commit/0b4ecdf30f7336f4bcfb8b25a07b0044a2943504))
+- **android:** remove semantic-release test commit ([0b4ecdf](https://github.com/marcocrupi/react-native-notify-kit/commit/0b4ecdf30f7336f4bcfb8b25a07b0044a2943504))
 
 ## [9.1.5](https://github.com/invertase/notifee/compare/@notifee/react-native@9.1.4...@notifee/react-native@9.1.5) (2024-12-17)
 
 ### Bug Fixes
 
-* **android:** semantic-release test commit ([cf5c7a9](https://github.com/marcocrupi/react-native-notify-kit/commit/cf5c7a9b5b9c14046ffa6e5ea04c54157e9aff42))
+- **android:** semantic-release test commit ([cf5c7a9](https://github.com/marcocrupi/react-native-notify-kit/commit/cf5c7a9b5b9c14046ffa6e5ea04c54157e9aff42))
 
 ## 9.1.4
 
@@ -396,11 +407,11 @@ BREAKING CHANGES!
 
 Android 14+ requires two changes to avoid crashes or Play Store rejection
 
-1) The USE_FULL_SCREEN_INTENT permission is not longer included by default as most apps do not need it. If you need it you must now manually add the permission to AndroidManifest.xml
+1. The USE_FULL_SCREEN_INTENT permission is not longer included by default as most apps do not need it. If you need it you must now manually add the permission to AndroidManifest.xml
 
-2) Foreground Service Types are a strict requirement for Android 14 and require Play Store approval. You must use compileSdk 34 or higher for this release. If you need foreground service types you will need to specify the exact foreground service type permissions in your AndroidManifest.xml and you must replace the service definition in AndroidManifest.xml and you must use the new optional foregroundServiceTypes parameter in the foreground service API call
+2. Foreground Service Types are a strict requirement for Android 14 and require Play Store approval. You must use compileSdk 34 or higher for this release. If you need foreground service types you will need to specify the exact foreground service type permissions in your AndroidManifest.xml and you must replace the service definition in AndroidManifest.xml and you must use the new optional foregroundServiceTypes parameter in the foreground service API call
 
-Thanks to all the contributors that proposed these fixes so that Notifee continues to work well on Android 14 - handling the platform security changes as Google makes new releases is not easy, and they *always* change the Nofitication API surface API. Notifee would not work without the community contributions.
+Thanks to all the contributors that proposed these fixes so that Notifee continues to work well on Android 14 - handling the platform security changes as Google makes new releases is not easy, and they _always_ change the Nofitication API surface API. Notifee would not work without the community contributions.
 
 Note, v8.0.0 was published 2 years ago as an alpha on npmjs.com but is unused. However, the version number was consumed by that alpha publish so we have skipped to v9.
 
@@ -428,7 +439,7 @@ consumed
 - fix: Remove EventSubcriptionVendor type usage as it's removed in RN0.73 [#1001](https://github.com/invertase/notifee/issues/1001)
 - fix(android): fix an issue when using inexact alarms [#981](https://github.com/invertase/notifee/issues/981)
 - style(lint): fix lint errors from previous commits [#1073](https://github.com/invertase/notifee/issues/1073)
-q- test(ci, ios): ios build behaving strangely - tune timeouts
+  q- test(ci, ios): ios build behaving strangely - tune timeouts
 - test(example): minimum changes to get example working
 - test(ci): remove log compression pre-artifact upload
 - test(ci): use codecov action vs bash uploader
@@ -499,7 +510,7 @@ q- test(ci, ios): ios build behaving strangely - tune timeouts
 
 ## 7.2.0
 
-- **[Android]**: Fixes an issue for Android 12 with quick actions when the app is in the background  (Fixes [#404](https://github.com/invertase/notifee/issues/404)).
+- **[Android]**: Fixes an issue for Android 12 with quick actions when the app is in the background (Fixes [#404](https://github.com/invertase/notifee/issues/404)).
 - **[Android]**: Prevents a NullPointerException to occur when a background service is triggered (Fixes [#592](https://github.com/invertase/notifee/issues/592)).
 
 ## 7.1.0
@@ -527,7 +538,7 @@ q- test(ci, ios): ios build behaving strangely - tune timeouts
 
 ## 6.0.0
 
-- **[Android] BREAKING CHANGE**: Added support for requesting permission on Android 13 via `requestPermission`,  the minimum compileSdkVersion required has increased to 33. And, to support this feature, the targetSdkVersion must also be increased to 33.
+- **[Android] BREAKING CHANGE**: Added support for requesting permission on Android 13 via `requestPermission`, the minimum compileSdkVersion required has increased to 33. And, to support this feature, the targetSdkVersion must also be increased to 33.
 
 ## 5.7.0
 
@@ -548,12 +559,12 @@ q- test(ci, ios): ios build behaving strangely - tune timeouts
 
 ## 5.4.0
 
-- **[Android]**: Fixes an issue when recreating the trigger notifications after a reboot with AlarmManager  (Fixes [#422](https://github.com/invertase/notifee/issues/422)).
+- **[Android]**: Fixes an issue when recreating the trigger notifications after a reboot with AlarmManager (Fixes [#422](https://github.com/invertase/notifee/issues/422)).
 - **[Android]**: Fixes an issue around displaying a heads-up notification on Xiaomi devices by adding the permission `ACCESS_NOTIFICATION_POLICY` to the `AndroidManifest` (Fixes [#296](https://github.com/invertase/notifee/issues/296)).
 
 ## 5.3.0
 
-- **[Android]**: Elimates the need to add the local maven repository manually to your project  (PR [#414](https://github.com/invertase/notifee/pull/414)).
+- **[Android]**: Elimates the need to add the local maven repository manually to your project (PR [#414](https://github.com/invertase/notifee/pull/414)).
 - **[Android]**: Implements support to light up the screen when a notification is displayed. Introduces a new property `lightUpScreen` on the `NotificationAndroid` interface (PR [#403](https://github.com/invertase/notifee/pull/403)).
 
 ## 5.2.2
@@ -569,7 +580,7 @@ q- test(ci, ios): ios build behaving strangely - tune timeouts
 
 - **[Android]**: Fixes a compiling issue for some project configurations with error message "Project with path ':app' could not be found in project ':notifee_react-native'" (Fixes [#288](https://github.com/invertase/notifee/issues/288)).
 - **[Android]**: Fixes an issue where the current version of Notifee does not build when using an expo managed app with the expo plugin (Fixes [#314](https://github.com/invertase/notifee/issues/314)).
-- **[Web]**: Basic support for react-native-web - notifications do not work on web yet, but the package is now compatible with web (PR  [#369](https://github.com/invertase/notifee/pull/369))
+- **[Web]**: Basic support for react-native-web - notifications do not work on web yet, but the package is now compatible with web (PR [#369](https://github.com/invertase/notifee/pull/369))
 
 ## 5.1.0
 
@@ -616,7 +627,7 @@ To learn more, see Permissions documentation for [iOS](https://notifee.app/react
 
 ## 4.0.0
 
-- **[Android]: BREAKING CHANGE** : the minimum compileSdkVersion required has increased to 31, to fix an issue with Android 12 where the app will crash due to a missing Intent immutability flag (Fixes [#238](https://github.com/invertase/notifee/issues/238)). You do not need to alter targetSdkVersion or anything else - but you *must* increase compileSdkVersion to 31. **Please note, JDK11 is strongly recommended when using compile or target sdk 31**. **Please note, we do not correctly handle the new "exact alarm" Android 12 restrictions so we recommend staying on targetSdkVersion 30 for now.**
+- **[Android]: BREAKING CHANGE** : the minimum compileSdkVersion required has increased to 31, to fix an issue with Android 12 where the app will crash due to a missing Intent immutability flag (Fixes [#238](https://github.com/invertase/notifee/issues/238)). You do not need to alter targetSdkVersion or anything else - but you _must_ increase compileSdkVersion to 31. **Please note, JDK11 is strongly recommended when using compile or target sdk 31**. **Please note, we do not correctly handle the new "exact alarm" Android 12 restrictions so we recommend staying on targetSdkVersion 30 for now.**
 
 ## 3.0.4
 
@@ -674,7 +685,7 @@ To learn more, see Permissions documentation for [iOS](https://notifee.app/react
   - `cancelAllNotifications(ids)`
   - `cancelDisplayedNotifications(ids)`
   - `cancelTriggerNotifications(ids)`
-- **BREAKING**: Fixes an issue when setting a custom sound on a notification channel (Fixes [#341](https://github.com/notifee/react-native-notifee/issues/341)). Sounds now must be specified without the file extension, previously it was optional. **If you were using custom sounds on Android>7 prior to this, you will need to create a *new* notification channel or the reference to your custom sound on the channel will likely not survive app updates. We apologize for the inconvenience**
+- **BREAKING**: Fixes an issue when setting a custom sound on a notification channel (Fixes [#341](https://github.com/notifee/react-native-notifee/issues/341)). Sounds now must be specified without the file extension, previously it was optional. **If you were using custom sounds on Android>7 prior to this, you will need to create a _new_ notification channel or the reference to your custom sound on the channel will likely not survive app updates. We apologize for the inconvenience**
 
 ## 1.9.2
 
@@ -730,11 +741,11 @@ To learn more, see Permissions documentation for [iOS](https://notifee.app/react
 
 ## 1.2.0
 
-- **[iOS]**:  Includes a Notification Service Extension Helper to take advantage of Notifee with remote notifications. To learn more, view the [Remote Notification Support](/react-native/ios/remote-notification-support) documentation.
+- **[iOS]**: Includes a Notification Service Extension Helper to take advantage of Notifee with remote notifications. To learn more, view the [Remote Notification Support](/react-native/ios/remote-notification-support) documentation.
 
 ## 1.1.2
 
-- **[iOS]**:  Enforce v1.10+ of CocoaPods (Fixes [#230](https://github.com/notifee/react-native-notifee/issues/230)).
+- **[iOS]**: Enforce v1.10+ of CocoaPods (Fixes [#230](https://github.com/notifee/react-native-notifee/issues/230)).
 
 ## 1.1.1
 
