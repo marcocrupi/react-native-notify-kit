@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.2.0] - 2026-04-27
+
 ### Added
 
 - **React Native**: `TimestampTrigger.repeatInterval` for calendar-based custom repeat intervals on timestamp triggers. Timestamp triggers now support custom repeat intervals such as every 2 days, every 2 weeks, and every 3 months from the selected start timestamp.
