@@ -108,7 +108,7 @@ export interface NotificationIOS {
   /**
    * Optional property to customise how notifications are presented when the app is in the foreground.
    *
-   * By default, Notifee will show iOS notifications in heads-up mode if your app is currently in the foreground.
+   * By default, Notify Kit will show iOS notifications in heads-up mode if your app is currently in the foreground.
    */
   foregroundPresentationOptions?: IOSForegroundPresentationOptions;
 
@@ -142,7 +142,7 @@ export interface IOSCommunicationInfoPerson {
 /**
  * An interface to customise how notifications are shown when the app is in the foreground.
  *
- * By default, Notifee will show iOS notifications in heads-up mode if your app is currently in the foreground.
+ * By default, Notify Kit will show iOS notifications in heads-up mode if your app is currently in the foreground.
  *
  * View the [Foreground Notifications](/react-native/ios/appearance#foreground-notifications) to learn
  * more.
@@ -258,7 +258,7 @@ export interface IOSNotificationPermissions {
   // TODO later version
   // /**
   //  * Using this permission indicates to iOS that it should display a button for in-app notification
-  //  * settings. Pressing this button when your application is open will trigger a Notifee
+  //  * settings. Pressing this button when your application is open will trigger a Notify Kit
   //  * 'ACTION_PRESS' event with a `pressAction.id` of 'notification-settings'
   //  * (or via getInitialNotification 'pressAction.id' when app launched)
   //  *
@@ -704,11 +704,11 @@ export type IOSNotificationInterruptionLevel = 'active' | 'critical' | 'passive'
  */
 export interface IOSNotificationConfig {
   /**
-   * Whether Notifee should handle remote (push) notifications on iOS.
+   * Whether Notify Kit should handle remote (push) notifications on iOS.
    *
    * When set to `false`, remote notifications (e.g. from Firebase Cloud Messaging)
    * will be forwarded to the original notification delegate instead of being
-   * processed by Notifee. This allows libraries like React Native Firebase
+   * processed by Notify Kit. This allows libraries like React Native Firebase
    * Messaging to receive tap events via `onNotificationOpenedApp()` and
    * `getInitialNotification()`.
    *

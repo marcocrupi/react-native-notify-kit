@@ -1,6 +1,6 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / FcmConfig
 
@@ -45,14 +45,14 @@ Mirrors the existing behavior: `{ id: 'default', launchActivity: 'default' }`.
 
 What to do when `remoteMessage.data.notifee_options` is absent entirely.
 
-* `'display'`: build a minimal notification from `remoteMessage.notification`
+- `'display'`: build a minimal notification from `remoteMessage.notification`
   title/body (or `data.title`/`data.body` as a fallback). Uses `defaultChannelId`.
-* `'ignore'`: return `null` without displaying anything.
+- `'ignore'`: return `null` without displaying anything.
 
 #### Default
 
 ```ts
-'display'
+'display';
 ```
 
 ### ios?
@@ -71,5 +71,5 @@ are NOT displayed (only events are emitted).
 ##### Default
 
 ```ts
-false
+false;
 ```

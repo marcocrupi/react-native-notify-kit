@@ -543,20 +543,20 @@ export interface Module {
   /**
    * API used to configure iOS notification handling behavior.
    *
-   * Use this to control whether Notifee should handle remote (push) notifications
+   * Use this to control whether Notify Kit should handle remote (push) notifications
    * on iOS. When `handleRemoteNotifications` is set to `false`, remote notifications
    * (e.g. from Firebase Cloud Messaging) will be forwarded to the original
-   * notification delegate instead of being processed by Notifee.
+   * notification delegate instead of being processed by Notify Kit.
    *
    * This allows libraries like React Native Firebase Messaging to receive tap events
    * via `onNotificationOpenedApp()` and `getInitialNotification()`.
    *
-   * Defaults to `true` (Notifee handles all notifications) for backward compatibility.
+   * Defaults to `true` (Notify Kit handles all notifications) for backward compatibility.
    *
    * ```js
    * import notifee from 'react-native-notify-kit';
    *
-   * // Disable Notifee handling of remote notifications
+   * // Disable Notify Kit handling of remote notifications
    * await notifee.setNotificationConfig({
    *   ios: { handleRemoteNotifications: false },
    * });
@@ -663,8 +663,8 @@ export interface Module {
   hideNotificationDrawer(): void;
 
   /**
-   * Processes an FCM remote message produced by the NotifyKit server SDK and
-   * displays a Notifee notification according to the embedded `notifee_options`.
+   * Processes an FCM remote message produced by the Notify Kit server SDK and
+   * displays a Notify Kit notification according to the embedded `notifee_options`.
    *
    * Safe to call from both `setBackgroundMessageHandler` and `onMessage`.
    *
@@ -696,7 +696,7 @@ export interface Module {
  */
 export interface ModuleStatics {
   /**
-   * Returns the current Notifee SDK version in use.
+   * Returns the current Notify Kit SDK version in use.
    */
   SDK_VERSION: string;
 }

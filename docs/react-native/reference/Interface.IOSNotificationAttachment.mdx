@@ -1,12 +1,12 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / IOSNotificationAttachment
 
 # Interface: IOSNotificationAttachment
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:609](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L609)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:624](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L624)
 
 An interface for describing an iOS Notification Attachment.
 
@@ -22,39 +22,39 @@ ios
 
 > `optional` **id**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:614](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L614)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:629](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L629)
 
 A optional unique identifier of the attachment.
 If no `id` is provided, a unique id is created for you.
 
-***
+---
 
 ### thumbnailClippingRect?
 
 > `optional` **thumbnailClippingRect**: [`IOSAttachmentThumbnailClippingRect`](react-native/reference/Interface.IOSAttachmentThumbnailClippingRect)
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:646](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L646)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:661](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L661)
 
 An optional clipping rectangle for a thumbnail image.
 
-***
+---
 
 ### thumbnailHidden?
 
 > `optional` **thumbnailHidden**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:641](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L641)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:656](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L656)
 
 When set to `true` the thumbnail will be hidden.
 Defaults to `false`.
 
-***
+---
 
 ### thumbnailTime?
 
 > `optional` **thumbnailTime**: `number`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:657](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L657)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:672](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L672)
 
 The frame number of an animation to use as the thumbnail.
 
@@ -64,13 +64,13 @@ grab the thumbnail image.
 For a GIF, it is the frame number of the animation to use
 as a thumbnail image.
 
-***
+---
 
 ### typeHint?
 
 > `optional` **typeHint**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:635](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L635)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:650](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L650)
 
 An optional hint about an attachment’s file type, as as Uniform Type Identifier (UTI).
 
@@ -78,19 +78,19 @@ A list of UTI values can be found [here](https://developer.apple.com/library/arc
 
 If you do not include this key, the attachment’s filename extension is used to determine its type.
 
-***
+---
 
 ### url
 
 > **url**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationIOS.ts:626](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L626)
+Defined in: [packages/react-native/src/types/NotificationIOS.ts:641](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L641)
 
 A URL to the media file to display.
 
 The value can be any of the following:
 
-* An absolute path to a file on the device
-* iOS resource
+- An absolute path to a file on the device
+- iOS resource
 
 For a list of supported file types, see [Supported File Types](https://developer.apple.com/documentation/usernotifications/unnotificationattachment#1682051) on the official Apple documentation for more information.

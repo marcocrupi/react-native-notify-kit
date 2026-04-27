@@ -1,6 +1,6 @@
 [**react-native-notify-kit**](react-native/reference/index)
 
-***
+---
 
 [react-native-notify-kit](react-native/reference/index) / NotificationAndroid
 
@@ -32,7 +32,7 @@ directly from the notification body, providing an overall greater user experienc
 
 View the [Quick Actions](/react-native/android/interaction#quick-actions) documentation for more information.
 
-***
+---
 
 ### asForegroundService?
 
@@ -53,7 +53,7 @@ View the [Foreground Service](/react-native/android/foreground-service) document
 
 Defaults to `false`.
 
-***
+---
 
 ### autoCancel?
 
@@ -73,7 +73,7 @@ remain there until the user removes it (e.g. swipes away) or is cancelled via
 
 Defaults to `true`.
 
-***
+---
 
 ### badgeCount?
 
@@ -85,7 +85,7 @@ Overrides the current number of active notifications shown on the device.
 
 If no number is provided, the system displays the current number of active notifications.
 
-***
+---
 
 ### badgeIconType?
 
@@ -104,7 +104,7 @@ Defaults to `AndroidBadgeIconType.LARGE`.
 
 android API Level >= 26
 
-***
+---
 
 ### category?
 
@@ -117,7 +117,7 @@ Assigns the notification to a category. Use the one which best describes the not
 The category may be used by the device for ranking and filtering. It has no visual or behavioural
 impact.
 
-***
+---
 
 ### channelId?
 
@@ -131,7 +131,7 @@ On Android 8.0 (API 26) the channel ID is required. Providing a invalid channel 
 an error. View the [Channels & Groups](/react-native/android/channels) documentation for
 more information and usage examples.
 
-***
+---
 
 ### chronometerDirection?
 
@@ -145,7 +145,7 @@ Has no effect if `showChronometer` is `false`.
 
 Defaults to `up`.
 
-***
+---
 
 ### circularLargeIcon?
 
@@ -159,7 +159,7 @@ If `true`, the large icon will be rounded in the shape of a circle.
 
 Defaults to `false`.
 
-***
+---
 
 ### color?
 
@@ -174,7 +174,7 @@ The color can be a predefined system `AndroidColor` or [hexadecimal](https://gis
 
 View the [Color](/react-native/android/appearance#color) documentation for more information.
 
-***
+---
 
 ### colorized?
 
@@ -193,7 +193,7 @@ View the [Foreground Service](/react-native/android/foreground-service) document
 
 Defaults to `false`.
 
-***
+---
 
 ### defaults?
 
@@ -212,7 +212,7 @@ See [AndroidDefaults](/react-native/reference/androiddefaults) for more informat
 
 android API Level \< 26
 
-***
+---
 
 ### flags?
 
@@ -222,7 +222,7 @@ Defined in: [packages/react-native/src/types/NotificationAndroid.ts:251](https:/
 
 Set any additional flags
 
-***
+---
 
 ### foregroundServiceBehavior?
 
@@ -246,7 +246,7 @@ Ignored when `asForegroundService` is `false` or not set.
 
 android API 31+
 
-***
+---
 
 ### foregroundServiceTypes?
 
@@ -259,7 +259,7 @@ Set the foreground service types identifying the work done by the service
 View the [Foreground service types](https://developer.android.com/develop/background-work/services/fg-service-types) documentation to learn
 more.
 
-***
+---
 
 ### fullScreenAction?
 
@@ -273,7 +273,7 @@ in full screen when the notification is displayed.
 View the [FullScreenAction](/react-native/android/behaviour#full-screen) documentation to learn
 more.
 
-***
+---
 
 ### groupAlertBehavior?
 
@@ -290,7 +290,7 @@ children in the group should have the group alert behavior `AndroidGroupAlertBeh
 View the [Android Grouping & Sorting guide](/react-native/android/grouping-and-sorting#group-behaviour)
 documentation to learn more.
 
-***
+---
 
 ### groupId?
 
@@ -306,7 +306,7 @@ On some devices, the system may automatically group notifications.
 View the [Android Grouping & Sorting guide](/react-native/android/grouping-and-sorting) documentation to
 learn more.
 
-***
+---
 
 ### groupSummary?
 
@@ -321,7 +321,7 @@ a cluster or stack on devices which support such rendering. Requires a `groupId`
 
 Defaults to `false`.
 
-***
+---
 
 ### importance?
 
@@ -345,7 +345,7 @@ more.
 
 android API Level \< 26
 
-***
+---
 
 ### inputHistory?
 
@@ -360,7 +360,7 @@ users input with the notification should be shown when receiving action input by
 the existing notification. It is recommended to clear the history when it is no longer
 relevant (e.g. someone has responded to the users input).
 
-***
+---
 
 ### largeIcon?
 
@@ -375,7 +375,7 @@ Sets a large icon on the notification.
 View the [Android Appearance](/react-native/android/appearance#large-icons) documentation to learn
 more about this property.
 
-***
+---
 
 ### lights?
 
@@ -391,7 +391,7 @@ turn off the light. The light frequency pattern is repeated.
 
 View the [Lights](/react-native/android/behaviour#lights) documentation for more information.
 
-***
+---
 
 ### lightUpScreen?
 
@@ -403,7 +403,7 @@ When set to `true` the screen will light up when the notification is displayed.
 
 Defaults to `false`.
 
-***
+---
 
 ### localOnly?
 
@@ -419,7 +419,7 @@ only alert on the main device.
 
 Defaults to `false`.
 
-***
+---
 
 ### loopSound?
 
@@ -431,7 +431,7 @@ Set whether the sound should loop, by default, the sound will only play once.
 
 This property is useful if you have an ongoing notification.
 
-***
+---
 
 ### ongoing?
 
@@ -443,12 +443,12 @@ Set whether this is an on-going notification.
 
 Setting this value to `true` changes the default behaviour of a notification:
 
-* Ongoing notifications are sorted above the regular notifications in the notification panel.
-* Ongoing notifications do not have an 'X' close button, and are not affected by the "Clear all" button.
+- Ongoing notifications are sorted above the regular notifications in the notification panel.
+- Ongoing notifications do not have an 'X' close button, and are not affected by the "Clear all" button.
 
 View the [Ongoing](/react-native/android/behaviour#ongoing) documentation for more information.
 
-***
+---
 
 ### onlyAlertOnce?
 
@@ -464,7 +464,7 @@ the notification is visible.
 
 This property is commonly used when frequently updating a notification (such as updating the progress bar).
 
-***
+---
 
 ### pressAction?
 
@@ -483,7 +483,7 @@ will display but tapping it will do nothing).
 View the [Interaction](/react-native/android/interaction) documentation to learn
 more.
 
-***
+---
 
 ### progress?
 
@@ -497,7 +497,7 @@ indeterminate (unknown).
 View the [Progress Indicators](/react-native/android/progress-indicators) documentation
 to learn more.
 
-***
+---
 
 ### showChronometer?
 
@@ -514,7 +514,7 @@ Defaults to `false`.
 
 View the [Timers](/react-native/android/timers#timers) documentation to learn more.
 
-***
+---
 
 ### showTimestamp?
 
@@ -531,7 +531,7 @@ If no `timestamp` is set, this field has no effect.
 
 View the [Timestamps](/react-native/android/timers#timestamps) documentation to learn more.
 
-***
+---
 
 ### smallIcon?
 
@@ -544,7 +544,7 @@ The small icon to show in the heads-up notification.
 View the [Icons](/react-native/android/appearance#small-icons) documentation to learn
 more.
 
-***
+---
 
 ### smallIconLevel?
 
@@ -554,7 +554,7 @@ Defined in: [packages/react-native/src/types/NotificationAndroid.ts:361](https:/
 
 An additional level parameter for when the icon is an instance of a Android `LevelListDrawable`.
 
-***
+---
 
 ### sortKey?
 
@@ -572,7 +572,7 @@ If a `groupId` has been set, the sort key can also be used to order members of a
 View the [Android Grouping & Sorting](/react-native/android/grouping-and-sorting#sorting)
 documentation to learn more.
 
-***
+---
 
 ### sound?
 
@@ -593,7 +593,7 @@ View the [Sound](/react-native/android/behaviour#sound) documentation for more i
 
 android API Level \< 26
 
-***
+---
 
 ### style?
 
@@ -608,7 +608,7 @@ Android supports different styles, however only one can be used with a notificat
 View the [Styles](/react-native/android/styles) documentation to learn more
 view usage examples.
 
-***
+---
 
 ### tag?
 
@@ -621,7 +621,7 @@ Sets a tag on the notification.
 Tags can be used to query groups notifications by the tag value. Setting a tag has no
 impact on the notification itself.
 
-***
+---
 
 ### ticker?
 
@@ -635,7 +635,7 @@ text is no longer shown on screen, but it is still useful to accessibility servi
 
 Ticker text does not show in the notification.
 
-***
+---
 
 ### timeoutAfter?
 
@@ -646,7 +646,7 @@ Defined in: [packages/react-native/src/types/NotificationAndroid.ts:399](https:/
 Sets the time in milliseconds at which the notification should be
 automatically cancelled once displayed, if it is not already cancelled.
 
-***
+---
 
 ### timestamp?
 
@@ -658,12 +658,12 @@ The timestamp in milliseconds for this notification. Notifications in the panel 
 
 The timestamp can be used with other properties to change the behaviour of a notification:
 
-* Use with `showTimestamp` to show the timestamp to the users.
-* Use with `showChronometer` to create a on-going timer.
+- Use with `showTimestamp` to show the timestamp to the users.
+- Use with `showChronometer` to create a on-going timer.
 
 View the [Timers](/react-native/android/timers) documentation to learn more.
 
-***
+---
 
 ### vibrationPattern?
 
@@ -675,7 +675,7 @@ Sets the vibration pattern the notification uses when displayed. Must be an even
 
 View the [Vibration](/react-native/android/behaviour#vibration) documentation to learn more.
 
-***
+---
 
 ### visibility?
 

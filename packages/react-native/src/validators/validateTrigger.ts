@@ -103,8 +103,7 @@ function validateTimestampTrigger(trigger: TimestampTrigger): TimestampTrigger {
 
   const hasRepeatFrequency =
     objectHasProperty(trigger, 'repeatFrequency') && !isUndefined(trigger.repeatFrequency);
-  const isRepeating =
-    hasRepeatFrequency && trigger.repeatFrequency !== RepeatFrequency.NONE;
+  const isRepeating = hasRepeatFrequency && trigger.repeatFrequency !== RepeatFrequency.NONE;
 
   if (objectHasProperty(trigger, 'repeatInterval') && !isUndefined(trigger.repeatInterval)) {
     if (!hasRepeatFrequency) {

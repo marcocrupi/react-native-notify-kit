@@ -33,7 +33,7 @@
     "validate:all": "yarn validate:all:js && yarn validate:all:ts",
     "validate:all:js": "eslint .",
     "validate:all:ts": "tsc --project ./",
-    "gen:reference": "yarn typedoc",
+    "gen:reference": "yarn typedoc && yarn prettier --write docs/react-native/reference",
     "test:all": "yarn test:core:android && yarn tests_rn:test",
     "test:core:android": "cd apps/smoke/android && ./gradlew :react-native-notify-kit:testDebugUnitTest",
     "tests_rn:test": "cd packages/react-native && npx jest --config jest.config.js",

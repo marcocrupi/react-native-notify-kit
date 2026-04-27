@@ -192,7 +192,7 @@ export interface TriggerNotification {
 }
 
 /**
- * An interface representing a Notifee event.
+ * An interface representing a Notify Kit event.
  *
  * View the [Events](/react-native/events) documentation to learn more about foreground and
  * background events.
