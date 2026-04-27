@@ -142,8 +142,7 @@ public class TimestampTriggerModelTest {
   @Test
   public void setNextTimestamp_dailyEveryTwoDays_advancesByRepeatInterval() {
     long original = mNow - ONE_MINUTE_MS;
-    TimestampTriggerModel trigger =
-        buildRepeatingTrigger(original, REPEAT_FREQUENCY_DAILY, 2);
+    TimestampTriggerModel trigger = buildRepeatingTrigger(original, REPEAT_FREQUENCY_DAILY, 2);
 
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();
@@ -174,8 +173,7 @@ public class TimestampTriggerModelTest {
   @Test
   public void setNextTimestamp_weeklyEveryTwoWeeks_advancesByRepeatInterval() {
     long original = mNow - ONE_MINUTE_MS;
-    TimestampTriggerModel trigger =
-        buildRepeatingTrigger(original, REPEAT_FREQUENCY_WEEKLY, 2);
+    TimestampTriggerModel trigger = buildRepeatingTrigger(original, REPEAT_FREQUENCY_WEEKLY, 2);
 
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();
@@ -205,8 +203,7 @@ public class TimestampTriggerModelTest {
   @Test
   public void setNextTimestamp_monthlyEveryThreeMonths_advancesByRepeatInterval() {
     long original = mNow - ONE_MINUTE_MS;
-    TimestampTriggerModel trigger =
-        buildRepeatingTrigger(original, REPEAT_FREQUENCY_MONTHLY, 3);
+    TimestampTriggerModel trigger = buildRepeatingTrigger(original, REPEAT_FREQUENCY_MONTHLY, 3);
 
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();
@@ -228,8 +225,7 @@ public class TimestampTriggerModelTest {
     start.set(2020, Calendar.JANUARY, 31, 12, 45, 0);
     long original = start.getTimeInMillis();
 
-    TimestampTriggerModel trigger =
-        buildRepeatingTrigger(original, REPEAT_FREQUENCY_MONTHLY, 1);
+    TimestampTriggerModel trigger = buildRepeatingTrigger(original, REPEAT_FREQUENCY_MONTHLY, 1);
 
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();

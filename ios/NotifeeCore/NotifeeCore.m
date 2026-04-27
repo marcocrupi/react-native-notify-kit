@@ -111,8 +111,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
 + (NSString *)rollingPublicIdForRequest:(UNNotificationRequest *)request {
   NSString *identifier = request.identifier;
-  NSString *mappedPublicId =
-      [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:identifier];
+  NSString *mappedPublicId = [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:identifier];
   if ([mappedPublicId isKindOfClass:NSString.class] && [mappedPublicId length] > 0) {
     return mappedPublicId;
   }
@@ -155,11 +154,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   }
 }
 
-+ (NSMutableOrderedSet<NSString *> *)rollingIdentifiersForPublicId:(NSString *)publicId
-                                                    pendingRequests:
-                                                        (NSArray<UNNotificationRequest *> *)
-                                                            pendingRequests
-                                                            record:(NSDictionary *)record {
++ (NSMutableOrderedSet<NSString *> *)
+    rollingIdentifiersForPublicId:(NSString *)publicId
+                  pendingRequests:(NSArray<UNNotificationRequest *> *)pendingRequests
+                           record:(NSDictionary *)record {
   NSMutableOrderedSet<NSString *> *identifiers = [NSMutableOrderedSet orderedSet];
 
   NSArray *scheduledIds = record[@"scheduledIds"];
@@ -186,12 +184,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   return identifiers;
 }
 
-+ (NSMutableOrderedSet<NSString *> *)rollingDeliveredIdentifiersForPublicId:
-                                      (NSString *)publicId
-                                                   deliveredNotifications:
-                                                       (NSArray<UNNotification *> *)
-                                                           deliveredNotifications
-                                                                 record:(NSDictionary *)record {
++ (NSMutableOrderedSet<NSString *> *)
+    rollingDeliveredIdentifiersForPublicId:(NSString *)publicId
+                    deliveredNotifications:(NSArray<UNNotification *> *)deliveredNotifications
+                                    record:(NSDictionary *)record {
   NSMutableOrderedSet<NSString *> *identifiers = [NSMutableOrderedSet orderedSet];
 
   NSArray *scheduledIds = record[@"scheduledIds"];
@@ -230,14 +226,12 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   return count;
 }
 
-+ (UNCalendarNotificationTrigger *)rollingOneShotTriggerForOccurrenceMs:
-    (NSNumber *)occurrenceMs {
++ (UNCalendarNotificationTrigger *)rollingOneShotTriggerForOccurrenceMs:(NSNumber *)occurrenceMs {
   NSDate *date = [NSDate dateWithTimeIntervalSince1970:([occurrenceMs doubleValue] / 1000.0)];
-  NSDateComponents *components =
-      [[NSCalendar currentCalendar] components:NSCalendarUnitYear | NSCalendarUnitMonth |
-                                   NSCalendarUnitDay | NSCalendarUnitHour |
-                                   NSCalendarUnitMinute | NSCalendarUnitSecond
-                                      fromDate:date];
+  NSDateComponents *components = [[NSCalendar currentCalendar]
+      components:NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay | NSCalendarUnitHour |
+                 NSCalendarUnitMinute | NSCalendarUnitSecond
+        fromDate:date];
 
   return [UNCalendarNotificationTrigger triggerWithDateMatchingComponents:components repeats:NO];
 }
@@ -256,11 +250,11 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   return rollingContent;
 }
 
-+ (UNMutableNotificationContent *)triggerNotificationContentForNotification:
-                                  (NSDictionary *)notification
-                                                                    trigger:(NSDictionary *)trigger {
++ (UNMutableNotificationContent *)
+    triggerNotificationContentForNotification:(NSDictionary *)notification
+                                      trigger:(NSDictionary *)trigger {
   UNMutableNotificationContent *content = [self buildNotificationContent:notification
-                                                              withTrigger:trigger];
+                                                             withTrigger:trigger];
 
   if (@available(iOS 15.0, *)) {
     if (notification[@"ios"][@"communicationInfo"] != nil) {
@@ -293,16 +287,17 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
 + (UNNotificationRequest *)rollingNotificationRequestForPublicId:(NSString *)publicId
                                                     occurrenceMs:(NSNumber *)occurrenceMs
-                                                         content:(UNMutableNotificationContent *)content
+                                                         content:
+                                                             (UNMutableNotificationContent *)content
                                                            error:(NSError **)error {
   NSString *internalId = [NotifeeCoreUtil rollingInternalNotificationIdForPublicId:publicId
                                                                       occurrenceMs:occurrenceMs];
   if (internalId == nil) {
     if (error != nil) {
-      *error = [self
-          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
-                                message:@"NotifeeCore: Failed to create rolling timestamp "
-                                        @"notification identifier."];
+      *error =
+          [self rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                      message:@"NotifeeCore: Failed to create rolling timestamp "
+                                              @"notification identifier."];
     }
     return nil;
   }
@@ -343,8 +338,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
 + (NSError *)scheduleRollingNotificationRequests:(NSArray<UNNotificationRequest *> *)requests
                                           center:(UNUserNotificationCenter *)center
-                           successfulIdentifiers:
-                               (NSMutableSet<NSString *> *)successfulIdentifiers {
+                           successfulIdentifiers:(NSMutableSet<NSString *> *)successfulIdentifiers {
   if ([requests count] == 0) {
     return nil;
   }
@@ -378,7 +372,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 }
 
 + (BOOL)persistedRollingRecords:(NSDictionary *)persistedRecords
-           matchUpdatedRecords:(NSDictionary *)updatedRecords {
+            matchUpdatedRecords:(NSDictionary *)updatedRecords {
   if ([persistedRecords count] != [updatedRecords count]) {
     return NO;
   }
@@ -394,8 +388,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
 + (NSArray<NSMutableDictionary *> *)rollingRebalanceStatesFromRecords:(NSDictionary *)records
                                                                 nowMs:(NSNumber *)nowMs
-                                                     requiredPublicId:
-                                                         (NSString *)requiredPublicId
+                                                     requiredPublicId:(NSString *)requiredPublicId
                                                                 error:(NSError **)error {
   NSMutableArray<NSMutableDictionary *> *states = [NSMutableArray array];
   BOOL foundRequiredPublicId = requiredPublicId == nil;
@@ -435,10 +428,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                                                      occurrenceMs:firstOccurrenceMs];
     if (firstOccurrenceMs == nil || firstInternalId == nil) {
       if (isRequiredPublicId && error != nil) {
-        *error = [self
-            rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
-                                  message:@"NotifeeCore: Rolling timestamp trigger did not "
-                                          @"produce any future occurrences."];
+        *error =
+            [self rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                        message:@"NotifeeCore: Rolling timestamp trigger did not "
+                                                @"produce any future occurrences."];
         return nil;
       }
       continue;
@@ -467,16 +460,15 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
     return nil;
   }
 
-  [states sortUsingComparator:^NSComparisonResult(NSDictionary *firstState,
-                                                  NSDictionary *secondState) {
-    return [self compareRollingRebalanceState:firstState otherState:secondState];
-  }];
+  [states
+      sortUsingComparator:^NSComparisonResult(NSDictionary *firstState, NSDictionary *secondState) {
+        return [self compareRollingRebalanceState:firstState otherState:secondState];
+      }];
 
   return states;
 }
 
-+ (BOOL)prepareRollingRebalanceDesiredSchedulesForStates:
-            (NSArray<NSMutableDictionary *> *)states
++ (BOOL)prepareRollingRebalanceDesiredSchedulesForStates:(NSArray<NSMutableDictionary *> *)states
                                                    nowMs:(NSNumber *)nowMs
                                                    error:(NSError **)error {
   for (NSMutableDictionary *state in states) {
@@ -489,15 +481,13 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
     NSDictionary *notification = state[@"notification"];
     NSDictionary *trigger = state[@"trigger"];
     NSArray<NSNumber *> *occurrences =
-        [NotifeeCoreUtil rollingTimestampOccurrencesFromTrigger:trigger
-                                                          nowMs:nowMs
-                                                       maxCount:quota];
+        [NotifeeCoreUtil rollingTimestampOccurrencesFromTrigger:trigger nowMs:nowMs maxCount:quota];
     if ([occurrences count] == 0) {
       if (error != nil) {
-        *error = [self
-            rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
-                                  message:@"NotifeeCore: Rolling timestamp trigger did not "
-                                          @"produce any future occurrences."];
+        *error =
+            [self rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                        message:@"NotifeeCore: Rolling timestamp trigger did not "
+                                                @"produce any future occurrences."];
       }
       return NO;
     }
@@ -515,11 +505,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
       }
 
       NSError *requestError = nil;
-      UNNotificationRequest *request =
-          [self rollingNotificationRequestForPublicId:publicId
-                                         occurrenceMs:occurrenceMs
-                                              content:content
-                                                error:&requestError];
+      UNNotificationRequest *request = [self rollingNotificationRequestForPublicId:publicId
+                                                                      occurrenceMs:occurrenceMs
+                                                                           content:content
+                                                                             error:&requestError];
       if (request == nil) {
         if (error != nil) {
           *error = requestError;
@@ -538,10 +527,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
     if ([desiredIds count] == 0 || lastScheduledOccurrence == nil) {
       if (error != nil) {
-        *error = [self
-            rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
-                                  message:@"NotifeeCore: Rolling timestamp trigger did not "
-                                          @"produce any future occurrences."];
+        *error =
+            [self rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                        message:@"NotifeeCore: Rolling timestamp trigger did not "
+                                                @"produce any future occurrences."];
       }
       return NO;
     }
@@ -562,10 +551,9 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   return YES;
 }
 
-+ (void)rollbackRollingRebalanceRemovedRequests:
-            (NSArray<UNNotificationRequest *> *)removedRequests
-                         successfulNewIdentifiers:(NSSet<NSString *> *)successfulNewIdentifiers
-                                           center:(UNUserNotificationCenter *)center {
++ (void)rollbackRollingRebalanceRemovedRequests:(NSArray<UNNotificationRequest *> *)removedRequests
+                       successfulNewIdentifiers:(NSSet<NSString *> *)successfulNewIdentifiers
+                                         center:(UNUserNotificationCenter *)center {
   if ([successfulNewIdentifiers count] > 0) {
     [self removeRollingPendingRequestsForIds:[successfulNewIdentifiers allObjects] center:center];
   }
@@ -579,18 +567,16 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
 + (BOOL)rebalanceRollingTimestampTriggerRecords:(NSDictionary *)records
                                          center:(UNUserNotificationCenter *)center
-                                pendingRequests:
-                                    (NSArray<UNNotificationRequest *> *)pendingRequests
+                                pendingRequests:(NSArray<UNNotificationRequest *> *)pendingRequests
                                           nowMs:(NSNumber *)nowMs
                                 refreshPublicId:(NSString *)refreshPublicId
                                requiredPublicId:(NSString *)requiredPublicId
                                           error:(NSError **)error {
   NSError *stateError = nil;
-  NSArray<NSMutableDictionary *> *states =
-      [self rollingRebalanceStatesFromRecords:records
-                                        nowMs:nowMs
-                             requiredPublicId:requiredPublicId
-                                        error:&stateError];
+  NSArray<NSMutableDictionary *> *states = [self rollingRebalanceStatesFromRecords:records
+                                                                             nowMs:nowMs
+                                                                  requiredPublicId:requiredPublicId
+                                                                             error:&stateError];
   if (states == nil) {
     if (error != nil) {
       *error = stateError;
@@ -772,10 +758,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
     [self removeRollingPendingRequestsForIds:[successfulNewIdentifiers allObjects] center:center];
 
     if (error != nil) {
-      *error = [self
-          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeStorageFailed
-                                message:@"NotifeeCore: Failed to persist rolling timestamp "
-                                        @"trigger records after rebalance."];
+      *error =
+          [self rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeStorageFailed
+                                      message:@"NotifeeCore: Failed to persist rolling timestamp "
+                                              @"trigger records after rebalance."];
     }
     return NO;
   }
@@ -815,10 +801,10 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   dispatch_async([self rollingTimestampQueue], ^{
     NSString *publicId = [self rollingPublicIdForNotification:notification];
     if (publicId == nil) {
-      NSError *error = [self
-          rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
-                                message:@"NotifeeCore: Rolling timestamp trigger requires a "
-                                        @"notification id."];
+      NSError *error =
+          [self rollingTimestampErrorWithCode:NotifeeCoreRollingErrorCodeInvalidTrigger
+                                      message:@"NotifeeCore: Rolling timestamp trigger requires a "
+                                              @"notification id."];
       [self resolveBlock:block withError:error];
       return;
     }
@@ -881,8 +867,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
       NSArray<UNNotification *> *deliveredNotifications = [self deliveredNotifications:center];
       NSMutableOrderedSet<NSString *> *deliveredIdentifiersToRemove =
           [self rollingDeliveredIdentifiersForPublicId:notificationId
-                               deliveredNotifications:deliveredNotifications
-                                               record:record];
+                                deliveredNotifications:deliveredNotifications
+                                                record:record];
       [self addString:notificationId toOrderedSet:deliveredIdentifiersToRemove];
       if ([deliveredIdentifiersToRemove count] > 0) {
         [center removeDeliveredNotificationsWithIdentifiers:[deliveredIdentifiersToRemove array]];
@@ -934,8 +920,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
         cancelTrigger ? [self pendingNotificationRequests:center] : @[];
     NSMutableOrderedSet<NSString *> *deliveredIdentifiersToRemove =
         [NSMutableOrderedSet orderedSet];
-    NSMutableOrderedSet<NSString *> *pendingIdentifiersToRemove =
-        [NSMutableOrderedSet orderedSet];
+    NSMutableOrderedSet<NSString *> *pendingIdentifiersToRemove = [NSMutableOrderedSet orderedSet];
 
     for (NSString *publicId in publicIds) {
       NSDictionary *record = records[publicId];
@@ -943,8 +928,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
       if (cancelDisplayed) {
         NSMutableOrderedSet<NSString *> *rollingDeliveredIdentifiers =
             [self rollingDeliveredIdentifiersForPublicId:publicId
-                                 deliveredNotifications:deliveredNotifications
-                                                 record:record];
+                                  deliveredNotifications:deliveredNotifications
+                                                  record:record];
         [deliveredIdentifiersToRemove unionOrderedSet:rollingDeliveredIdentifiers];
         [self addString:publicId toOrderedSet:deliveredIdentifiersToRemove];
       }
@@ -985,9 +970,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 + (void)cancelNotification:(NSString *)notificationId
       withNotificationType:(NSInteger)notificationType
                  withBlock:(notifeeMethodVoidBlock)block {
-  [self cancelRollingNotification:notificationId
-             withNotificationType:notificationType
-                            block:block];
+  [self cancelRollingNotification:notificationId withNotificationType:notificationType block:block];
 }
 
 /**
@@ -1047,10 +1030,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 
       triggerNotification[@"date"] =
           [NotifeeCoreUtil convertToTimestamp:deliveredNotification.date];
-      triggerNotification[@"notification"] =
-          request.content.userInfo[kNotifeeUserInfoNotification];
-      triggerNotification[@"trigger"] =
-          request.content.userInfo[kNotifeeUserInfoTrigger];
+      triggerNotification[@"notification"] = request.content.userInfo[kNotifeeUserInfoNotification];
+      triggerNotification[@"trigger"] = request.content.userInfo[kNotifeeUserInfoTrigger];
 
       if (triggerNotification[@"notification"] == nil) {
         // parse remote notification
@@ -1139,8 +1120,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
       NSString *notificationId = request.identifier;
       NSString *rollingPublicId =
           [NotifeeCoreUtil rollingPublicIdFromInternalNotificationId:notificationId];
-      [self addString:(rollingPublicId != nil ? rollingPublicId : notificationId)
-          toOrderedSet:ids];
+      [self addString:(rollingPublicId != nil ? rollingPublicId : notificationId) toOrderedSet:ids];
     }
 
     NSDictionary *rollingRecords = [NotifeeCoreUtil getRollingTimestampTriggers];
@@ -1236,8 +1216,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                       withTrigger:(NSDictionary *)trigger
                         withBlock:(notifeeMethodVoidBlock)block {
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-    UNMutableNotificationContent *content = [self triggerNotificationContentForNotification:notification
-                                                                                    trigger:trigger];
+    UNMutableNotificationContent *content =
+        [self triggerNotificationContentForNotification:notification trigger:trigger];
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
 
     NSMutableDictionary *notificationDetail = [notification mutableCopy];
