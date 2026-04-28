@@ -52,6 +52,11 @@ describe('initNse integration', () => {
     // Podfile patched
     const podfile = fs.readFileSync(path.join(ctx.root, 'ios', 'Podfile'), 'utf-8');
     expect(podfile).toContain("target 'NotifyKitNSE'");
+    expect(podfile).toContain('NotifyKitNSE: avoid an Xcode build cycle');
+    expect(podfile).toContain(
+      "rnfb_info_plist_input_path = '$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)'",
+    );
+    expect(podfile).toContain('script_phase[:input_files].delete(rnfb_info_plist_input_path)');
 
     // No backup files left
     expect(fs.existsSync(path.join(ctx.root, 'ios', 'Podfile.bak'))).toBe(false);

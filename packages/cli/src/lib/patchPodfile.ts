@@ -1,22 +1,23 @@
 import * as fs from 'fs';
 
+const RNFB_INFO_PLIST_INPUT_PATH = '$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)';
+const RNFB_POST_INSTALL_MARKER =
+  'NotifyKitNSE: avoid an Xcode build cycle between the embedded app extension';
+
 /**
  * Patches the Podfile to add the NSE target with RNNotifeeCore pod.
  * The NSE target is nested inside the main app target so CocoaPods can
  * detect the host→extension relationship. Uses `inherit! :search_paths`.
- * Idempotent: if the target already exists, returns false.
+ * Also installs a post_install hook that keeps React Native Firebase's
+ * generated Info.plist input path from recreating a host-extension build cycle.
+ * Idempotent: returns false when no Podfile changes are needed.
  */
 export function patchPodfile(podfilePath: string, targetName: string, dryRun: boolean): boolean {
   const content = fs.readFileSync(podfilePath, 'utf-8');
 
-  // Idempotency check — skip commented lines (# prefix)
-  if (hasUncommentedTarget(content, targetName)) {
-    return false; // Already present
-  }
-
-  const patched = insertNseTarget(content, targetName);
+  const patched = getPatchedPodfile(content, targetName);
   if (patched === null) {
-    return false; // Could not find insertion point
+    return false; // Already patched
   }
 
   if (!dryRun) {
@@ -31,10 +32,26 @@ export function patchPodfile(podfilePath: string, targetName: string, dryRun: bo
  * preview or testing).
  */
 export function getPatchedPodfile(content: string, targetName: string): string | null {
-  if (hasUncommentedTarget(content, targetName)) {
-    return null; // Already present
+  let patched = content;
+  let changed = false;
+
+  // Idempotency check — skip commented lines (# prefix)
+  if (!hasUncommentedTarget(patched, targetName)) {
+    const withNseTarget = insertNseTarget(patched, targetName);
+    if (withNseTarget === null) {
+      return null;
+    }
+    patched = withNseTarget;
+    changed = true;
   }
-  return insertNseTarget(content, targetName);
+
+  const withRnfbPatch = ensureRnfbPostInstallPatch(patched);
+  if (withRnfbPatch !== patched) {
+    patched = withRnfbPatch;
+    changed = true;
+  }
+
+  return changed ? patched : null;
 }
 
 /**
@@ -65,33 +82,7 @@ function insertNseTarget(content: string, targetName: string): string | null {
     return content + '\n' + block;
   }
 
-  // Find the matching `end` for this target block.
-  // Simple approach: find the last top-level `end` after the target declaration.
-  // We look for `end` at the start of a line (possibly with leading whitespace)
-  // that closes the main target block.
-  const afterTarget = content.slice(targetMatch.index);
-  let depth = 0;
-  let insertIndex = -1;
-  const lines = afterTarget.split('\n');
-  let charIndex = targetMatch.index;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    // Count block openers: `do` at end of line (target ... do, post_install do |...|)
-    if (/\bdo\b(\s*\|[^|]*\|)?\s*$/.test(trimmed) && !trimmed.startsWith('#')) {
-      depth++;
-    }
-    // Count block closers
-    if (trimmed === 'end') {
-      depth--;
-      if (depth === 0) {
-        // This is the closing `end` of the main target — insert before it
-        insertIndex = charIndex;
-        break;
-      }
-    }
-    charIndex += line.length + 1; // +1 for newline
-  }
+  const insertIndex = findMatchingRubyBlockEnd(content, targetMatch.index);
 
   if (insertIndex === -1) {
     // Could not find matching end — abort rather than silently producing invalid output
@@ -103,6 +94,135 @@ function insertNseTarget(content: string, targetName: string): string | null {
   }
 
   return content.slice(0, insertIndex) + block + content.slice(insertIndex);
+}
+
+function ensureRnfbPostInstallPatch(content: string): string {
+  if (content.includes(RNFB_POST_INSTALL_MARKER)) {
+    return content;
+  }
+
+  const postInstall = findPostInstallBlock(content);
+  if (postInstall) {
+    const snippet =
+      '\n' + buildRnfbPostInstallSnippet(postInstall.bodyIndent, postInstall.paramName);
+    return content.slice(0, postInstall.endIndex) + snippet + content.slice(postInstall.endIndex);
+  }
+
+  const separator = content.trim().length === 0 || content.endsWith('\n') ? '\n' : '\n\n';
+  return (
+    content +
+    separator +
+    'post_install do |installer|\n' +
+    buildRnfbPostInstallSnippet('  ', 'installer') +
+    'end\n'
+  );
+}
+
+function buildRnfbPostInstallSnippet(indent: string, installerParamName: string): string {
+  return [
+    `${indent}# ${RNFB_POST_INSTALL_MARKER}`,
+    `${indent}# and React Native Firebase's Info.plist processing phase.`,
+    `${indent}rnfb_info_plist_input_path = '${RNFB_INFO_PLIST_INPUT_PATH}'`,
+    `${indent}rnfb_phase_names = [`,
+    `${indent}  '[RNFB] Core Configuration',`,
+    `${indent}  '[CP-User] [RNFB] Core Configuration',`,
+    `${indent}]`,
+    '',
+    `${indent}${installerParamName}.aggregate_targets.each do |aggregate_target|`,
+    `${indent}  aggregate_target.target_definition.script_phases.each do |script_phase|`,
+    `${indent}    next unless rnfb_phase_names.include?(script_phase[:name])`,
+    `${indent}    next unless script_phase[:input_files]`,
+    '',
+    `${indent}    script_phase[:input_files].delete(rnfb_info_plist_input_path)`,
+    `${indent}  end`,
+    '',
+    `${indent}  user_project = aggregate_target.user_project`,
+    `${indent}  next unless user_project`,
+    '',
+    `${indent}  rnfb_input_path_removed = false`,
+    '',
+    `${indent}  user_project.targets.each do |target|`,
+    `${indent}    target.shell_script_build_phases.each do |phase|`,
+    `${indent}      next unless rnfb_phase_names.include?(phase.name)`,
+    `${indent}      next unless phase.input_paths`,
+    '',
+    `${indent}      if phase.input_paths.delete(rnfb_info_plist_input_path)`,
+    `${indent}        rnfb_input_path_removed = true`,
+    `${indent}      end`,
+    `${indent}    end`,
+    `${indent}  end`,
+    '',
+    `${indent}  user_project.save if rnfb_input_path_removed`,
+    `${indent}end`,
+    '',
+  ].join('\n');
+}
+
+function findPostInstallBlock(
+  content: string,
+): { bodyIndent: string; endIndex: number; paramName: string } | null {
+  const postInstallPattern = /^([ \t]*)post_install\s+do\s+\|([^|]+)\|\s*(?:#.*)?$/gm;
+  let match: RegExpExecArray | null;
+
+  while ((match = postInstallPattern.exec(content)) !== null) {
+    const endIndex = findMatchingRubyBlockEnd(content, match.index);
+    if (endIndex !== -1) {
+      return {
+        bodyIndent: `${match[1]}  `,
+        endIndex,
+        paramName: match[2].trim(),
+      };
+    }
+  }
+
+  return null;
+}
+
+function findMatchingRubyBlockEnd(content: string, startIndex: number): number {
+  const afterStart = content.slice(startIndex);
+  const lines = afterStart.split('\n');
+  let depth = 0;
+  let charIndex = startIndex;
+
+  for (const line of lines) {
+    const trimmed = stripRubyLineComment(line).trim();
+
+    depth += countRubyBlockOpeners(trimmed);
+
+    if (trimmed === 'end') {
+      depth--;
+      if (depth === 0) {
+        return charIndex;
+      }
+    }
+
+    charIndex += line.length + 1; // +1 for newline
+  }
+
+  return -1;
+}
+
+function countRubyBlockOpeners(line: string): number {
+  if (line.length === 0) {
+    return 0;
+  }
+
+  const startsWithKeywordBlock = /^(if|unless|case|begin|while|until|for|def|class|module)\b/.test(
+    line,
+  );
+  if (startsWithKeywordBlock) {
+    return 1;
+  }
+
+  if (/\bdo\b(\s*\|[^|]*\|)?\s*$/.test(line)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function stripRubyLineComment(line: string): string {
+  return line.replace(/#.*$/, '');
 }
 
 function hasUncommentedTarget(content: string, targetName: string): boolean {

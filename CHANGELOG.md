@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **CLI**: `init-nse` now installs an idempotent Podfile `post_install` patch that removes React Native Firebase's generated `$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)` input path after each `pod install`, avoiding an Xcode build cycle between the embedded `NotifyKitNSE.appex` and RNFB's Info.plist processing phase.
 - **Android**: removed the protected `BROADCAST_CLOSE_SYSTEM_DIALOGS` permission from the library manifest and kept the legacy close-system-dialogs broadcast best-effort on Android 11 and lower.
 - **Android**: removed the `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` vendor fallback from the power-manager settings helper to avoid a Play-policy-sensitive direct battery-optimization exemption request path.
 - **Android**: removed package-visibility queries from the power-manager settings helper; vendor settings now open best-effort without requiring consumer apps to inherit `<queries>` declarations.
