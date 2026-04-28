@@ -53,10 +53,10 @@ If `indeterminate` is true, any `max` and `current` values will be ignored.
 
 In most cases, you'll want to handle the progress "complete" status of a notification.
 
-<Vimeo id="385945478" caption="Android Progress Updating" /> 
- 
-To update a notification, use the unique ID generated when creating the notification for the first time. The following
-example upload task event handler updates an existing notification (using the `id`) each time a new event.
+<Vimeo id="385945478" caption="Android Progress Updating" />
+To update a notification, use the unique ID generated when creating the notification for the first
+time. The following example upload task event handler updates an existing notification (using the
+`id`) each time a new event.
 
 ```js
 onUploadTaskEvent(async (event, upload) => {

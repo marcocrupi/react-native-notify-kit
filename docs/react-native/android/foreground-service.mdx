@@ -32,7 +32,7 @@ a notification object when called.
 ```js
 import notifee from 'react-native-notify-kit';
 
-notifee.registerForegroundService((notification) => {
+notifee.registerForegroundService(notification => {
   return new Promise(() => {
     // Long running task...
   });
@@ -80,9 +80,9 @@ For example, we could build a task which subscribes to an event handler:
 notifee.registerForegroundService(() => {
   return new Promise(() => {
     // Example task subscriber
-    onTaskUpdate(async (task) => {
+    onTaskUpdate(async task => {
       if (task.complete) {
-          await notifee.stopForegroundService()
+        await notifee.stopForegroundService();
       }
     });
   });
@@ -98,10 +98,10 @@ Foreground notifications behave like any other notification, and can display any
 Whilst our service is running, we can also update the current notification to display different content:
 
 ```js
-notifee.registerForegroundService((notification) => {
+notifee.registerForegroundService(notification => {
   return new Promise(() => {
     // Example task subscriber
-    onTaskUpdate(async (task) => {
+    onTaskUpdate(async task => {
       if (task.update) {
         notifee.displayNotification({
           id: notification.id,
@@ -117,7 +117,7 @@ notifee.registerForegroundService((notification) => {
       }
 
       if (task.complete) {
-        await notifee.stopForegroundService()
+        await notifee.stopForegroundService();
       }
     });
   });
@@ -140,11 +140,11 @@ task:
 import notifee, { EventType } from 'react-native-notify-kit';
 
 // Create the task runner
-notifee.registerForegroundService((notification) => {
+notifee.registerForegroundService(notification => {
   return new Promise(() => {
     notifee.onForegroundEvent(async ({ type, detail }) => {
       if (type === EventType.ACTION_PRESS && detail.pressAction.id === 'stop') {
-        await notifee.stopForegroundService()
+        await notifee.stopForegroundService();
       }
     });
   });

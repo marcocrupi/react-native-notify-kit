@@ -25,10 +25,10 @@ FCM Mode solves two problems at once: the Android `notification`-payload duplica
 
 FCM has two delivery modes, and neither is a good default for apps that use Notify Kit for display:
 
-| Payload shape | Android behavior | iOS behavior |
-| --- | --- | --- |
+| Payload shape          | Android behavior                                                                                                                                                                                                                                                                                                                                        | iOS behavior                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `notification` (alert) | OS auto-displays via the FCM SDK. If you also call `displayNotification` in `setBackgroundMessageHandler`, you get **two tray entries**. Custom `data` is routed to the tap `PendingIntent` only, so `getDisplayedNotifications()` can't see it (tracked at [firebase-android-sdk#2639](https://github.com/firebase/firebase-android-sdk/issues/2639)). | APNs delivers reliably. If you want Notify Kit to rewrite the notification (attachments, categories, custom sound), you need a Notification Service Extension. |
-| `data` only | OS wakes your app and you call `displayNotification` yourself — clean, but iOS treats these as silent pushes and throttles / drops them aggressively. Real-device loss rates of **30–60%** are typical; worse under Low Power Mode and with the app force-quit. | Same delivery throttling as above. Unusable for user-facing pushes. |
+| `data` only            | OS wakes your app and you call `displayNotification` yourself — clean, but iOS treats these as silent pushes and throttles / drops them aggressively. Real-device loss rates of **30–60%** are typical; worse under Low Power Mode and with the app force-quit.                                                                                         | Same delivery throttling as above. Unusable for user-facing pushes.                                                                                            |
 
 ### The solution
 
@@ -165,7 +165,7 @@ notifee.createChannel({ id: 'orders', name: 'Orders', importance: AndroidImporta
 notifee.createChannel({ id: 'default', name: 'Default', importance: AndroidImportance.HIGH });
 
 // Background + killed state
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+messaging().setBackgroundMessageHandler(async remoteMessage => {
   await notifee.handleFcmMessage(remoteMessage);
 });
 
@@ -182,7 +182,7 @@ import notifee from 'react-native-notify-kit';
 
 export default function App() {
   useEffect(() => {
-    const unsubscribe = messaging().onMessage(async (remoteMessage) => {
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
       await notifee.handleFcmMessage(remoteMessage);
     });
     return unsubscribe;
@@ -236,18 +236,18 @@ Input type:
 ```ts
 type NotifyKitPayloadInput = {
   // Exactly one of these three:
-  token?: string;      // single device
-  topic?: string;      // FCM topic (e.g. 'news', 'sports')
-  condition?: string;  // FCM condition expression
+  token?: string; // single device
+  topic?: string; // FCM topic (e.g. 'news', 'sports')
+  condition?: string; // FCM condition expression
 
   notification: NotifyKitNotification;
   options?: NotifyKitOptions;
 };
 
 type NotifyKitNotification = {
-  id?: string;         // also used as collapse key unless options.collapseKey is set
-  title: string;       // required, non-empty
-  body: string;        // required, non-empty
+  id?: string; // also used as collapse key unless options.collapseKey is set
+  title: string; // required, non-empty
+  body: string; // required, non-empty
   data?: Record<string, string>;
   android?: NotifyKitAndroidConfig;
   ios?: NotifyKitIosConfig;
@@ -273,8 +273,8 @@ type NotifyKitIosConfig = {
 
 type NotifyKitOptions = {
   androidPriority?: 'high' | 'normal';
-  iosBadgeCount?: number;   // non-negative integer
-  ttl?: number;             // seconds, positive integer
+  iosBadgeCount?: number; // non-negative integer
+  ttl?: number; // seconds, positive integer
   collapseKey?: string;
 };
 ```
@@ -286,11 +286,11 @@ type NotifyKitPayloadOutput = {
   token?: string;
   topic?: string;
   condition?: string;
-  data: Record<string, string>;      // your data keys + notifee_options (+ notifee_data when > 5 keys)
+  data: Record<string, string>; // your data keys + notifee_options (+ notifee_data when > 5 keys)
   android: {
     priority: 'HIGH' | 'NORMAL';
     collapse_key?: string;
-    ttl?: string;                    // '3600s' format
+    ttl?: string; // '3600s' format
   };
   apns: {
     headers: {
@@ -303,13 +303,17 @@ type NotifyKitPayloadOutput = {
       aps: {
         alert: { title; body };
         'mutable-content': 1;
-        sound?; category?; 'thread-id'?; 'interruption-level'?; badge?;
+        sound?;
+        category?;
+        'thread-id'?;
+        'interruption-level'?;
+        badge?;
       };
-      notifee_options: string;       // JSON blob, see Payload reference
+      notifee_options: string; // JSON blob, see Payload reference
       notifee_data?: string;
     };
   };
-  sizeBytes: number;                 // non-enumerable — not serialized with JSON.stringify
+  sizeBytes: number; // non-enumerable — not serialized with JSON.stringify
 };
 ```
 
@@ -319,10 +323,10 @@ type NotifyKitPayloadOutput = {
 
 ```ts
 import {
-  buildNotifyKitPayload,      // main entry
-  buildAndroidPayload,         // android half only — for custom merging
-  buildIosApnsPayload,         // iOS half only — for custom merging
-  serializeNotifeeOptions,    // JSON-serialize the blob directly
+  buildNotifyKitPayload, // main entry
+  buildAndroidPayload, // android half only — for custom merging
+  buildIosApnsPayload, // iOS half only — for custom merging
+  serializeNotifeeOptions, // JSON-serialize the blob directly
 } from 'react-native-notify-kit/server';
 
 import type {
@@ -352,30 +356,30 @@ import type {
 
 Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages are prefixed with `[react-native-notify-kit/server]` so they're grep-able in Cloud Functions logs.
 
-| Rule | Error message |
-| --- | --- |
-| Input must be an object | `Validation: input must be an object` |
-| Exactly one of `token` / `topic` / `condition` | `Routing: exactly one of 'token', 'topic', or 'condition' must be provided. Got: <n>` |
-| `token` non-empty string | `Routing: 'token' must be a non-empty string` |
-| `topic` non-empty string | `Routing: 'topic' must be a non-empty string` |
-| `condition` non-empty string | `Routing: 'condition' must be a non-empty string` |
-| `notification` required | `Validation: 'notification' is required and must be an object` |
-| `notification.id` non-empty when provided | `Validation: notification.id must be a non-empty string when provided` |
-| `notification.title` required | `Validation: notification.title is required and must be a non-empty string` |
-| `notification.body` required | `Validation: notification.body is required and must be a non-empty string` |
-| `notification.data` must be an object | `Validation: 'notification.data' must be an object` |
-| `data` values must be strings | `Validation: FCM data values must be strings. Got <type> for key '<key>'. Use JSON.stringify() if you need to pass complex values.` |
-| Reserved keys rejected | `Validation: 'notifee_options' and 'notifee_data' are reserved keys and cannot be used in notification.data` |
-| iOS attachments array | `iOS: 'notification.ios.attachments' must be an array` |
-| iOS attachment shape | `iOS: each attachment must be an object with a string 'url' field` |
-| iOS attachment https-only | `iOS: iOS attachments require https:// URLs. Got: <url>` |
-| iOS interruptionLevel enum | `Validation: invalid interruptionLevel '<value>'. Expected one of: passive, active, timeSensitive, critical` |
-| `options` must be an object | `Validation: 'options' must be an object` |
-| `options.androidPriority` enum | `Validation: 'options.androidPriority' must be 'high' or 'normal'. Got: <value>` |
-| `options.iosBadgeCount` non-negative int | `Validation: 'options.iosBadgeCount' must be a non-negative integer` |
-| `options.ttl` positive int | `Validation: options.ttl must be a positive integer (seconds). Got: <value>` |
-| `options.collapseKey` non-empty | `Validation: 'options.collapseKey' must be a non-empty string` |
-| Blob must be serializable | `Serialization: notifee_options contains circular references or non-serializable values` |
+| Rule                                           | Error message                                                                                                                       |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Input must be an object                        | `Validation: input must be an object`                                                                                               |
+| Exactly one of `token` / `topic` / `condition` | `Routing: exactly one of 'token', 'topic', or 'condition' must be provided. Got: <n>`                                               |
+| `token` non-empty string                       | `Routing: 'token' must be a non-empty string`                                                                                       |
+| `topic` non-empty string                       | `Routing: 'topic' must be a non-empty string`                                                                                       |
+| `condition` non-empty string                   | `Routing: 'condition' must be a non-empty string`                                                                                   |
+| `notification` required                        | `Validation: 'notification' is required and must be an object`                                                                      |
+| `notification.id` non-empty when provided      | `Validation: notification.id must be a non-empty string when provided`                                                              |
+| `notification.title` required                  | `Validation: notification.title is required and must be a non-empty string`                                                         |
+| `notification.body` required                   | `Validation: notification.body is required and must be a non-empty string`                                                          |
+| `notification.data` must be an object          | `Validation: 'notification.data' must be an object`                                                                                 |
+| `data` values must be strings                  | `Validation: FCM data values must be strings. Got <type> for key '<key>'. Use JSON.stringify() if you need to pass complex values.` |
+| Reserved keys rejected                         | `Validation: 'notifee_options' and 'notifee_data' are reserved keys and cannot be used in notification.data`                        |
+| iOS attachments array                          | `iOS: 'notification.ios.attachments' must be an array`                                                                              |
+| iOS attachment shape                           | `iOS: each attachment must be an object with a string 'url' field`                                                                  |
+| iOS attachment https-only                      | `iOS: iOS attachments require https:// URLs. Got: <url>`                                                                            |
+| iOS interruptionLevel enum                     | `Validation: invalid interruptionLevel '<value>'. Expected one of: passive, active, timeSensitive, critical`                        |
+| `options` must be an object                    | `Validation: 'options' must be an object`                                                                                           |
+| `options.androidPriority` enum                 | `Validation: 'options.androidPriority' must be 'high' or 'normal'. Got: <value>`                                                    |
+| `options.iosBadgeCount` non-negative int       | `Validation: 'options.iosBadgeCount' must be a non-negative integer`                                                                |
+| `options.ttl` positive int                     | `Validation: options.ttl must be a positive integer (seconds). Got: <value>`                                                        |
+| `options.collapseKey` non-empty                | `Validation: 'options.collapseKey' must be a non-empty string`                                                                      |
+| Blob must be serializable                      | `Serialization: notifee_options contains circular references or non-serializable values`                                            |
 
 > **Note on `ttl: 0`.** Zero is rejected because it's semantically ambiguous ("never expire" vs "expire immediately") and FCM's HTTP v1 API uses the same string format for both concepts. Omit `ttl` entirely to use FCM's default (4 weeks), or pass a positive integer in seconds.
 
@@ -434,7 +438,7 @@ import * as admin from 'firebase-admin';
 
 admin.initializeApp();
 
-export const onOrderCreated = onDocumentCreated('orders/{orderId}', async (event) => {
+export const onOrderCreated = onDocumentCreated('orders/{orderId}', async event => {
   const order = event.data?.data();
   if (!order?.deviceToken) return;
 
@@ -467,16 +471,16 @@ Processes an FCM remote message produced by the server SDK and displays a Notify
 
 **Behavior matrix:**
 
-| Platform | App state | Payload | Behavior |
-| --- | --- | --- | --- |
-| Android | foreground | with `notifee_options` | `displayNotification(...)` — notification appears |
-| Android | background | with `notifee_options` | `displayNotification(...)` — notification appears |
-| Android | killed | with `notifee_options` | headless task runs, `displayNotification(...)` — notification appears |
-| Android | any | no `notifee_options` and `fallbackBehavior: 'display'` (default) | minimal notification built from `remoteMessage.notification` / `remoteMessage.data.title` / `remoteMessage.data.body` |
-| Android | any | no `notifee_options` and `fallbackBehavior: 'ignore'` | returns `null`, no display |
-| iOS | foreground | with `notifee_options` | `displayNotification(...)` — in-app banner (skipped if `suppressForegroundBanner`) |
-| iOS | background | with `notifee_options` | returns `null` — NSE already displayed |
-| iOS | killed | with `notifee_options` | returns `null` — NSE already displayed |
+| Platform | App state  | Payload                                                          | Behavior                                                                                                              |
+| -------- | ---------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Android  | foreground | with `notifee_options`                                           | `displayNotification(...)` — notification appears                                                                     |
+| Android  | background | with `notifee_options`                                           | `displayNotification(...)` — notification appears                                                                     |
+| Android  | killed     | with `notifee_options`                                           | headless task runs, `displayNotification(...)` — notification appears                                                 |
+| Android  | any        | no `notifee_options` and `fallbackBehavior: 'display'` (default) | minimal notification built from `remoteMessage.notification` / `remoteMessage.data.title` / `remoteMessage.data.body` |
+| Android  | any        | no `notifee_options` and `fallbackBehavior: 'ignore'`            | returns `null`, no display                                                                                            |
+| iOS      | foreground | with `notifee_options`                                           | `displayNotification(...)` — in-app banner (skipped if `suppressForegroundBanner`)                                    |
+| iOS      | background | with `notifee_options`                                           | returns `null` — NSE already displayed                                                                                |
+| iOS      | killed     | with `notifee_options`                                           | returns `null` — NSE already displayed                                                                                |
 
 The iOS background/killed no-op is deliberate: the Notification Service Extension has already drawn the final notification using the same `notifee_options` blob, and a second `displayNotification` call would duplicate it.
 
@@ -575,7 +579,7 @@ async function bootstrap() {
 
 void bootstrap();
 
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+messaging().setBackgroundMessageHandler(async remoteMessage => {
   await notifee.handleFcmMessage(remoteMessage);
 });
 
@@ -612,13 +616,13 @@ Open Xcode after `pod install`, verify the `NotifyKitNSE` target's signing (it s
 npx react-native-notify-kit init-nse [options]
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `--ios-path <path>` | auto-detect | Path to your iOS directory (e.g. `ios/`). |
-| `--target-name <name>` | `NotifyKitNSE` | NSE target name. Must match `/^[A-Za-z0-9_\-.]+$/`. |
-| `--bundle-suffix <str>` | `.NotifyKitNSE` | Suffix appended to the parent bundle ID. Must match `/^\.[A-Za-z0-9\-.]+$/` (starts with `.`). |
-| `-f, --force` | `false` | Overwrite an existing NSE target. Without this flag, the CLI fails fast if `NotifyKitNSE` already exists. |
-| `-n, --dry-run` | `false` | Print the actions that would be taken, without writing. |
+| Option                  | Default         | Description                                                                                               |
+| ----------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
+| `--ios-path <path>`     | auto-detect     | Path to your iOS directory (e.g. `ios/`).                                                                 |
+| `--target-name <name>`  | `NotifyKitNSE`  | NSE target name. Must match `/^[A-Za-z0-9_\-.]+$/`.                                                       |
+| `--bundle-suffix <str>` | `.NotifyKitNSE` | Suffix appended to the parent bundle ID. Must match `/^\.[A-Za-z0-9\-.]+$/` (starts with `.`).            |
+| `-f, --force`           | `false`         | Overwrite an existing NSE target. Without this flag, the CLI fails fast if `NotifyKitNSE` already exists. |
+| `-n, --dry-run`         | `false`         | Print the actions that would be taken, without writing.                                                   |
 
 **Validation errors** (exact text):
 
@@ -742,7 +746,7 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 When the app is in foreground, Android shows a normal notification in the tray (the library doesn't have the iOS "in-app banner" concept). To suppress foreground display, check `AppState` yourself and branch:
 
 ```ts
-messaging().onMessage(async (remoteMessage) => {
+messaging().onMessage(async remoteMessage => {
   if (AppState.currentState === 'active') {
     // Route to an in-app toast instead of a tray notification
     showInAppToast(remoteMessage.notification);
@@ -769,10 +773,10 @@ messaging().onMessage(async (remoteMessage) => {
     "color": "#4CAF50",
     "pressAction": { "id": "open-order", "launchActivity": "default" },
     "actions": [
-      { "title": "Accept",  "pressAction": { "id": "accept" } },
-      { "title": "Decline", "pressAction": { "id": "decline" }, "input": true }
+      { "title": "Accept", "pressAction": { "id": "accept" } },
+      { "title": "Decline", "pressAction": { "id": "decline" }, "input": true },
     ],
-    "style": { "type": "BIG_TEXT", "text": "Long body text ..." }
+    "style": { "type": "BIG_TEXT", "text": "Long body text ..." },
   },
 
   "ios": {
@@ -781,9 +785,9 @@ messaging().onMessage(async (remoteMessage) => {
     "threadId": "orders-thread",
     "interruptionLevel": "timeSensitive",
     "attachments": [
-      { "url": "https://cdn.example.com/orders/42.png", "identifier": "attachment-0" }
-    ]
-  }
+      { "url": "https://cdn.example.com/orders/42.png", "identifier": "attachment-0" },
+    ],
+  },
 }
 ```
 
@@ -823,7 +827,7 @@ If you currently do this:
 
 ```ts
 // OLD — manual pattern with data-only on both platforms
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+messaging().setBackgroundMessageHandler(async remoteMessage => {
   await notifee.displayNotification({
     title: remoteMessage.data.title,
     body: remoteMessage.data.body,
@@ -970,21 +974,21 @@ The server SDK warns at ~3500 bytes. Common fixes:
 
 ## Comparison with other libraries
 
-| Feature | NotifyKit FCM Mode | Manual `@notifee` + RNFB | OneSignal | `expo-notifications` |
-| --- | --- | --- | --- | --- |
-| Android display | `displayNotification` from headless task | Same | OneSignal SDK | `expo-notifications` |
-| iOS background reliability | APNs alert (~99%) via NSE | Data-only silent (~40-70%) | APNs alert (proprietary) | APNs alert (Expo-managed) |
-| iOS NSE setup | One CLI command | Manual Xcode steps | Bundled, closed-source | Managed (no NSE needed) |
-| Backend SDK | `react-native-notify-kit/server` (zero deps) | Hand-rolled FCM v1 | OneSignal REST API | Expo push REST API |
-| Backend runs on | Any Node.js (CFns, Lambda, self-hosted) | Any Node.js | OneSignal (vendor lock) | Expo servers (vendor lock-ish) |
-| Notification styling | BIG_TEXT, BIG_PICTURE, actions, attachments, categories, thread-id | Full Notify Kit surface | OneSignal-specific | Limited (no custom styles on Android) |
-| Rich iOS notifications | Yes, via NSE blob | Yes, via NSE blob | Yes | Limited |
-| Foreground services | Via `displayNotification` | Same | Not supported | Not supported |
-| Trigger notifications (scheduled) | Full Notify Kit (AlarmManager) | Same | OneSignal scheduling | Basic (local) |
-| Source availability | Apache-2.0, open source | Same | Closed source | Apache-2.0, vendor-tied |
-| Data-only pushes | Supported (fall through to `displayNotification`) | Supported | Supported | Limited |
-| Works without FCM | No (FCM is the transport) | No | Proprietary transport | Expo transport |
-| Monthly active device limit | FCM free (unlimited) | FCM free | Free tier cap, paid beyond | Free |
+| Feature                           | NotifyKit FCM Mode                                                 | Manual `@notifee` + RNFB   | OneSignal                  | `expo-notifications`                  |
+| --------------------------------- | ------------------------------------------------------------------ | -------------------------- | -------------------------- | ------------------------------------- |
+| Android display                   | `displayNotification` from headless task                           | Same                       | OneSignal SDK              | `expo-notifications`                  |
+| iOS background reliability        | APNs alert (~99%) via NSE                                          | Data-only silent (~40-70%) | APNs alert (proprietary)   | APNs alert (Expo-managed)             |
+| iOS NSE setup                     | One CLI command                                                    | Manual Xcode steps         | Bundled, closed-source     | Managed (no NSE needed)               |
+| Backend SDK                       | `react-native-notify-kit/server` (zero deps)                       | Hand-rolled FCM v1         | OneSignal REST API         | Expo push REST API                    |
+| Backend runs on                   | Any Node.js (CFns, Lambda, self-hosted)                            | Any Node.js                | OneSignal (vendor lock)    | Expo servers (vendor lock-ish)        |
+| Notification styling              | BIG_TEXT, BIG_PICTURE, actions, attachments, categories, thread-id | Full Notify Kit surface    | OneSignal-specific         | Limited (no custom styles on Android) |
+| Rich iOS notifications            | Yes, via NSE blob                                                  | Yes, via NSE blob          | Yes                        | Limited                               |
+| Foreground services               | Via `displayNotification`                                          | Same                       | Not supported              | Not supported                         |
+| Trigger notifications (scheduled) | Full Notify Kit (AlarmManager)                                     | Same                       | OneSignal scheduling       | Basic (local)                         |
+| Source availability               | Apache-2.0, open source                                            | Same                       | Closed source              | Apache-2.0, vendor-tied               |
+| Data-only pushes                  | Supported (fall through to `displayNotification`)                  | Supported                  | Supported                  | Limited                               |
+| Works without FCM                 | No (FCM is the transport)                                          | No                         | Proprietary transport      | Expo transport                        |
+| Monthly active device limit       | FCM free (unlimited)                                               | FCM free                   | Free tier cap, paid beyond | Free                                  |
 
 ---
 

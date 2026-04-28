@@ -84,7 +84,7 @@ notifee.setFcmConfig({
 notifee.createChannel({ id: 'default', name: 'Default', importance: AndroidImportance.HIGH });
 notifee.createChannel({ id: 'orders', name: 'Orders', importance: AndroidImportance.HIGH });
 
-messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+messaging().setBackgroundMessageHandler(async remoteMessage => {
   await notifee.handleFcmMessage(remoteMessage);
 });
 
@@ -98,7 +98,7 @@ import messaging from '@react-native-firebase/messaging';
 import notifee from 'react-native-notify-kit';
 
 export default function App() {
-  useEffect(() => messaging().onMessage((m) => notifee.handleFcmMessage(m)), []);
+  useEffect(() => messaging().onMessage(m => notifee.handleFcmMessage(m)), []);
   // ...
 }
 ```

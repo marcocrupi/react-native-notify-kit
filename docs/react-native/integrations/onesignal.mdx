@@ -11,7 +11,7 @@ In [their react-native documentation](https://documentation.onesignal.com/docs/r
 
 With special thanks to users [Ashok Kumar](https://github.com/ashokkumar88) and [burhanDebug](https://github.com/burhanDebug) and [zaweisise](https://github.com/zaweiswise) for helping us figure it out and confirm a solution, this is how to integrate Notify Kit with OneSignal:
 
-1. Do *not* use the onesignal gradle plugin (currently step 3.2 in their documentation)
+1. Do _not_ use the onesignal gradle plugin (currently step 3.2 in their documentation)
 1. If using a `react-native-onesignal` version earlier than 4.0.0 - edit `node_modules/react-native-onesignal/android/build.gradle`:
 
 In the android dependencies modify the api ('com.onesignal:OneSignal:3.15.1') to
@@ -25,7 +25,7 @@ api ('com.onesignal:OneSignal:3.15.1') {
 }
 ```
 
-We understand that editing files directly in node_modules is unconventional advice, we strongly recommend the use of [patch-package](https://github.com/ds300/patch-package) in order to manage this change. 
+We understand that editing files directly in node_modules is unconventional advice, we strongly recommend the use of [patch-package](https://github.com/ds300/patch-package) in order to manage this change.
 
 `patch-package` will make a patch for this change that you put in source control, it will reliably install the patch when you install npm packages, and it will give you a friendly warning in case One Signal updates their module.
 
