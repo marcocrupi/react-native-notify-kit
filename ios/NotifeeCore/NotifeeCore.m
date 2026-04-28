@@ -1182,33 +1182,33 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                                              trigger:nil];
 
     dispatch_async(dispatch_get_main_queue(), ^{
-      [center
-          addNotificationRequest:request
-           withCompletionHandler:^(NSError *error) {
-             if (error == nil) {
-               // When the app is in foreground, willPresentNotification: emits
-               // DELIVERED for all Notifee-owned notifications. Only emit here
-               // when the app is NOT active to avoid duplicate events.
-               dispatch_async(dispatch_get_main_queue(), ^{
-                 BOOL isApplicationActive = NO;
-                 if (![NotifeeCoreUtil isAppExtension]) {
-                   UIApplication *application = [NotifeeCoreUtil notifeeUIApplication];
-                   if (application != nil) {
-                     isApplicationActive = application.applicationState == UIApplicationStateActive;
-                   }
-                 }
-                 if (!isApplicationActive) {
-                   [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
-                     @"type" : @(NotifeeCoreEventTypeDelivered),
-                     @"detail" : @{
-                       @"notification" : notificationDetail,
+      [center addNotificationRequest:request
+               withCompletionHandler:^(NSError *error) {
+                 if (error == nil) {
+                   // When the app is in foreground, willPresentNotification: emits
+                   // DELIVERED for all Notifee-owned notifications. Only emit here
+                   // when the app is NOT active to avoid duplicate events.
+                   dispatch_async(dispatch_get_main_queue(), ^{
+                     BOOL isApplicationActive = NO;
+                     if (![NotifeeCoreUtil isAppExtension]) {
+                       UIApplication *application = [NotifeeCoreUtil notifeeUIApplication];
+                       if (application != nil) {
+                         isApplicationActive =
+                             application.applicationState == UIApplicationStateActive;
+                       }
                      }
-                   }];
+                     if (!isApplicationActive) {
+                       [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
+                         @"type" : @(NotifeeCoreEventTypeDelivered),
+                         @"detail" : @{
+                           @"notification" : notificationDetail,
+                         }
+                       }];
+                     }
+                   });
                  }
-               });
-             }
-             block(error);
-           }];
+                 block(error);
+               }];
     });
   });
 }
