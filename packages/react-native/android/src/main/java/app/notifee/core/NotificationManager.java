@@ -23,10 +23,12 @@ import static app.notifee.core.event.NotificationEvent.TYPE_ACTION_PRESS;
 import static app.notifee.core.event.NotificationEvent.TYPE_PRESS;
 import static java.lang.Integer.parseInt;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
@@ -716,7 +718,18 @@ class NotificationManager {
                     Trace.endSection();
                   }
                 } else {
-                  NotificationManagerCompat.from(getApplicationContext())
+                  Context context = getApplicationContext();
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                      && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                          != PackageManager.PERMISSION_GRANTED) {
+                    String message =
+                        "POST_NOTIFICATIONS permission is not granted. Notification was not"
+                            + " displayed.";
+                    Logger.w(TAG, message);
+                    return Futures.immediateFailedFuture(new SecurityException(message));
+                  }
+
+                  NotificationManagerCompat.from(context)
                       .notify(androidBundle.getTag(), hashCode, notification);
                 }
 
