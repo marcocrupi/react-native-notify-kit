@@ -5,7 +5,6 @@
 package io.invertase.notifee
 
 import android.annotation.SuppressLint
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.lifecycle.Lifecycle
@@ -138,7 +137,7 @@ object NotifeeReactUtils {
         try {
             val service = context.getSystemService("statusbar")
             val statusbarManager = Class.forName("android.app.StatusBarManager")
-            val methodName = if (Build.VERSION.SDK_INT >= 17) "collapsePanels" else "collapse"
+            val methodName = "collapsePanels"
             val collapse: Method = statusbarManager.getMethod(methodName)
             collapse.isAccessible = true
             collapse.invoke(service)

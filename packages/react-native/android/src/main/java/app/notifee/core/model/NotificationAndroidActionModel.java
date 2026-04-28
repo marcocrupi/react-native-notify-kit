@@ -77,8 +77,7 @@ public class NotificationAndroidActionModel {
    * @return RemoteInput
    */
   public @Nullable RemoteInput getRemoteInput(NotificationCompat.Action.Builder actionBuilder) {
-    if (mNotificationAndroidActionBundle.containsKey("input")
-        && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
+    if (mNotificationAndroidActionBundle.containsKey("input")) {
       Bundle inputBundle =
           Objects.requireNonNull(mNotificationAndroidActionBundle.getBundle("input"));
 

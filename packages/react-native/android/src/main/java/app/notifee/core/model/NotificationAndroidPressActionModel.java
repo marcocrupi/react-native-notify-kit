@@ -105,9 +105,7 @@ public class NotificationAndroidPressActionModel {
           baseFlags |= Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET;
           break;
         case 12:
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            baseFlags |= Intent.FLAG_ACTIVITY_NEW_DOCUMENT;
-          }
+          baseFlags |= Intent.FLAG_ACTIVITY_NEW_DOCUMENT;
           break;
         case 13:
           baseFlags |= Intent.FLAG_ACTIVITY_NO_USER_ACTION;
@@ -125,14 +123,10 @@ public class NotificationAndroidPressActionModel {
           baseFlags |= Intent.FLAG_ACTIVITY_TASK_ON_HOME;
           break;
         case 18:
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            baseFlags |= Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS;
-          }
+          baseFlags |= Intent.FLAG_ACTIVITY_RETAIN_IN_RECENTS;
           break;
         case 19:
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            baseFlags |= Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT;
-          }
+          baseFlags |= Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT;
           break;
         case 20:
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

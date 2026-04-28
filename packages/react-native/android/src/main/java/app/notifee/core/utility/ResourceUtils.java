@@ -17,6 +17,7 @@ package app.notifee.core.utility;
  *
  */
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Bitmap;
@@ -253,6 +254,7 @@ public class ResourceUtils {
   }
 
   /** Attempts to find a resource id by name and type */
+  @SuppressLint("DiscouragedApi")
   private static int getResourceIdByName(String name, String type) {
     if (name == null || name.isEmpty()) {
       return 0;
@@ -271,6 +273,7 @@ public class ResourceUtils {
       Context context = ContextHolder.getApplicationContext();
       String packageName = context.getPackageName();
 
+      // Consumer resource names are provided dynamically from JS, so runtime lookup is intentional.
       int id = context.getResources().getIdentifier(name, type, packageName);
       getResourceIdCache().put(key, id);
       return id;

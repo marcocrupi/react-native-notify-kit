@@ -250,9 +250,7 @@ class NotificationManager {
 
             builder.setColorized(androidModel.getColorized());
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-              builder.setChronometerCountDown(androidModel.getChronometerCountDown());
-            }
+            builder.setChronometerCountDown(androidModel.getChronometerCountDown());
 
             if (androidModel.getGroup() != null) {
               builder.setGroup(androidModel.getGroup());
@@ -885,10 +883,6 @@ class NotificationManager {
     return LISTENING_CACHED_THREAD_POOL.submit(
         () -> {
           List<Bundle> notifications = new ArrayList<Bundle>();
-
-          if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return notifications;
-          }
 
           android.app.NotificationManager notificationManager =
               (android.app.NotificationManager)

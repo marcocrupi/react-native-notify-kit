@@ -56,10 +56,6 @@ public class PowerManagerUtils {
    * @param activity
    */
   public static void openBatteryOptimizationSettings(Activity activity) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-      return;
-    }
-
     try {
       Intent intent = new Intent();
       intent.setAction(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
@@ -79,9 +75,6 @@ public class PowerManagerUtils {
    * @param context
    */
   public static Boolean isBatteryOptimizationEnabled(Context context) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-      return false;
-    }
     PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
     return !pm.isIgnoringBatteryOptimizations(context.getPackageName());
   }
