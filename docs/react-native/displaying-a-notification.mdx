@@ -27,7 +27,7 @@ Now the button is in place, create a function to handle the button press and dis
 ```js
 function Screen() {
   async function onDisplayNotification() {
-    // Request permissions (required for iOS)
+    // Request permissions (required for iOS and Android 13+)
     await notifee.requestPermission();
 
     // Create a channel (required for Android)
@@ -60,9 +60,9 @@ function Screen() {
 
 When the button is pressed, we perform three tasks: requesting permission, creating a channel & displaying a notification.
 
-Requesting permission is required for iOS as notifications are disabled by default. You need to ask the user to enable notifications by calling `requestPermission` before displaying any notifications.
+Requesting permission is required on iOS and on Android 13+ (`POST_NOTIFICATIONS`). You need to ask the user to enable notifications by calling `requestPermission` before displaying any notifications.
 
-> To learn more about requesting permissions, view the [iOS Permissions](/react-native/ios/permissions) documentation
+> To learn more about requesting permissions, view the [iOS Permissions](/react-native/ios/permissions) and [Android Permissions](/react-native/android/permissions) documentation.
 
 Channels are an Android-only concept used to categorize and allow users to control how notifications are handled
 on their devices. Channels are created with sensible default settings and are created or updated each time a
@@ -92,7 +92,7 @@ async function onDisplayNotification() {
     name: 'Default Channel',
   });
 
-  // Required for iOS — see /react-native/ios/permissions
+  // Required for iOS and Android 13+ — see the permissions docs
   await notifee.requestPermission();
 
   const notificationId = await notifee.displayNotification({
@@ -115,6 +115,8 @@ async function onDisplayNotification() {
   });
 }
 ```
+
+On Android 13+, if `POST_NOTIFICATIONS` is not granted, posting the notification can fail safely instead of displaying anything. When Android rejects the post before `notify()` is called, Notify Kit does not emit a `DELIVERED` event for that notification.
 
 When updating a notification, you must pass a brand new notification options payload to `displayNotification`, rather
 than the specific property you want to update.

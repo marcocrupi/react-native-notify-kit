@@ -36,7 +36,7 @@ The `npx react-native-notify-kit init-nse` command scaffolds an iOS Notification
 - **"Could not locate the main app target's closing `end` in Podfile"** — the Podfile has non-standard indentation or was edited by another tool. Inspect the Podfile manually and retry, or point the CLI at a clean copy with `--ios-path`.
 - **"Invalid `--bundle-suffix`"** — the flag must match `/^\.[A-Za-z0-9\-.]+$/` (starts with a dot, alphanumerics/dots/hyphens only). Spaces and other special characters are rejected to prevent `.pbxproj` corruption.
 - **Bundle ID contains unresolved Xcode variable** — if your parent bundle ID uses `$(PRODUCT_BUNDLE_PREFIX)` or a similar variable the CLI cannot expand, the CLI logs a warning and proceeds with a placeholder. Fix the NSE bundle ID manually in Xcode after generation.
-- **Host target build cycle after adding the NSE** — the CLI automatically strips RNFB-style `INFOPLIST_FILE` input paths from the host target to prevent this, but if incremental builds still hang look for other `INFOPLIST_FILE` references in the host target's build settings.
+- **`Cycle inside <AppName>` after adding `NotifyKitNSE.appex`** — this usually involves React Native Firebase's `[RNFB] Core Configuration` build phase. Current `init-nse` versions add a Podfile `post_install` patch that removes the problematic RNFB input path after each `pod install`; rerun `init-nse`, then `pod install`, before editing RNFB build phases manually.
 
 Run with `--dry-run` to preview the file changes without writing anything, or `--force` to overwrite an existing NSE target. See the [FCM Mode guide](/fcm-mode) for the full CLI reference.
 

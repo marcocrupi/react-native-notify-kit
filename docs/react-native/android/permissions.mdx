@@ -7,7 +7,7 @@ previous: /react-native/docs/android/interaction
 
 ## Understanding permissions
 
-On Android 13+, notifications are blocked by default and you will need to present a runtime permission dialog to the user. You have to target at least SDK 33 to perform a runtime request on Android 13.+. The permission is always granted for prior versions.
+On Android 13+, notifications are blocked by default and you will need to present a runtime permission dialog to the user. You have to target at least SDK 33 to perform a runtime request on Android 13+. The permission is always granted for prior versions.
 
 A user may revoke the permissions later through various means. In addition, a user may manage or revoke permissions at any of three levels; application-wide, channel groups and channels.
 
@@ -21,6 +21,8 @@ the users of your application full control of how notifications are handled:
 
 - If the user declines the runtime permission dialog, they must manually allow notifications via the device Settings UI for your application.
 - If the user accepts the runtime permission dialog, notifications will be shown using the settings requested (e.g. with or without sound).
+
+If `POST_NOTIFICATIONS` is not granted on Android 13+, calls that post notifications, such as `displayNotification()` and trigger-display paths, can fail safely before Android's `notify()` call. In that case Notify Kit does not emit a `DELIVERED` event, because no notification was posted.
 
 The following example shows how to trigger a permission dialog:
 

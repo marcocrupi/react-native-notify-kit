@@ -933,6 +933,12 @@ If `pod install` errors with "Unable to find a specification for `RNNotifeeCore`
 - If you use `use_frameworks! :linkage => :static`, the 9.1.22 duplicate-symbol fix is in effect — no extra config needed.
 - If it still fails, inspect the generated Podfile diff — the NSE block should be nested inside the main app target with `inherit! :search_paths`. If it's at the top level, your Podfile has a shape the patcher didn't recognize — run `npx react-native-notify-kit init-nse --force` on a clean Podfile, or patch manually using the [legacy guide](../apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md).
 
+### Xcode reports `Cycle inside <AppName>` after adding the NSE
+
+This can happen when the host app embeds `NotifyKitNSE.appex` and React Native Firebase adds its `[RNFB] Core Configuration` build phase. Current `init-nse` versions add a Podfile `post_install` patch that removes the problematic RNFB input path after each `pod install`.
+
+If the cycle persists, update Notify Kit, rerun `npx react-native-notify-kit init-nse`, then run `pod install` again from `ios/`. Avoid editing React Native Firebase build phases manually unless your project has additional custom build-phase inputs that still create a cycle.
+
 ### `handleFcmMessage` returns `null`
 
 By design, when:

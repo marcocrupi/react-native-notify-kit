@@ -121,6 +121,8 @@ In the generated `NotificationService.m`:
 
 Build the app once and confirm it still compiles with the NSE target selected.
 
+> Notify Kit's NSE helper/core path is designed to compile inside an app extension target. Current versions keep app-only APIs out of the code compiled by the extension.
+
 > The CLI-generated Swift NSE also caps the `NSURLSession` request and resource timeouts at 25 s (per v9.4.0) to leave a ~5 s margin before iOS's 30 s NSE budget expires. If you use the manual Objective-C pattern above, consider setting the same cap on your own `NSURLSession` if you fetch large attachments.
 
 ### 4. Choose the payload

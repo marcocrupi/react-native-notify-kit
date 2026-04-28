@@ -54,7 +54,7 @@ Call `getPowerManagerInfo()` to retrieve best-effort information on the device a
 
 For [google](https://dontkillmyapp.com/google) devices, such as Pixel 2a, `activity` will be null. For these devices there's not much else the user can do other than turning off battery optimizations.
 
-On Android 11 and higher, Notify Kit avoids package-visibility discovery for these helpers. Consumer apps do not need to add `<queries>` to their manifest just to use `getPowerManagerInfo()` or `openPowerManagerSettings()`. `openPowerManagerSettings()` tries known vendor settings candidates best-effort and fails safely if a vendor changes, removes, or blocks a settings activity.
+On Android 11 and higher, Notify Kit avoids package-visibility discovery for these helpers. Consumer apps do not need to add `<queries>` to their manifest just to use `getPowerManagerInfo()` or `openPowerManagerSettings()`. `openPowerManagerSettings()` tries known vendor settings candidates best-effort and fails safely if a vendor changes, removes, or blocks a settings activity. The vendor-settings helper does not use the direct `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` request path.
 
 Below is a snippet on how to use these methods:
 
