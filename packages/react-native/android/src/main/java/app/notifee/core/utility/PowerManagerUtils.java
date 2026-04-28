@@ -249,9 +249,8 @@ public class PowerManagerUtils {
                 createIntent(
                     "com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"),
                 createIntent(
-                        "com.coloros.safecenter",
-                        "com.coloros.safecenter.startupapp.StartupAppListActivity")
-                    .setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS),
+                    "com.coloros.safecenter",
+                    "com.coloros.safecenter.startupapp.StartupAppListActivity"),
                 createIntent(
                     "com.coloros.oppoguardelf",
                     "com.coloros.powermanager.fuelgaue.PowerUsageModelActivity"),

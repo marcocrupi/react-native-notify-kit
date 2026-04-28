@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - **Android**: removed the protected `BROADCAST_CLOSE_SYSTEM_DIALOGS` permission from the library manifest and kept the legacy close-system-dialogs broadcast best-effort on Android 11 and lower.
+- **Android**: removed the `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` vendor fallback from the power-manager settings helper to avoid a Play-policy-sensitive direct battery-optimization exemption request path.
 
 ## [10.2.0] - 2026-04-27
 
