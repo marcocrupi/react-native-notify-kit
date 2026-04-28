@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: removed the protected `BROADCAST_CLOSE_SYSTEM_DIALOGS` permission from the library manifest and kept the legacy close-system-dialogs broadcast best-effort on Android 11 and lower.
+
 ## [10.2.0] - 2026-04-27
 
 ### Added

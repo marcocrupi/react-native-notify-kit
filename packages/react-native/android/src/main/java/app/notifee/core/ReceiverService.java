@@ -21,6 +21,7 @@ import static app.notifee.core.event.NotificationEvent.TYPE_ACTION_PRESS;
 import static app.notifee.core.event.NotificationEvent.TYPE_DISMISSED;
 import static app.notifee.core.event.NotificationEvent.TYPE_PRESS;
 
+import android.annotation.SuppressLint;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -171,10 +172,6 @@ public class ReceiverService extends Service {
     }
   }
 
-  // ACTION_CLOSE_SYSTEM_DIALOGS is deprecated since API 31, but is still needed on API < 31
-  // to close the notification drawer after an action press. Already guarded with Build.VERSION
-  // check.
-  @SuppressWarnings("deprecation")
   private void onActionPressIntent(Intent intent) {
     Bundle notification = intent.getBundleExtra("notification");
     Bundle pressAction = intent.getBundleExtra("pressAction");
@@ -221,16 +218,24 @@ public class ReceiverService extends Service {
           mainComponent,
           pressActionBundle.getLaunchActivityFlags());
 
-      int targetSdkVersion =
-          ContextHolder.getApplicationContext().getApplicationInfo().targetSdkVersion;
+      closeSystemDialogsBestEffort();
+    }
+  }
 
-      // Close notification drawer if application SDK is Android 11 and lower
-      // See
-      // https://developer.android.com/about/versions/12/behavior-changes-all#close-system-dialogs
-      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-        ContextHolder.getApplicationContext()
-            .sendBroadcast(new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
-      }
+  @SuppressWarnings("deprecation")
+  @SuppressLint("MissingPermission")
+  private void closeSystemDialogsBestEffort() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      return;
+    }
+
+    // BROADCAST_CLOSE_SYSTEM_DIALOGS is protected/system-only, so the library intentionally does
+    // not declare it. Keep this pre-Android 12 legacy broadcast best-effort; Android 12+ skips it.
+    try {
+      ContextHolder.getApplicationContext()
+          .sendBroadcast(new Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS));
+    } catch (SecurityException e) {
+      Logger.w(TAG, "Unable to close system dialogs with legacy broadcast", e);
     }
   }
 
