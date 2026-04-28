@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.2.1] - 2026-04-28
+
 ### Changed
 
 - **Android**: `getPowerManagerInfo().activity` now represents a known vendor-settings candidate rather than a `PackageManager`-prevalidated activity.
