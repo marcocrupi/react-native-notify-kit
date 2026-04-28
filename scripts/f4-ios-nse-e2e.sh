@@ -565,24 +565,6 @@ classify_build_log() {
   LAST_BUILD_CLASSIFICATION="FAIL"
   LAST_BUILD_NOTE=""
 
-  if grep -Eqi 'error:.*sharedApplication|sharedApplication.*error:|sharedApplication.*(is unavailable|not available).*extension' "$logfile"; then
-    LAST_BUILD_CLASSIFICATION="FAIL"
-    LAST_BUILD_NOTE="sharedApplication error detected"
-    return 1
-  fi
-
-  if grep -qi 'Cycle inside' "$logfile"; then
-    LAST_BUILD_CLASSIFICATION="FAIL"
-    LAST_BUILD_NOTE="Xcode build cycle detected"
-    return 1
-  fi
-
-  if grep -Eqi 'No signing certificate|requires a development team|Signing for .* requires|Provisioning profile|provisioning profile|No profiles for|Code signing is required|Automatic signing|Development Team' "$logfile"; then
-    LAST_BUILD_CLASSIFICATION="BLOCCATO SIGNING"
-    LAST_BUILD_NOTE="Signing/provisioning blocked"
-    return 2
-  fi
-
   if grep -q 'BUILD SUCCEEDED' "$logfile"; then
     LAST_BUILD_CLASSIFICATION="PASS"
     if grep -qi 'sharedApplication' "$logfile"; then
@@ -593,15 +575,33 @@ classify_build_log() {
     return 0
   fi
 
-  if grep -q 'BUILD FAILED' "$logfile" || grep -q 'error:' "$logfile"; then
+  if grep -qi 'Cycle inside' "$logfile"; then
+    LAST_BUILD_CLASSIFICATION="FAIL"
+    LAST_BUILD_NOTE="Xcode build cycle detected"
+    return 1
+  fi
+
+  if grep -Eqi 'error:.*sharedApplication|sharedApplication.*error:|sharedApplication.*(is unavailable|not available).*extension' "$logfile"; then
+    LAST_BUILD_CLASSIFICATION="FAIL"
+    LAST_BUILD_NOTE="sharedApplication error detected"
+    return 1
+  fi
+
+  if grep -q 'BUILD FAILED' "$logfile"; then
+    if grep -Eqi "requires a development team|No signing certificate|No profiles for|Provisioning profile .*doesn't include|Provisioning profile .*does not include|Code signing is required|Signing for .* requires a development team|requires a provisioning profile" "$logfile"; then
+      LAST_BUILD_CLASSIFICATION="BLOCCATO SIGNING"
+      LAST_BUILD_NOTE="Signing/provisioning blocked"
+      return 2
+    fi
+
     LAST_BUILD_CLASSIFICATION="FAIL"
     LAST_BUILD_NOTE="Build failed"
     return 1
   fi
 
-  LAST_BUILD_CLASSIFICATION="PASS CON NOTE"
-  LAST_BUILD_NOTE="Build command exited 0 but BUILD SUCCEEDED marker was not found"
-  return 0
+  LAST_BUILD_CLASSIFICATION="BLOCCATO"
+  LAST_BUILD_NOTE="Build result unknown: no BUILD SUCCEEDED or BUILD FAILED marker found"
+  return 2
 }
 
 require_nse_prepared() {
