@@ -6,42 +6,52 @@
 
 # Type Alias: FcmConfig
 
-> **FcmConfig**: `object`
+> **FcmConfig** = `object`
 
 Defined in: [packages/react-native/src/fcm/types.ts:23](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L23)
 
 Configuration for `handleFcmMessage`. Call `setFcmConfig` once
 at app startup (typically in `index.js` before `registerComponent`).
 
-## Type declaration
+## Properties
 
 ### defaultChannelId?
 
-> `optional` **defaultChannelId**: `string`
+> `optional` **defaultChannelId?**: `string`
+
+Defined in: [packages/react-native/src/fcm/types.ts:30](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L30)
 
 Default channelId used when `notifee_options.android.channelId` is absent.
 If this is also absent and the payload has no channelId,
 `displayNotification` will throw on Android — same behavior as calling
 `displayNotification` without a channel.
 
+---
+
 ### defaultPressAction?
 
-> `optional` **defaultPressAction**: `object`
+> `optional` **defaultPressAction?**: `object`
+
+Defined in: [packages/react-native/src/fcm/types.ts:36](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L36)
 
 Default pressAction when `notifee_options.android.pressAction` is absent.
 Mirrors the existing behavior: `{ id: 'default', launchActivity: 'default' }`.
 
-#### defaultPressAction.id
+#### id
 
 > **id**: `string`
 
-#### defaultPressAction.launchActivity?
+#### launchActivity?
 
-> `optional` **launchActivity**: `string`
+> `optional` **launchActivity?**: `string`
+
+---
 
 ### fallbackBehavior?
 
-> `optional` **fallbackBehavior**: `"display"` | `"ignore"`
+> `optional` **fallbackBehavior?**: `"display"` | `"ignore"`
+
+Defined in: [packages/react-native/src/fcm/types.ts:46](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L46)
 
 What to do when `remoteMessage.data.notifee_options` is absent entirely.
 
@@ -55,15 +65,19 @@ What to do when `remoteMessage.data.notifee_options` is absent entirely.
 'display';
 ```
 
+---
+
 ### ios?
 
-> `optional` **ios**: `object`
+> `optional` **ios?**: `object`
+
+Defined in: [packages/react-native/src/fcm/types.ts:49](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L49)
 
 iOS-specific options.
 
-#### ios.suppressForegroundBanner?
+#### suppressForegroundBanner?
 
-> `optional` **suppressForegroundBanner**: `boolean`
+> `optional` **suppressForegroundBanner?**: `boolean`
 
 When `true`, foreground notifications delivered via `handleFcmMessage`
 are NOT displayed (only events are emitted).

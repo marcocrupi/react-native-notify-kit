@@ -30,7 +30,7 @@ Returns the current Notify Kit SDK version in use.
 
 ### cancelAllNotifications()
 
-> **cancelAllNotifications**(`notificationIds`?, `tag`?): `Promise`\<`void`>
+> **cancelAllNotifications**(`notificationIds?`, `tag?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:36](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L36)
 
@@ -59,7 +59,7 @@ The tag set when creating the notification. This is only relative to Android.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -69,7 +69,7 @@ The tag set when creating the notification. This is only relative to Android.
 
 ### cancelDisplayedNotification()
 
-> **cancelDisplayedNotification**(`notificationId`, `tag`?): `Promise`\<`void`>
+> **cancelDisplayedNotification**(`notificationId`, `tag?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:79](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L79)
 
@@ -95,7 +95,7 @@ The tag set when creating the notification. This is only relative to Android.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -105,7 +105,7 @@ The tag set when creating the notification. This is only relative to Android.
 
 ### cancelDisplayedNotifications()
 
-> **cancelDisplayedNotifications**(`notificationIds`?): `Promise`\<`void`>
+> **cancelDisplayedNotifications**(`notificationIds?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:44](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L44)
 
@@ -122,7 +122,7 @@ notifications.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -132,7 +132,7 @@ notifications.
 
 ### cancelNotification()
 
-> **cancelNotification**(`notificationId`, `tag`?): `Promise`\<`void`>
+> **cancelNotification**(`notificationId`, `tag?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:65](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L65)
 
@@ -161,7 +161,7 @@ The tag set when creating the notification. This is only relative to Android.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -171,7 +171,7 @@ The tag set when creating the notification. This is only relative to Android.
 
 ### cancelTriggerNotification()
 
-> **cancelTriggerNotification**(`notificationId`): `Promise`\<`void`>
+> **cancelTriggerNotification**(`notificationId`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:88](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L88)
 
@@ -188,7 +188,7 @@ when creating a notification, or has been set manually via the `id` property.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -198,7 +198,7 @@ when creating a notification, or has been set manually via the `id` property.
 
 ### cancelTriggerNotifications()
 
-> **cancelTriggerNotifications**(`notificationIds`?): `Promise`\<`void`>
+> **cancelTriggerNotifications**(`notificationIds?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:49](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L49)
 
@@ -212,7 +212,7 @@ API used to cancel any trigger notifications.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -222,7 +222,7 @@ API used to cancel any trigger notifications.
 
 ### createChannel()
 
-> **createChannel**(`channel`): `Promise`\<`string`>
+> **createChannel**(`channel`): `Promise`<`string`>
 
 Defined in: [packages/react-native/src/types/Module.ts:107](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L107)
 
@@ -249,7 +249,7 @@ The [`AndroidChannel`](/react-native/reference/androidchannel) interface used to
 
 #### Returns
 
-`Promise`\<`string`>
+`Promise`<`string`>
 
 #### Platform
 
@@ -263,7 +263,7 @@ android
 
 ### createChannelGroup()
 
-> **createChannelGroup**(`channelGroup`): `Promise`\<`string`>
+> **createChannelGroup**(`channelGroup`): `Promise`<`string`>
 
 Defined in: [packages/react-native/src/types/Module.ts:138](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L138)
 
@@ -291,7 +291,7 @@ interface used to create/update a group.
 
 #### Returns
 
-`Promise`\<`string`>
+`Promise`<`string`>
 
 #### Platform
 
@@ -305,7 +305,7 @@ android
 
 ### createChannelGroups()
 
-> **createChannelGroups**(`channelGroups`): `Promise`\<`void`>
+> **createChannelGroups**(`channelGroups`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:149](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L149)
 
@@ -324,7 +324,7 @@ An array of [`AndroidChannelGroup`](/react-native/reference/androidchannelgroup)
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -338,7 +338,7 @@ android
 
 ### createChannels()
 
-> **createChannels**(`channels`): `Promise`\<`void`>
+> **createChannels**(`channels`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:118](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L118)
 
@@ -357,7 +357,7 @@ An array of [`AndroidChannel`](/react-native/reference/androidchannel) interface
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -371,7 +371,7 @@ android
 
 ### createTriggerNotification()
 
-> **createTriggerNotification**(`notification`, `trigger`): `Promise`\<`string`>
+> **createTriggerNotification**(`notification`, `trigger`): `Promise`<`string`>
 
 Defined in: [packages/react-native/src/types/Module.ts:221](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L221)
 
@@ -399,7 +399,7 @@ to create a trigger.
 
 #### Returns
 
-`Promise`\<`string`>
+`Promise`<`string`>
 
 #### Inherited from
 
@@ -409,7 +409,7 @@ to create a trigger.
 
 ### decrementBadgeCount()
 
-> **decrementBadgeCount**(`decrementBy`?): `Promise`\<`void`>
+> **decrementBadgeCount**(`decrementBy?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:541](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L541)
 
@@ -426,7 +426,7 @@ Defaults to an decrement of `1`.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -440,7 +440,7 @@ ios
 
 ### deleteChannel()
 
-> **deleteChannel**(`channelId`): `Promise`\<`void`>
+> **deleteChannel**(`channelId`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:164](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L164)
 
@@ -463,7 +463,7 @@ The unique channel ID to delete.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -477,7 +477,7 @@ android
 
 ### deleteChannelGroup()
 
-> **deleteChannelGroup**(`channelGroupId`): `Promise`\<`void`>
+> **deleteChannelGroup**(`channelGroupId`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:180](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L180)
 
@@ -501,7 +501,7 @@ The unique channel group ID to delete.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -515,7 +515,7 @@ android
 
 ### displayNotification()
 
-> **displayNotification**(`notification`): `Promise`\<`string`>
+> **displayNotification**(`notification`): `Promise`<`string`>
 
 Defined in: [packages/react-native/src/types/Module.ts:194](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L194)
 
@@ -538,7 +538,7 @@ to create a notification for both Android & iOS.
 
 #### Returns
 
-`Promise`\<`string`>
+`Promise`<`string`>
 
 #### Inherited from
 
@@ -548,7 +548,7 @@ to create a notification for both Android & iOS.
 
 ### getBadgeCount()
 
-> **getBadgeCount**(): `Promise`\<`number`>
+> **getBadgeCount**(): `Promise`<`number`>
 
 Defined in: [packages/react-native/src/types/Module.ts:507](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L507)
 
@@ -558,7 +558,7 @@ Returns `0` on Android.
 
 #### Returns
 
-`Promise`\<`number`>
+`Promise`<`number`>
 
 #### Platform
 
@@ -572,7 +572,7 @@ ios
 
 ### getChannel()
 
-> **getChannel**(`channelId`): `Promise`\<`null` | [`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)>
+> **getChannel**(`channelId`): `Promise`<[`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel) | `null`>
 
 Defined in: [packages/react-native/src/types/Module.ts:256](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L256)
 
@@ -598,7 +598,7 @@ a unknown channel ID is provided, `null` is returned.
 
 #### Returns
 
-`Promise`\<`null` | [`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)>
+`Promise`<[`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel) | `null`>
 
 #### Platform
 
@@ -612,7 +612,7 @@ android
 
 ### getChannelGroup()
 
-> **getChannelGroup**(`channelGroupId`): `Promise`\<`null` | [`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)>
+> **getChannelGroup**(`channelGroupId`): `Promise`<[`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup) | `null`>
 
 Defined in: [packages/react-native/src/types/Module.ts:308](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L308)
 
@@ -638,7 +638,7 @@ a unknown channel group ID is provided, `null` is returned.
 
 #### Returns
 
-`Promise`\<`null` | [`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)>
+`Promise`<[`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup) | `null`>
 
 #### Platform
 
@@ -652,7 +652,7 @@ android
 
 ### getChannelGroups()
 
-> **getChannelGroups**(): `Promise`\<[`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)\[]>
+> **getChannelGroups**(): `Promise`<[`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)\[]>
 
 Defined in: [packages/react-native/src/types/Module.ts:324](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L324)
 
@@ -669,7 +669,7 @@ View the [Channels & Groups](/react-native/android/channels) documentation for m
 
 #### Returns
 
-`Promise`\<[`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)\[]>
+`Promise`<[`NativeAndroidChannelGroup`](react-native/reference/Interface.NativeAndroidChannelGroup)\[]>
 
 #### Platform
 
@@ -683,7 +683,7 @@ android
 
 ### getChannels()
 
-> **getChannels**(): `Promise`\<[`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)\[]>
+> **getChannels**(): `Promise`<[`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)\[]>
 
 Defined in: [packages/react-native/src/types/Module.ts:290](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L290)
 
@@ -700,7 +700,7 @@ View the [Channels & Groups](/react-native/android/channels) documentation for m
 
 #### Returns
 
-`Promise`\<[`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)\[]>
+`Promise`<[`NativeAndroidChannel`](react-native/reference/Interface.NativeAndroidChannel)\[]>
 
 #### Platform
 
@@ -714,7 +714,7 @@ android
 
 ### getDisplayedNotifications()
 
-> **getDisplayedNotifications**(): `Promise`\<[`DisplayedNotification`](react-native/reference/Interface.DisplayedNotification)\[]>
+> **getDisplayedNotifications**(): `Promise`<[`DisplayedNotification`](react-native/reference/Interface.DisplayedNotification)\[]>
 
 Defined in: [packages/react-native/src/types/Module.ts:233](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L233)
 
@@ -722,7 +722,7 @@ API used to return the notifications that are displayed.
 
 #### Returns
 
-`Promise`\<[`DisplayedNotification`](react-native/reference/Interface.DisplayedNotification)\[]>
+`Promise`<[`DisplayedNotification`](react-native/reference/Interface.DisplayedNotification)\[]>
 
 #### Inherited from
 
@@ -732,7 +732,7 @@ API used to return the notifications that are displayed.
 
 ### getInitialNotification()
 
-> **getInitialNotification**(): `Promise`\<`null` | [`InitialNotification`](react-native/reference/Interface.InitialNotification)>
+> **getInitialNotification**(): `Promise`<[`InitialNotification`](react-native/reference/Interface.InitialNotification) | `null`>
 
 Defined in: [packages/react-native/src/types/Module.ts:341](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L341)
 
@@ -752,7 +752,7 @@ but you will also receive a `onForegroundEvent`
 
 #### Returns
 
-`Promise`\<`null` | [`InitialNotification`](react-native/reference/Interface.InitialNotification)>
+`Promise`<[`InitialNotification`](react-native/reference/Interface.InitialNotification) | `null`>
 
 #### Inherited from
 
@@ -762,7 +762,7 @@ but you will also receive a `onForegroundEvent`
 
 ### getNotificationCategories()
 
-> **getNotificationCategories**(): `Promise`\<[`IOSNotificationCategory`](react-native/reference/Interface.IOSNotificationCategory)\[]>
+> **getNotificationCategories**(): `Promise`<[`IOSNotificationCategory`](react-native/reference/Interface.IOSNotificationCategory)\[]>
 
 Defined in: [packages/react-native/src/types/Module.ts:489](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L489)
 
@@ -772,7 +772,7 @@ Returns an empty array on Android.
 
 #### Returns
 
-`Promise`\<[`IOSNotificationCategory`](react-native/reference/Interface.IOSNotificationCategory)\[]>
+`Promise`<[`IOSNotificationCategory`](react-native/reference/Interface.IOSNotificationCategory)\[]>
 
 #### Platform
 
@@ -786,19 +786,19 @@ ios
 
 ### getNotificationSettings()
 
-> **getNotificationSettings**(): `Promise`\<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
+> **getNotificationSettings**(): `Promise`<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
 
 Defined in: [packages/react-native/src/types/Module.ts:498](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L498)
 
 Get the current notification settings for this application on the current device.
 On Android 13+ (API 33+), `authorizationStatus` returns `AuthorizationStatus.NOT_DETERMINED` before
 `requestPermission()` is called, `AuthorizationStatus.DENIED` if denied, or `AuthorizationStatus.AUTHORIZED`
-if granted. On Android \< 13, returns only `DENIED` or `AUTHORIZED`.
+if granted. On Android < 13, returns only `DENIED` or `AUTHORIZED`.
 All properties on the `IOSNotificationSettings` interface response return as `AUTHORIZED` on Android.
 
 #### Returns
 
-`Promise`\<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
+`Promise`<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
 
 #### Inherited from
 
@@ -808,7 +808,7 @@ All properties on the `IOSNotificationSettings` interface response return as `AU
 
 ### getPowerManagerInfo()
 
-> **getPowerManagerInfo**(): `Promise`\<[`PowerManagerInfo`](react-native/reference/Interface.PowerManagerInfo)>
+> **getPowerManagerInfo**(): `Promise`<[`PowerManagerInfo`](react-native/reference/Interface.PowerManagerInfo)>
 
 Defined in: [packages/react-native/src/types/Module.ts:625](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L625)
 
@@ -844,7 +844,7 @@ if (powerManagerInfo.activity) {
 
 #### Returns
 
-`Promise`\<[`PowerManagerInfo`](react-native/reference/Interface.PowerManagerInfo)>
+`Promise`<[`PowerManagerInfo`](react-native/reference/Interface.PowerManagerInfo)>
 
 #### Platform
 
@@ -858,7 +858,7 @@ android
 
 ### getTriggerNotificationIds()
 
-> **getTriggerNotificationIds**(): `Promise`\<`string`\[]>
+> **getTriggerNotificationIds**(): `Promise`<`string`\[]>
 
 Defined in: [packages/react-native/src/types/Module.ts:228](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L228)
 
@@ -868,7 +868,7 @@ View the [Triggers](/react-native/triggers) documentation for more information.
 
 #### Returns
 
-`Promise`\<`string`\[]>
+`Promise`<`string`\[]>
 
 #### Inherited from
 
@@ -878,7 +878,7 @@ View the [Triggers](/react-native/triggers) documentation for more information.
 
 ### getTriggerNotifications()
 
-> **getTriggerNotifications**(): `Promise`\<[`TriggerNotification`](react-native/reference/Interface.TriggerNotification)\[]>
+> **getTriggerNotifications**(): `Promise`<[`TriggerNotification`](react-native/reference/Interface.TriggerNotification)\[]>
 
 Defined in: [packages/react-native/src/types/Module.ts:238](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L238)
 
@@ -886,7 +886,7 @@ API used to return the trigger notifications that are pending.
 
 #### Returns
 
-`Promise`\<[`TriggerNotification`](react-native/reference/Interface.TriggerNotification)\[]>
+`Promise`<[`TriggerNotification`](react-native/reference/Interface.TriggerNotification)\[]>
 
 #### Inherited from
 
@@ -896,7 +896,7 @@ API used to return the trigger notifications that are pending.
 
 ### handleFcmMessage()
 
-> **handleFcmMessage**(`remoteMessage`): `Promise`\<`null` | `string`>
+> **handleFcmMessage**(`remoteMessage`): `Promise`<`string` | `null`>
 
 Defined in: [packages/react-native/src/types/Module.ts:689](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L689)
 
@@ -913,7 +913,7 @@ Safe to call from both `setBackgroundMessageHandler` and `onMessage`.
 
 #### Returns
 
-`Promise`\<`null` | `string`>
+`Promise`<`string` | `null`>
 
 The displayed notification ID, or `null` if the call was an
 intentional no-op (iOS background, `fallbackBehavior: 'ignore'`,
@@ -964,7 +964,7 @@ android
 
 ### incrementBadgeCount()
 
-> **incrementBadgeCount**(`incrementBy`?): `Promise`\<`void`>
+> **incrementBadgeCount**(`incrementBy?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:531](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L531)
 
@@ -983,7 +983,7 @@ The value to increment the badge count by.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -997,7 +997,7 @@ ios
 
 ### isBatteryOptimizationEnabled()
 
-> **isBatteryOptimizationEnabled**(): `Promise`\<`boolean`>
+> **isBatteryOptimizationEnabled**(): `Promise`<`boolean`>
 
 Defined in: [packages/react-native/src/types/Module.ts:590](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L590)
 
@@ -1009,7 +1009,7 @@ View the [Background Restrictions](/react-native/android/behaviour#background-re
 
 #### Returns
 
-`Promise`\<`boolean`>
+`Promise`<`boolean`>
 
 #### Platform
 
@@ -1023,7 +1023,7 @@ android
 
 ### isChannelBlocked()
 
-> **isChannelBlocked**(`channelId`): `Promise`\<`boolean`>
+> **isChannelBlocked**(`channelId`): `Promise`<`boolean`>
 
 Defined in: [packages/react-native/src/types/Module.ts:274](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L274)
 
@@ -1039,7 +1039,7 @@ On iOS, this will default to false
 
 #### Returns
 
-`Promise`\<`boolean`>
+`Promise`<`boolean`>
 
 #### Platform
 
@@ -1053,7 +1053,7 @@ android
 
 ### isChannelCreated()
 
-> **isChannelCreated**(`channelId`): `Promise`\<`boolean`>
+> **isChannelCreated**(`channelId`): `Promise`<`boolean`>
 
 Defined in: [packages/react-native/src/types/Module.ts:265](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L265)
 
@@ -1069,7 +1069,7 @@ On iOS, this will default to true
 
 #### Returns
 
-`Promise`\<`boolean`>
+`Promise`<`boolean`>
 
 #### Platform
 
@@ -1102,7 +1102,7 @@ To listen to foreground events, see the [`onForegroundEvent`](/react-native/refe
 
 ##### observer
 
-(`event`) => `Promise`\<`void`>
+(`event`) => `Promise`<`void`>
 
 A Function which returns a Promise, called on a new event when the application
 is in a background state.
@@ -1145,11 +1145,7 @@ is in a foreground state.
 
 #### Returns
 
-`Function`
-
-##### Returns
-
-`void`
+() => `void`
 
 #### Inherited from
 
@@ -1159,7 +1155,7 @@ is in a foreground state.
 
 ### openAlarmPermissionSettings()
 
-> **openAlarmPermissionSettings**(): `Promise`\<`void`>
+> **openAlarmPermissionSettings**(): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:206](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L206)
 
@@ -1172,7 +1168,7 @@ View the [Trigger](/react-native/android/triggers#android-12-limitations) docume
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1186,7 +1182,7 @@ android
 
 ### openBatteryOptimizationSettings()
 
-> **openBatteryOptimizationSettings**(): `Promise`\<`void`>
+> **openBatteryOptimizationSettings**(): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:579](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L579)
 
@@ -1199,7 +1195,7 @@ View the [Background Restrictions](/react-native/android/behaviour#background-re
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1213,7 +1209,7 @@ android
 
 ### openNotificationSettings()
 
-> **openNotificationSettings**(`channelId`?): `Promise`\<`void`>
+> **openNotificationSettings**(`channelId?`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:396](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L396)
 
@@ -1224,7 +1220,7 @@ If the API version is >= 26:
 - With no `channelId`, the notification settings screen is displayed.
 - With a `channelId`, the notification settings screen for the specific channel is displayed.
 
-If the API version is \< 26, the application settings screen is displayed. The `channelId`
+If the API version is < 26, the application settings screen is displayed. The `channelId`
 is ignored.
 
 If an invalid `channelId` is provided (e.g. does not exist), the settings screen will redirect
@@ -1243,7 +1239,7 @@ overall notification settings.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1257,7 +1253,7 @@ android
 
 ### openPowerManagerSettings()
 
-> **openPowerManagerSettings**(): `Promise`\<`void`>
+> **openPowerManagerSettings**(): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:656](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L656)
 
@@ -1289,7 +1285,7 @@ await notifee.openPowerManagerSettings();
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1303,7 +1299,7 @@ android
 
 ### prewarmForegroundService()
 
-> **prewarmForegroundService**(): `Promise`\<`void`>
+> **prewarmForegroundService**(): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:441](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L441)
 
@@ -1324,7 +1320,7 @@ See the "Advanced / Troubleshooting" section in the README for more details.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1377,7 +1373,7 @@ android
 
 ### requestPermission()
 
-> **requestPermission**(`permissions`?): `Promise`\<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
+> **requestPermission**(`permissions?`): `Promise`<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
 
 Defined in: [packages/react-native/src/types/Module.ts:471](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L471)
 
@@ -1414,7 +1410,7 @@ and all of the properties on the `ios` interface response return as `AUTHORIZED`
 
 #### Returns
 
-`Promise`\<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
+`Promise`<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
 
 #### Inherited from
 
@@ -1424,7 +1420,7 @@ and all of the properties on the `ios` interface response return as `AUTHORIZED`
 
 ### setBadgeCount()
 
-> **setBadgeCount**(`count`): `Promise`\<`void`>
+> **setBadgeCount**(`count`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:519](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L519)
 
@@ -1443,7 +1439,7 @@ The number value to set as the badge count.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1457,11 +1453,11 @@ ios
 
 ### setFcmConfig()
 
-> **setFcmConfig**(`config`): `Promise`\<`void`>
+> **setFcmConfig**(`config`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:699](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L699)
 
-Configures defaults for [handleFcmMessage](react-native/reference/Interface.ModuleWithStatics#handlefcmmessage). Call once at app startup,
+Configures defaults for [handleFcmMessage](#handlefcmmessage). Call once at app startup,
 typically in `index.js` before `registerComponent`.
 
 Returns Promise for forward compatibility — a future version may persist
@@ -1476,7 +1472,7 @@ synchronously.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Inherited from
 
@@ -1486,7 +1482,7 @@ synchronously.
 
 ### setNotificationCategories()
 
-> **setNotificationCategories**(`categories`): `Promise`\<`void`>
+> **setNotificationCategories**(`categories`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:480](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L480)
 
@@ -1500,7 +1496,7 @@ Set the notification categories to be used on this Apple device.
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1514,7 +1510,7 @@ ios
 
 ### setNotificationConfig()
 
-> **setNotificationConfig**(`config`): `Promise`\<`void`>
+> **setNotificationConfig**(`config`): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:567](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L567)
 
@@ -1549,7 +1545,7 @@ await notifee.setNotificationConfig({
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 
@@ -1563,7 +1559,7 @@ ios
 
 ### stopForegroundService()
 
-> **stopForegroundService**(): `Promise`\<`void`>
+> **stopForegroundService**(): `Promise`<`void`>
 
 Defined in: [packages/react-native/src/types/Module.ts:421](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L421)
 
@@ -1571,7 +1567,7 @@ Call this to stop the foreground service that is running
 
 #### Returns
 
-`Promise`\<`void`>
+`Promise`<`void`>
 
 #### Platform
 

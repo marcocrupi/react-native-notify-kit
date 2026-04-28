@@ -6,31 +6,41 @@
 
 # Type Alias: FcmRemoteMessage
 
-> **FcmRemoteMessage**: `object`
+> **FcmRemoteMessage** = `object`
 
 Defined in: [packages/react-native/src/fcm/types.ts:10](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L10)
 
 Minimal subset of `@react-native-firebase/messaging`'s RemoteMessage that
 `handleFcmMessage` actually reads.
 
-## Type declaration
+## Properties
 
 ### data?
 
-> `optional` **data**: `Record`\<`string`, `string`>
+> `optional` **data?**: `Record`<`string`, `string`>
+
+Defined in: [packages/react-native/src/fcm/types.ts:12](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L12)
+
+---
 
 ### messageId?
 
-> `optional` **messageId**: `string`
+> `optional` **messageId?**: `string`
+
+Defined in: [packages/react-native/src/fcm/types.ts:11](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L11)
+
+---
 
 ### notification?
 
-> `optional` **notification**: `object`
+> `optional` **notification?**: `object`
 
-#### notification.body?
+Defined in: [packages/react-native/src/fcm/types.ts:13](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L13)
 
-> `optional` **body**: `string`
+#### body?
 
-#### notification.title?
+> `optional` **body?**: `string`
 
-> `optional` **title**: `string`
+#### title?
+
+> `optional` **title?**: `string`

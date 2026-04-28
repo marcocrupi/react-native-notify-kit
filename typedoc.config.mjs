@@ -49,6 +49,7 @@ const config = {
       'remark-link-rewrite',
       {
         replacer: url => {
+          if (url.startsWith('#')) return url;
           if (url.startsWith('/react-native/')) return url;
 
           let modifiedUrl = url;

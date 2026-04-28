@@ -21,7 +21,7 @@ ios
 
 ### attachments?
 
-> `optional` **attachments**: [`IOSNotificationAttachment`](react-native/reference/Interface.IOSNotificationAttachment)\[]
+> `optional` **attachments?**: [`IOSNotificationAttachment`](react-native/reference/Interface.IOSNotificationAttachment)\[]
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:23](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L23)
 
@@ -36,7 +36,7 @@ and usage examples.
 
 ### badgeCount?
 
-> `optional` **badgeCount**: `null` | `number`
+> `optional` **badgeCount?**: `number` | `null`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:28](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L28)
 
@@ -46,7 +46,7 @@ The application badge count number. Set to null to indicate no change, or 0 to h
 
 ### categoryId?
 
-> `optional` **categoryId**: `string`
+> `optional` **categoryId?**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:34](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L34)
 
@@ -57,7 +57,7 @@ appropriate actions to display for the notification.
 
 ### communicationInfo?
 
-> `optional` **communicationInfo**: [`IOSCommunicationInfo`](react-native/reference/Interface.IOSCommunicationInfo)
+> `optional` **communicationInfo?**: [`IOSCommunicationInfo`](react-native/reference/Interface.IOSCommunicationInfo)
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:120](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L120)
 
@@ -71,7 +71,7 @@ ios iOS >= 15
 
 ### critical?
 
-> `optional` **critical**: `boolean`
+> `optional` **critical?**: `boolean`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:64](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L64)
 
@@ -86,7 +86,7 @@ ios iOS >= 12
 
 ### criticalVolume?
 
-> `optional` **criticalVolume**: `number`
+> `optional` **criticalVolume?**: `number`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:73](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L73)
 
@@ -102,7 +102,7 @@ ios iOS >= 12
 
 ### foregroundPresentationOptions?
 
-> `optional` **foregroundPresentationOptions**: [`IOSForegroundPresentationOptions`](react-native/reference/Interface.IOSForegroundPresentationOptions)
+> `optional` **foregroundPresentationOptions?**: [`IOSForegroundPresentationOptions`](react-native/reference/Interface.IOSForegroundPresentationOptions)
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:113](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L113)
 
@@ -114,7 +114,7 @@ By default, Notify Kit will show iOS notifications in heads-up mode if your app 
 
 ### interruptionLevel?
 
-> `optional` **interruptionLevel**: [`IOSNotificationInterruptionLevel`](react-native/reference/TypeAlias.IOSNotificationInterruptionLevel)
+> `optional` **interruptionLevel?**: [`IOSNotificationInterruptionLevel`](react-native/reference/TypeAlias.IOSNotificationInterruptionLevel)
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:56](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L56)
 
@@ -128,7 +128,7 @@ ios iOS >= 15
 
 ### launchImageName?
 
-> `optional` **launchImageName**: `string`
+> `optional` **launchImageName?**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:39](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L39)
 
@@ -138,7 +138,7 @@ The launch image that will be used when the app is opened from this notification
 
 ### sound?
 
-> `optional` **sound**: `string`
+> `optional` **sound?**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:49](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L49)
 
@@ -153,7 +153,7 @@ Use 'default' to use the default system sound.
 
 ### ~~summaryArgument?~~
 
-> `optional` **summaryArgument**: `string`
+> `optional` **summaryArgument?**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:88](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L88)
 
@@ -172,7 +172,7 @@ May be removed in a future major release.
 
 ### ~~summaryArgumentCount?~~
 
-> `optional` **summaryArgumentCount**: `number`
+> `optional` **summaryArgumentCount?**: `number`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:97](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L97)
 
@@ -191,7 +191,7 @@ May be removed in a future major release.
 
 ### targetContentId?
 
-> `optional` **targetContentId**: `string`
+> `optional` **targetContentId?**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:106](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L106)
 
@@ -207,7 +207,7 @@ ios iOS >= 13
 
 ### threadId?
 
-> `optional` **threadId**: `string`
+> `optional` **threadId?**: `string`
 
 Defined in: [packages/react-native/src/types/NotificationIOS.ts:79](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationIOS.ts#L79)
 
