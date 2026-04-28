@@ -1190,7 +1190,14 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                // DELIVERED for all Notifee-owned notifications. Only emit here
                // when the app is NOT active to avoid duplicate events.
                dispatch_async(dispatch_get_main_queue(), ^{
-                 if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) {
+                 BOOL isApplicationActive = NO;
+                 if (![NotifeeCoreUtil isAppExtension]) {
+                   UIApplication *application = [NotifeeCoreUtil notifeeUIApplication];
+                   if (application != nil) {
+                     isApplicationActive = application.applicationState == UIApplicationStateActive;
+                   }
+                 }
+                 if (!isApplicationActive) {
                    [[NotifeeCoreDelegateHolder instance] didReceiveNotifeeCoreEvent:@{
                      @"type" : @(NotifeeCoreEventTypeDelivered),
                      @"detail" : @{
