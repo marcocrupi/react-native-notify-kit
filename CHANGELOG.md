@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Android**: `getPowerManagerInfo().activity` now represents a known vendor-settings candidate rather than a `PackageManager`-prevalidated activity.
+- **Android**: `openPowerManagerSettings()` now attempts vendor settings intents directly and safely falls back or no-ops when Android cannot resolve or start the intent.
+
 ### Fixed
 
-- **CLI**: `init-nse` now installs an idempotent Podfile `post_install` patch that removes React Native Firebase's generated `$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)` input path after each `pod install`, avoiding an Xcode build cycle between the embedded `NotifyKitNSE.appex` and RNFB's Info.plist processing phase.
-- **Android**: removed the protected `BROADCAST_CLOSE_SYSTEM_DIALOGS` permission from the library manifest and kept the legacy close-system-dialogs broadcast best-effort on Android 11 and lower.
-- **Android**: removed the `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` vendor fallback from the power-manager settings helper to avoid a Play-policy-sensitive direct battery-optimization exemption request path.
-- **Android**: removed package-visibility queries from the power-manager settings helper; vendor settings now open best-effort without requiring consumer apps to inherit `<queries>` declarations.
+- **Android**: guarded notification posting on Android 13+ when `POST_NOTIFICATIONS` is not granted, avoiding uncontrolled `SecurityException` failures and `DELIVERED` events when `notify()` is not called.
+- **Android**: removed the protected `BROADCAST_CLOSE_SYSTEM_DIALOGS` permission from the library manifest so it is no longer propagated to consumer apps.
+- **Android**: made the legacy `ACTION_CLOSE_SYSTEM_DIALOGS` path best-effort and `SecurityException`-safe on Android 11 and lower.
+- **Android**: removed the `ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` direct-request path from the Oppo/ColorOS power-manager fallback.
+- **Android**: removed package-visibility queries from the power-manager settings helpers; vendor settings now open best-effort without requiring consumer apps to inherit `<queries>` declarations.
+- **Android**: cleaned up owned lint warnings after the permission, policy, package-visibility, discouraged API, and obsolete SDK guard fixes.
+- **iOS**: made the notification display application-state check app-extension-safe so `RNNotifeeCore` can compile inside a Notification Service Extension target.
+- **CLI/iOS**: updated `init-nse` Podfile patching to avoid an Xcode build cycle between an embedded `NotifyKitNSE.appex` and React Native Firebase's `[RNFB] Core Configuration` phase.
+
+### Docs
+
+- **Docs**: made reference generation self-contained by generating `src/version.ts` before TypeDoc.
+- **Docs**: guarded reference generation against running without Git metadata, preventing degraded `Defined in` links.
+- **Docs**: upgraded TypeDoc reference tooling for TypeScript 5.9 compatibility.
+- **Docs**: included previously missing referenced API types in the generated reference: `ModuleWithStatics` and `WebNotificationSettings`.
+- **Docs**: formatted manual MDX documentation pages.
+
+### Tests
+
+- **Tests**: added an iOS/NSE hardware automation script for `init-nse`, `pod install`, RNFB cycle checks, iOS builds, FCM scenario sending, logs, reports, and cleanup.
+- **Tests**: validated Android hardware E2E, including foreground/background FCM, killed rerun without force-stop, tap `PRESS`, action buttons, and BigPicture notifications.
+- **Tests**: validated iOS/NSE hardware E2E on physical device, including foreground/background/killed FCM, NSE processing, attachment handling, and tap flow.
+- **Smoke app**: cleaned up Android manifest lint warnings for redundant labels and data extraction rules.
 
 ## [10.2.0] - 2026-04-27
 
