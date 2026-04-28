@@ -33,3 +33,5 @@ export * from './types/NotificationIOS';
 export * from './types/NotificationAndroid';
 export * from './types/PowerManagerInfo';
 export type { FcmRemoteMessage, FcmConfig } from './fcm/types';
+export type { ModuleWithStatics } from './types/Module';
+export type { WebNotificationSettings } from './types/NotificationWeb';
