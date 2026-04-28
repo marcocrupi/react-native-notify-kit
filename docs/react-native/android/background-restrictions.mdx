@@ -3,7 +3,7 @@ title: Background Restrictions
 description: Understand and manage background restrictions on Android devices.
 ---
 
-Android devices can restrict your app while it's in the background to preserve battery life. This can prevent trigger notifications from being displayed. 
+Android devices can restrict your app while it's in the background to preserve battery life. This can prevent trigger notifications from being displayed.
 
 There are numerous factors that can cause your app to be killed which varies between device manufacturers and android versions (see [dontkillmyapp.com](https://dontkillmyapp.com/)).
 
@@ -27,32 +27,34 @@ const batteryOptimizationEnabled = await notifee.isBatteryOptimizationEnabled();
 if (batteryOptimizationEnabled) {
   // 2. ask your users to disable the feature
   Alert.alert(
-      'Restrictions Detected',
-      'To ensure notifications are delivered, please disable battery optimization for the app.',
-      [
-        // 3. launch intent to navigate the user to the appropriate screen
-        {
-          text: 'OK, open settings',
-          onPress: async () => await notifee.openBatteryOptimizationSettings(),
-        },
-        {
-          text: "Cancel",
-          onPress: () => console.log("Cancel Pressed"),
-          style: "cancel"
-        },
-      ],
-      { cancelable: false }
-    );
-};
+    'Restrictions Detected',
+    'To ensure notifications are delivered, please disable battery optimization for the app.',
+    [
+      // 3. launch intent to navigate the user to the appropriate screen
+      {
+        text: 'OK, open settings',
+        onPress: async () => await notifee.openBatteryOptimizationSettings(),
+      },
+      {
+        text: 'Cancel',
+        onPress: () => console.log('Cancel Pressed'),
+        style: 'cancel',
+      },
+    ],
+    { cancelable: false },
+  );
+}
 ```
 
 ## Power Manager
 
 Depending on the device, there will be a series of steps the user can take to avoid your app being killed.
 
-Call `getPowerManagerInfo()` to retrieve information on the device and its power management configuration. An instance of `PowerManagerInfo` will be returned with an `activity` property, this will be the name of the Android settings screen the user will be navigated to via `openPowerManagerSettings()`.
+Call `getPowerManagerInfo()` to retrieve best-effort information on the device and its power management configuration. An instance of `PowerManagerInfo` will be returned with an `activity` property when Notify Kit has a known vendor-settings candidate for the current manufacturer. This is not a guarantee that the activity is installed or accessible on the current device firmware.
 
-For [google](https://dontkillmyapp.com/google) devices, such as Pixel 2a, `activity` will be null. For these devices there's not much else the user can do other than turning off battery optimizations. 
+For [google](https://dontkillmyapp.com/google) devices, such as Pixel 2a, `activity` will be null. For these devices there's not much else the user can do other than turning off battery optimizations.
+
+On Android 11 and higher, Notify Kit avoids package-visibility discovery for these helpers. Consumer apps do not need to add `<queries>` to their manifest just to use `getPowerManagerInfo()` or `openPowerManagerSettings()`. `openPowerManagerSettings()` tries known vendor settings candidates best-effort and fails safely if a vendor changes, removes, or blocks a settings activity.
 
 Below is a snippet on how to use these methods:
 
@@ -62,45 +64,45 @@ const powerManagerInfo = await notifee.getPowerManagerInfo();
 if (powerManagerInfo.activity) {
   // 2. ask your users to adjust their settings
   Alert.alert(
-      'Restrictions Detected',
-      'To ensure notifications are delivered, please adjust your settings to prevent the app from being killed',
-      [
-        // 3. launch intent to navigate the user to the appropriate screen
-        {
-          text: 'OK, open settings',
-          onPress: async () => await notifee.openPowerManagerSettings(),
-        },
-        {
-          text: "Cancel",
-          onPress: () => console.log("Cancel Pressed"),
-          style: "cancel"
-        },
-      ],
-      { cancelable: false }
-    );
-};
+    'Restrictions Detected',
+    'To ensure notifications are delivered, please adjust your settings to prevent the app from being killed',
+    [
+      // 3. try to open the vendor settings screen
+      {
+        text: 'OK, open settings',
+        onPress: async () => await notifee.openPowerManagerSettings(),
+      },
+      {
+        text: 'Cancel',
+        onPress: () => console.log('Cancel Pressed'),
+        style: 'cancel',
+      },
+    ],
+    { cancelable: false },
+  );
+}
 ```
 
-Supported manufactures and their possible settings screens:
+Known manufacturers and their possible settings screen candidates:
 
-| Manufacturer | Activities |
-|--------------|------------|
-| Asus | PowerSaverSettings, AutoStartActivity, FunctionActivity |
-| Samsung | BatteryActivity |
-| Huawei | ProtectActivity, StartupNormalAppListActivity, StartupAppControlActivity |
-| Xiaomi | AutoStartManagementActivity |
-| Letv | AutobootManageActivity |
-| Oppo | StartupAppListActivity, PowerUsageModelActivity, PowerSaverModeActivity, PowerConsumptionActivity |
-| Vivo | AddWhiteListActivity, BgStartUpManagerActivity, BgStartUpManager |
-| Nokia | PowerSaverExceptionActivity |
-| OnePlus | ChainLaunchAppListActivity |
-| Meizu | SHOW_APPSEC |
-| HTC | LandingPageActivity |
+| Manufacturer | Activities                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| Asus         | PowerSaverSettings, AutoStartActivity, FunctionActivity                                           |
+| Samsung      | BatteryActivity                                                                                   |
+| Huawei       | ProtectActivity, StartupNormalAppListActivity, StartupAppControlActivity                          |
+| Xiaomi       | AutoStartManagementActivity                                                                       |
+| Letv         | AutobootManageActivity                                                                            |
+| Oppo         | StartupAppListActivity, PowerUsageModelActivity, PowerSaverModeActivity, PowerConsumptionActivity |
+| Vivo         | AddWhiteListActivity, BgStartUpManagerActivity, BgStartUpManager                                  |
+| Nokia        | PowerSaverExceptionActivity                                                                       |
+| OnePlus      | ChainLaunchAppListActivity                                                                        |
+| Meizu        | SHOW_APPSEC                                                                                       |
+| HTC          | LandingPageActivity                                                                               |
 
 ### Samsung Devices
 
-Samsung devices have their own custom Power Manager called 'Device Care'. 
-For example, a Samsung device on Android 10, the user will be navigated to the Battery menu of Device Care. You could ask your users to tap 'App power management', and then tap 'Apps that won't be put to sleep', and add your app to the list.
+Samsung devices have their own custom Power Manager called 'Device Care'.
+For example, on many Samsung devices running Android 10, `openPowerManagerSettings()` can open the Battery menu of Device Care. You could ask your users to tap 'App power management', and then tap 'Apps that won't be put to sleep', and add your app to the list.
 
 ## Testing
 

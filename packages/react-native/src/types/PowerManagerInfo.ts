@@ -32,12 +32,17 @@ export interface PowerManagerInfo {
   version?: string;
 
   /**
-   * The activity that the user will be navigated to if `openPowerManagerSettings()` is called.
+   * The known vendor-settings activity candidate for this device manufacturer.
    *
-   * Use this as an indicator of what steps the user may have to perform,
-   * in-order to prevent your app from being killed.
+   * This value is based on Notify Kit's manufacturer mapping. It is not prevalidated
+   * with `PackageManager`, and it is not a guarantee that the activity is installed
+   * or accessible on the current device firmware.
    *
-   * If no activity can be found, value will be null.
+   * Use this as a best-effort indicator of what steps the user may have to perform,
+   * in-order to prevent your app from being killed. `openPowerManagerSettings()`
+   * handles unavailable or rejected candidates safely.
+   *
+   * If no known activity candidate exists, value will be null.
    */
   activity?: string | null;
 }

@@ -590,9 +590,17 @@ export interface Module {
   isBatteryOptimizationEnabled(): Promise<boolean>;
 
   /**
-   * API used to get information about the device and its power manager settings, including manufacturer, model, version and activity.
+   * API used to get best-effort information about the device and its power manager settings, including manufacturer, model, version and a known activity candidate.
    *
-   * If `activity` is `null`, `openPowerManagerSettings()` will be noop.
+   * The returned `activity` is based on Notify Kit's manufacturer mapping and is not
+   * prevalidated with `PackageManager`. A non-null value does not guarantee that
+   * `openPowerManagerSettings()` can open that screen on the current device firmware.
+   *
+   * Notify Kit does not rely on Android 11+ package-visibility queries for this helper,
+   * so consumer apps do not need to add `<queries>` to use it.
+   *
+   * If `activity` is `null`, `openPowerManagerSettings()` will be a no-op because
+   * there is no known vendor-settings candidate.
    *
    * On iOS, an instance of `PowerManagerInfo` will be returned with `activity` set to `null`.
    *
@@ -607,7 +615,7 @@ export interface Module {
    *  // 1. ask the user to adjust their Power Manager settings
    *  // ...
    *
-   *  // 2. open settings
+   *  // 2. open settings best-effort
    *  await notifee.openPowerManagerSettings();
    * }
    * ```
@@ -617,9 +625,15 @@ export interface Module {
   getPowerManagerInfo(): Promise<PowerManagerInfo>;
 
   /**
-   * API used to navigate to the appropriate Android System settings for the device.
+   * API used to best-effort open known Android System power manager settings for the device.
    *
-   * Call `getPowerManagerInfo()` first to find out if the user's device is supported.
+   * Call `getPowerManagerInfo()` first to decide whether to prompt the user. A
+   * non-null `activity` means Notify Kit has a known vendor-settings candidate, not
+   * that Android has confirmed the activity exists or is accessible.
+   *
+   * Notify Kit does not require consumer apps to add `<queries>` for this helper. If
+   * Android rejects or cannot resolve a vendor settings intent, the method safely
+   * falls back or no-ops instead of crashing.
    *
    * View the [Background Restrictions](/react-native/android/background-restrictions) documentation for more information.
    *
@@ -632,7 +646,7 @@ export interface Module {
    * // 1. ask the user to adjust their Power Manager settings
    * // ...
    *
-   * // 2. if yes, navigate them to settings
+   * // 2. if yes, try to open settings
    * await notifee.openPowerManagerSettings();
    * }
    * ```

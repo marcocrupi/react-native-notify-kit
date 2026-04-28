@@ -18,6 +18,7 @@ package app.notifee.core.utility;
  */
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -65,14 +66,6 @@ public class PowerManagerUtils {
       intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
       if (activity != null) {
-        Boolean isAvailableOnDevice =
-            IntentUtils.isAvailableOnDevice(ContextHolder.getApplicationContext(), intent);
-
-        if (!isAvailableOnDevice) {
-          Logger.d(TAG, "battery optimization settings is not available on device");
-          return;
-        }
-
         IntentUtils.startActivityOnUiThread(activity, intent);
       }
     } catch (Exception e) {
@@ -129,7 +122,7 @@ public class PowerManagerUtils {
   public static PowerManagerInfo getPowerManagerInfo() {
     String activityName;
 
-    Intent intent = findPowerManagerIntent(ContextHolder.getApplicationContext());
+    Intent intent = getFirstPowerManagerIntent();
     activityName = IntentUtils.getActivityName(intent);
 
     PowerManagerInfo result =
@@ -143,37 +136,90 @@ public class PowerManagerUtils {
    * @param activity
    */
   public static void openPowerManagerSettings(Activity activity) {
-    Intent intent = getPowerManagerIntent();
-    if (intent == null) {
-      intent = findPowerManagerIntent(ContextHolder.getApplicationContext());
+    if (activity == null) {
+      Logger.w(TAG, "Activity is null when trying to open the device's power manager");
+      return;
     }
 
-    if (intent != null) {
-      try {
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        IntentUtils.startActivityOnUiThread(activity, intent);
-      } catch (Exception exception) {
-        Logger.e(
-            TAG, "Unable to start activity: " + IntentUtils.getActivityName(intent), exception);
-      }
-    } else {
-      Logger.w(TAG, "Unable to find an activity to open the device's power manager");
+    Context context = ContextHolder.getApplicationContext();
+    if (context == null) {
+      Logger.w(TAG, "Unable to get application context when opening the device's power manager");
+      return;
     }
+
+    List<Intent> possibleIntents = getPowerManagerIntentCandidates();
+    if (possibleIntents.isEmpty()) {
+      Logger.w(TAG, "Unable to find an activity to open the device's power manager");
+      return;
+    }
+
+    activity.runOnUiThread(
+        () -> {
+          for (Intent possibleIntent : possibleIntents) {
+            if (startPowerManagerIntent(context, possibleIntent)) {
+              return;
+            }
+          }
+
+          Logger.w(TAG, "Unable to open the device's power manager");
+        });
   }
 
-  private static Intent findPowerManagerIntent(Context context) {
-    String manufacturerName = Build.BRAND.toLowerCase(Locale.US);
-    List<Intent> possibleIntents = getManufacturerPowerManagerIntents(manufacturerName);
+  private static Intent getFirstPowerManagerIntent() {
+    List<Intent> possibleIntents = getManufacturerPowerManagerIntents(getManufacturerName());
+    if (possibleIntents.isEmpty()) {
+      return null;
+    }
 
-    for (int i = 0; i < possibleIntents.size(); i++) {
-      Intent possibleIntent = possibleIntents.get(i);
-      Boolean isAvailableOnDevice = IntentUtils.isAvailableOnDevice(context, possibleIntent);
-      if (isAvailableOnDevice) {
-        setPowerManagerIntentCache(possibleIntent);
-        return possibleIntent;
+    return possibleIntents.get(0);
+  }
+
+  private static List<Intent> getPowerManagerIntentCandidates() {
+    List<Intent> possibleIntents = new ArrayList<>();
+    Intent cachedIntent = getPowerManagerIntent();
+
+    if (cachedIntent != null) {
+      possibleIntents.add(cachedIntent);
+    }
+
+    for (Intent manufacturerIntent : getManufacturerPowerManagerIntents(getManufacturerName())) {
+      if (!containsEquivalentIntent(possibleIntents, manufacturerIntent)) {
+        possibleIntents.add(manufacturerIntent);
       }
     }
-    return null;
+
+    return possibleIntents;
+  }
+
+  private static String getManufacturerName() {
+    return Build.BRAND.toLowerCase(Locale.US);
+  }
+
+  private static boolean containsEquivalentIntent(List<Intent> possibleIntents, Intent candidate) {
+    for (Intent possibleIntent : possibleIntents) {
+      if (possibleIntent.filterEquals(candidate)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private static boolean startPowerManagerIntent(Context context, Intent possibleIntent) {
+    Intent intent = new Intent(possibleIntent);
+    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+    try {
+      context.startActivity(intent);
+      setPowerManagerIntentCache(intent);
+      return true;
+    } catch (ActivityNotFoundException | SecurityException e) {
+      Logger.w(TAG, "Unable to start activity: " + IntentUtils.getActivityName(intent), e);
+    } catch (RuntimeException e) {
+      Logger.w(TAG, "Unable to start activity: " + IntentUtils.getActivityName(intent), e);
+    }
+
+    return false;
   }
 
   private static List<Intent> getManufacturerPowerManagerIntents(String manufacturerName) {

@@ -22,39 +22,11 @@ import static app.notifee.core.ContextHolder.getApplicationContext;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.os.Build;
 import androidx.annotation.Nullable;
 import app.notifee.core.Logger;
-import java.util.List;
 
 public class IntentUtils {
   private static final String TAG = "IntentUtils";
-
-  @SuppressWarnings("deprecation")
-  public static boolean isAvailableOnDevice(Context ctx, Intent intent) {
-    try {
-      if (ctx == null || intent == null) {
-        return false;
-      }
-
-      final PackageManager mgr = ctx.getPackageManager();
-      List<ResolveInfo> list;
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        list =
-            mgr.queryIntentActivities(
-                intent, PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_DEFAULT_ONLY));
-      } else {
-        list = mgr.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
-      }
-      return !list.isEmpty();
-    } catch (Exception e) {
-      Logger.e(TAG, "An error occurred whilst trying to check if intent is available on device", e);
-
-      return false;
-    }
-  }
 
   public static String getActivityName(Intent intent) {
     if (intent == null) {
