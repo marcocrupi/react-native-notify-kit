@@ -19,6 +19,7 @@ package app.notifee.core.model;
 
 import android.os.Bundle;
 import androidx.annotation.NonNull;
+import app.notifee.core.utility.BundleValueReader;
 import app.notifee.core.utility.ObjectUtils;
 import java.util.Calendar;
 import java.util.concurrent.TimeUnit;
@@ -46,9 +47,11 @@ public class TimestampTriggerModel {
     // set initial values
     TimeUnit timeUnit = null;
     if (mTimeTriggerBundle.containsKey("repeatFrequency")) {
-      int repeatFrequency = ObjectUtils.getInt(mTimeTriggerBundle.get("repeatFrequency"));
-      mRepeatInterval = getRepeatInterval(mTimeTriggerBundle.get("repeatInterval"));
-      mTimestamp = ObjectUtils.getLong(mTimeTriggerBundle.get("timestamp"));
+      int repeatFrequency =
+          BundleValueReader.getIntPreserving(mTimeTriggerBundle, "repeatFrequency");
+      mRepeatInterval =
+          getRepeatInterval(BundleValueReader.getValue(mTimeTriggerBundle, "repeatInterval"));
+      mTimestamp = BundleValueReader.getLongPreserving(mTimeTriggerBundle, "timestamp");
 
       switch (repeatFrequency) {
         case -1:
@@ -81,7 +84,7 @@ public class TimestampTriggerModel {
 
       Bundle alarmManagerBundle = mTimeTriggerBundle.getBundle("alarmManager");
 
-      Object typeObj = alarmManagerBundle.get("type");
+      Object typeObj = BundleValueReader.getValue(alarmManagerBundle, "type");
 
       int type;
       if (typeObj != null) {
