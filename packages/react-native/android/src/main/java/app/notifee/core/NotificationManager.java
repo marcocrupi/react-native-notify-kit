@@ -745,7 +745,7 @@ class NotificationManager {
 
   static ListenableFuture<Void> createTriggerNotification(
       NotificationModel notificationModel, Bundle triggerBundle) {
-    int triggerType = ObjectUtils.getInt(triggerBundle.get("type"));
+    int triggerType = BundleValueReader.getIntPreserving(triggerBundle, "type");
     ListenableFuture<Void> scheduleFuture;
     switch (triggerType) {
       case 0:

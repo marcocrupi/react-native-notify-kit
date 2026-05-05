@@ -37,6 +37,7 @@ import app.notifee.core.model.NotificationAndroidModel;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.model.TimestampTriggerModel;
 import app.notifee.core.utility.AlarmUtils;
+import app.notifee.core.utility.BundleValueReader;
 import app.notifee.core.utility.ExtendedListenableFuture;
 import app.notifee.core.utility.ObjectUtils;
 import com.google.common.util.concurrent.FutureCallback;
@@ -195,7 +196,8 @@ class NotifeeAlarmManager {
                   NotificationManager.displayNotification(notificationModel, triggerBundle),
                   voidDisplayedNotification -> {
                     if (triggerBundle.containsKey("repeatFrequency")
-                        && ObjectUtils.getInt(triggerBundle.get("repeatFrequency")) != -1) {
+                        && BundleValueReader.getIntPreserving(triggerBundle, "repeatFrequency")
+                            != -1) {
                       TimestampTriggerModel trigger =
                           TimestampTriggerModel.fromBundle(triggerBundle);
                       // scheduleTimestampTriggerNotification() calls setNextTimestamp()
@@ -424,7 +426,7 @@ class NotifeeAlarmManager {
     NotificationModel notificationModel =
         NotificationModel.fromBundle(ObjectUtils.bytesToBundle(notificationBytes));
 
-    int triggerType = ObjectUtils.getInt(triggerBundle.get("type"));
+    int triggerType = BundleValueReader.getIntPreserving(triggerBundle, "type");
 
     switch (triggerType) {
       case 0:
