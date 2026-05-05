@@ -199,7 +199,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
 
     override fun getChannelGroup(channelGroupId: String, promise: Promise) {
         Notifee.getInstance()
-            .getChannel(channelGroupId) { e, bundle ->
+            .getChannelGroup(channelGroupId) { e, bundle ->
                 NotifeeReactUtils.promiseResolver(promise, e, bundle)
             }
     }
