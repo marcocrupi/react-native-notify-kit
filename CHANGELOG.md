@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.3.0] - 2026-05-05
+
 ### Changed
 
 - **Android**: centralized internal Bundle and Parcelable compatibility reads through `BundleValueReader` and `ParcelableCompatReader`, cleaning up deprecated Android access paths without changing public APIs, JavaScript payloads, scheduling policy, Room persistence, reboot recovery, foreground service behavior, or PendingIntent behavior.
