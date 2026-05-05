@@ -61,6 +61,7 @@ import app.notifee.core.model.NotificationAndroidPressActionModel;
 import app.notifee.core.model.NotificationAndroidStyleModel;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.model.TimestampTriggerModel;
+import app.notifee.core.utility.BundleValueReader;
 import app.notifee.core.utility.ExtendedListenableFuture;
 import app.notifee.core.utility.IntentUtils;
 import app.notifee.core.utility.ObjectUtils;
@@ -903,19 +904,19 @@ class NotificationManager {
               notificationBundle = new Bundle();
               notificationBundle.putString("id", "" + sbNotification.getId());
 
-              Object title = extras.get(Notification.EXTRA_TITLE);
+              Object title = BundleValueReader.getValue(extras, Notification.EXTRA_TITLE);
 
               if (title != null) {
                 notificationBundle.putString("title", title.toString());
               }
 
-              Object text = extras.get(Notification.EXTRA_TEXT);
+              Object text = BundleValueReader.getValue(extras, Notification.EXTRA_TEXT);
 
               if (text != null) {
                 notificationBundle.putString("body", text.toString());
               }
 
-              Object subtitle = extras.get(Notification.EXTRA_SUB_TEXT);
+              Object subtitle = BundleValueReader.getValue(extras, Notification.EXTRA_SUB_TEXT);
 
               if (subtitle != null) {
                 notificationBundle.putString("subtitle", subtitle.toString());
@@ -934,7 +935,8 @@ class NotificationManager {
 
               displayNotificationBundle.putString("id", "" + sbNotification.getId());
             } else {
-              displayNotificationBundle.putString("id", "" + notificationBundle.get("id"));
+              displayNotificationBundle.putString(
+                  "id", String.valueOf(BundleValueReader.getValue(notificationBundle, "id")));
             }
 
             if (triggerBundle != null) {
@@ -979,7 +981,7 @@ class NotificationManager {
       if (!shouldIncludeInData(key)) {
         continue;
       }
-      Object value = extras.get(key);
+      Object value = BundleValueReader.getValue(extras, key);
       if (value != null) {
         dataBundle.putString(key, value.toString());
       }
