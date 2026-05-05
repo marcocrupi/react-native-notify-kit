@@ -9,11 +9,11 @@ with notifications, and also hook onto events when the interaction occurs.
 
 ## Press Action
 
-By default, tapping a notification opens the app's main activity — equivalent to `pressAction: { id: 'default', launchActivity: 'default' }`. This default is applied when `android.pressAction` is omitted. To create a non-tappable notification (the notification displays but tapping it does nothing), pass `pressAction: null` explicitly. The Android guidelines suggest a notification should always be tappable, but opt-outs are sometimes useful for status-only displays.
+By default, tapping a notification opens the app's main activity — equivalent to `pressAction: { id: 'default', launchActivity: 'default' }`. This default is applied when `android.pressAction` is omitted. To create a non-tappable notification, pass `pressAction: null` explicitly. In that opt-out state, the notification body does not open the app, emit `PRESS`, or populate `getInitialNotification()`. The Android guidelines suggest a notification should always be tappable, but opt-outs are sometimes useful for status-only displays.
 
 You can override the default to customize exactly _how_ the application opens, to launch a different Activity, or to run a background task — the options are described below.
 
-If a notification is pressed, a `PRESS` [event](/react-native/events) is published to any subscribers regardless of the configured `pressAction`.
+If the notification body is pressed and body tap is enabled, a `PRESS` [event](/react-native/events) is published to subscribers. Action buttons are independent from the body tap and emit `ACTION_PRESS` separately.
 
 ### Simple behaviour
 

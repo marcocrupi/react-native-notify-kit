@@ -358,9 +358,12 @@ export enum EventType {
   DISMISSED = 0,
 
   /**
-   * Event type is sent when a notification has been pressed by the user.
+   * Event type is sent when the user presses a notification body and body tap is enabled.
    *
-   * On Android, notifications must include an `android.pressAction` property for this event to trigger.
+   * On Android, omitted `android.pressAction` defaults to opening the app and can emit this
+   * event. Setting `android.pressAction` to `null` disables the notification body tap and
+   * prevents `PRESS`/`getInitialNotification()` from that body tap. Action buttons emit
+   * `ACTION_PRESS` separately.
    *
    * On iOS, this event is always sent when the user presses a notification.
    */

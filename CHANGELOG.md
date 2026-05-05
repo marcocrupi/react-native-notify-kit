@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android**: `pressAction: null` now fully disables notification body taps. The notification body no longer opens the app, emits `PRESS`, or populates `getInitialNotification()` when the press action is explicitly opted out. Action buttons remain unaffected.
 - **Android**: fixed `getChannelGroup()` delegating to the channel API instead of the channel group API.
 
 ### Tests
