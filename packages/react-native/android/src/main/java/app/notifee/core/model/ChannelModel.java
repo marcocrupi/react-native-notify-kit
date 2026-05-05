@@ -23,7 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
-import app.notifee.core.utility.ObjectUtils;
+import app.notifee.core.utility.BundleValueReader;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -72,11 +72,8 @@ public class ChannelModel {
   }
 
   public Integer getImportance() {
-    if (mChannelBundle.containsKey("importance")) {
-      return ObjectUtils.getInt(mChannelBundle.get("importance"));
-    }
-
-    return NotificationManagerCompat.IMPORTANCE_DEFAULT;
+    return BundleValueReader.getIntPreserving(
+        mChannelBundle, "importance", NotificationManagerCompat.IMPORTANCE_DEFAULT);
   }
 
   public @Nullable Integer getLightColor() {
@@ -88,11 +85,8 @@ public class ChannelModel {
   }
 
   public int getVisibility() {
-    if (mChannelBundle.containsKey("visibility")) {
-      return ObjectUtils.getInt(mChannelBundle.get("visibility"));
-    }
-
-    return NotificationCompat.VISIBILITY_PRIVATE;
+    return BundleValueReader.getIntPreserving(
+        mChannelBundle, "visibility", NotificationCompat.VISIBILITY_PRIVATE);
   }
 
   // Bundle.getParcelableArrayList returns ArrayList<?>, so the (Integer) cast is inherently
