@@ -76,7 +76,8 @@ public class NotificationAndroidModel {
 
     ArrayList<?> foregroundServiceTypesArrayList =
         Objects.requireNonNull(
-            mNotificationAndroidBundle.getParcelableArrayList("foregroundServiceTypes"));
+            BundleValueReader.getArrayListValue(
+                mNotificationAndroidBundle, "foregroundServiceTypes"));
 
     if (foregroundServiceTypesArrayList.isEmpty()) {
       Logger.w(TAG, "foregroundServiceTypes is empty; treating as absent");
@@ -324,14 +325,15 @@ public class NotificationAndroidModel {
    *
    * @return ArrayList<Integer>
    */
-  // Bundle.getParcelableArrayList returns ArrayList<?>, so element casts to String/Integer
+  // BundleValueReader.getArrayListValue returns ArrayList<?>, so element casts to String/Integer
   // are inherently unchecked but correct for our serialization format.
   @SuppressWarnings("unchecked")
   public @Nullable ArrayList<Integer> getLights() {
     if (mNotificationAndroidBundle.containsKey("lights")) {
       try {
         ArrayList<?> lightList =
-            Objects.requireNonNull(mNotificationAndroidBundle.getParcelableArrayList("lights"));
+            Objects.requireNonNull(
+                BundleValueReader.getArrayListValue(mNotificationAndroidBundle, "lights"));
         String rawColor = (String) lightList.get(0);
 
         ArrayList<Integer> lights = new ArrayList<>(3);
@@ -400,7 +402,8 @@ public class NotificationAndroidModel {
     }
 
     ArrayList<?> flagsArrayList =
-        Objects.requireNonNull(mNotificationAndroidBundle.getParcelableArrayList("flags"));
+        Objects.requireNonNull(
+            BundleValueReader.getArrayListValue(mNotificationAndroidBundle, "flags"));
 
     int[] flagsArray = new int[flagsArrayList.size()];
 
@@ -495,8 +498,8 @@ public class NotificationAndroidModel {
           Objects.requireNonNull(mNotificationAndroidBundle.getBundle("progress"));
 
       return new AndroidProgress(
-          ObjectUtils.getInt(progressBundle.get("max")),
-          ObjectUtils.getInt(progressBundle.get("current")),
+          BundleValueReader.getIntPreserving(progressBundle, "max"),
+          BundleValueReader.getIntPreserving(progressBundle, "current"),
           progressBundle.getBoolean("indeterminate", false));
     }
 
@@ -636,7 +639,7 @@ public class NotificationAndroidModel {
    *
    * @return long[]
    */
-  // Bundle.getParcelableArrayList returns ArrayList<?>, so the (Integer) cast is inherently
+  // BundleValueReader.getArrayListValue returns ArrayList<?>, so the (Integer) cast is inherently
   // unchecked but correct for our serialization format.
   @SuppressWarnings("unchecked")
   public long[] getVibrationPattern() {
@@ -646,7 +649,7 @@ public class NotificationAndroidModel {
 
     ArrayList<?> vibrationPattern =
         Objects.requireNonNull(
-            mNotificationAndroidBundle.getParcelableArrayList("vibrationPattern"));
+            BundleValueReader.getArrayListValue(mNotificationAndroidBundle, "vibrationPattern"));
 
     long[] vibrateArray = new long[vibrationPattern.size()];
 

@@ -89,7 +89,7 @@ public class ChannelModel {
         mChannelBundle, "visibility", NotificationCompat.VISIBILITY_PRIVATE);
   }
 
-  // Bundle.getParcelableArrayList returns ArrayList<?>, so the (Integer) cast is inherently
+  // BundleValueReader.getArrayListValue returns ArrayList<?>, so the (Integer) cast is inherently
   // unchecked but correct for our serialization format.
   @SuppressWarnings("unchecked")
   public long[] getVibrationPattern() {
@@ -98,7 +98,8 @@ public class ChannelModel {
     }
 
     ArrayList<?> vibrationPattern =
-        Objects.requireNonNull(mChannelBundle.getParcelableArrayList("vibrationPattern"));
+        Objects.requireNonNull(
+            BundleValueReader.getArrayListValue(mChannelBundle, "vibrationPattern"));
 
     long[] vibrateArray = new long[vibrationPattern.size()];
 
