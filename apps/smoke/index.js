@@ -32,18 +32,11 @@ const EVENT_NAMES = Object.fromEntries(
 notifee.onBackgroundEvent(async ({ type, detail }) => {
   const typeName = EVENT_NAMES[type] ?? String(type);
   console.log(
-    '[BackgroundEvent]',
-    typeName,
-    'id:',
-    detail.notification?.id,
-    'title:',
-    detail.notification?.title,
-    'actionId:',
-    detail.pressAction?.id,
-    'input:',
-    detail.input,
-    'data:',
-    JSON.stringify(detail.notification?.data),
+    `[BackgroundEvent] type=${typeName} id=${detail.notification?.id ?? '?'} ` +
+      `action=${detail.pressAction?.id ?? 'n/a'} ` +
+      `title=${detail.notification?.title ?? '?'} ` +
+      `input=${detail.input ?? 'n/a'} ` +
+      `data=${JSON.stringify(detail.notification?.data)}`,
   );
   Alert.alert(
     `BackgroundEvent (${typeName})`,

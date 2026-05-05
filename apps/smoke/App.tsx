@@ -138,6 +138,13 @@ function App() {
   useEffect(() => {
     notifee.getInitialNotification().then(initialNotification => {
       if (initialNotification) {
+        console.log(
+          `[InitialNotification] id=${initialNotification.notification.id ?? '?'} ` +
+            `action=${initialNotification.pressAction?.id ?? 'n/a'} ` +
+            `title=${initialNotification.notification.title ?? '?'} ` +
+            `input=${initialNotification.input ?? 'n/a'} ` +
+            `data=${JSON.stringify(initialNotification.notification.data)}`,
+        );
         log(`getInitialNotification: ${JSON.stringify(initialNotification)}`);
         Alert.alert(
           'Notifee getInitialNotification',
@@ -194,10 +201,10 @@ function App() {
   useEffect(() => {
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       const typeName = EventType[type] || String(type);
-      log(
-        `ForegroundEvent: ${typeName} id=${detail.notification?.id ?? '?'} ` +
+      console.log(
+        `[ForegroundEvent] type=${typeName} id=${detail.notification?.id ?? '?'} ` +
+          `action=${detail.pressAction?.id ?? 'n/a'} ` +
           `title=${detail.notification?.title ?? '?'} ` +
-          `actionId=${detail.pressAction?.id ?? 'n/a'} ` +
           `input=${detail.input ?? 'n/a'} ` +
           `data=${JSON.stringify(detail.notification?.data)}`,
       );
@@ -250,6 +257,18 @@ function App() {
     [log],
   );
 
+  const ensureDefaultAndroidChannel = async () => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    await notifee.createChannel({
+      id: 'default',
+      name: 'Default Channel',
+      importance: AndroidImportance.HIGH,
+    });
+  };
+
   const createChannel = () =>
     run('createChannel', () =>
       notifee.createChannel({
@@ -271,6 +290,79 @@ function App() {
       return notifee.displayNotification({
         title: 'Test Notification',
         body: `Sent at ${new Date().toLocaleTimeString()}`,
+        android: { channelId: 'default' },
+      });
+    });
+
+  const displayAndroidEventActionNoLaunch = () =>
+    run('AndroidEventActionNoLaunch', async () => {
+      await ensureDefaultAndroidChannel();
+      await notifee.cancelNotification('smoke-action-no-launch');
+      return notifee.displayNotification({
+        id: 'smoke-action-no-launch',
+        title: 'Smoke Action No Launch',
+        body: 'Tap NO_LAUNCH_ACTION',
+        data: { smokeScenario: 'action-no-launch' },
+        android: {
+          channelId: 'default',
+          pressAction: null,
+          actions: [
+            {
+              title: 'NO_LAUNCH_ACTION',
+              pressAction: { id: 'smoke-no-launch-action' },
+            },
+          ],
+        },
+      });
+    });
+
+  const displayAndroidEventActionWithLaunch = () =>
+    run('AndroidEventActionWithLaunch', async () => {
+      await ensureDefaultAndroidChannel();
+      await notifee.cancelNotification('smoke-action-with-launch');
+      return notifee.displayNotification({
+        id: 'smoke-action-with-launch',
+        title: 'Smoke Action With Launch',
+        body: 'Tap LAUNCH_ACTION',
+        data: { smokeScenario: 'action-with-launch' },
+        android: {
+          channelId: 'default',
+          pressAction: null,
+          actions: [
+            {
+              title: 'LAUNCH_ACTION',
+              pressAction: { id: 'smoke-launch-action', launchActivity: 'default' },
+            },
+          ],
+        },
+      });
+    });
+
+  const displayAndroidEventPressActionNull = () =>
+    run('AndroidEventPressActionNull', async () => {
+      await ensureDefaultAndroidChannel();
+      await notifee.cancelNotification('smoke-pressaction-null');
+      return notifee.displayNotification({
+        id: 'smoke-pressaction-null',
+        title: 'Smoke PressAction Null',
+        body: 'Body tap should not open the app',
+        data: { smokeScenario: 'pressaction-null' },
+        android: {
+          channelId: 'default',
+          pressAction: null,
+        },
+      });
+    });
+
+  const displayAndroidEventDefaultBody = () =>
+    run('AndroidEventDefaultBody', async () => {
+      await ensureDefaultAndroidChannel();
+      await notifee.cancelNotification('smoke-default-body');
+      return notifee.displayNotification({
+        id: 'smoke-default-body',
+        title: 'Smoke Default Body',
+        body: 'Body tap should open the app',
+        data: { smokeScenario: 'default-body' },
         android: { channelId: 'default' },
       });
     });
@@ -707,6 +799,18 @@ function App() {
         { label: 'cancelAllNotifications', onPress: cancelAll },
         { label: 'getDisplayedNotifications', onPress: getDisplayed },
         { label: 'getNotificationSettings', onPress: getSettings },
+      ],
+    },
+    {
+      title: 'Android Event Dispatch',
+      buttons: [
+        { label: 'Android Event: Action no launch', onPress: displayAndroidEventActionNoLaunch },
+        { label: 'Android Event: Action with launch', onPress: displayAndroidEventActionWithLaunch },
+        {
+          label: 'Android Event: PressAction null immediate',
+          onPress: displayAndroidEventPressActionNull,
+        },
+        { label: 'Android Event: Default body tap', onPress: displayAndroidEventDefaultBody },
       ],
     },
     {
