@@ -26,6 +26,7 @@ import androidx.core.app.Person;
 import androidx.core.graphics.drawable.IconCompat;
 import app.notifee.core.Logger;
 import app.notifee.core.utility.ObjectUtils;
+import app.notifee.core.utility.ParcelableCompatReader;
 import app.notifee.core.utility.ResourceUtils;
 import app.notifee.core.utility.TextUtils;
 import com.google.common.util.concurrent.Futures;
@@ -312,7 +313,8 @@ public class NotificationAndroidStyleModel {
           }
 
           ArrayList<Bundle> messages =
-              mNotificationAndroidStyleBundle.getParcelableArrayList("messages");
+              ParcelableCompatReader.getParcelableArrayList(
+                  mNotificationAndroidStyleBundle, "messages", Bundle.class);
 
           for (int i = 0; i < Objects.requireNonNull(messages).size(); i++) {
             Bundle message = messages.get(i);

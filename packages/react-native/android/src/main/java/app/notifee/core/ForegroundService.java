@@ -39,6 +39,7 @@ import app.notifee.core.event.ForegroundServiceEvent;
 import app.notifee.core.event.NotificationEvent;
 import app.notifee.core.interfaces.MethodCallResult;
 import app.notifee.core.model.NotificationModel;
+import app.notifee.core.utility.ParcelableCompatReader;
 
 public class ForegroundService extends Service {
   private static final String TAG = "ForegroundService";
@@ -186,7 +187,8 @@ public class ForegroundService extends Service {
       if (extras != null) {
         // Hash code is sent to service to ensure it is kept the same
         int hashCode = extras.getInt("hashCode");
-        Notification notification = extras.getParcelable("notification");
+        Notification notification =
+            ParcelableCompatReader.getParcelable(extras, "notification", Notification.class);
         Bundle bundle = extras.getBundle("notificationBundle");
 
         if (notification != null && bundle != null) {

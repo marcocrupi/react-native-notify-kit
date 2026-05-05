@@ -30,6 +30,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import app.notifee.core.Logger;
 import app.notifee.core.utility.ObjectUtils;
+import app.notifee.core.utility.ParcelableCompatReader;
 import app.notifee.core.utility.ResourceUtils;
 import java.util.ArrayList;
 import java.util.Objects;
@@ -50,7 +51,9 @@ public class NotificationAndroidModel {
   public @Nullable ArrayList<NotificationAndroidActionModel> getActions() {
     if (mNotificationAndroidBundle.containsKey("actions")) {
       ArrayList<Bundle> actionBundles =
-          Objects.requireNonNull(mNotificationAndroidBundle.getParcelableArrayList("actions"));
+          Objects.requireNonNull(
+              ParcelableCompatReader.getParcelableArrayList(
+                  mNotificationAndroidBundle, "actions", Bundle.class));
       ArrayList<NotificationAndroidActionModel> actions = new ArrayList<>(actionBundles.size());
 
       for (Bundle actionBundle : actionBundles) {
