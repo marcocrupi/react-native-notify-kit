@@ -5,6 +5,7 @@
  * Usage:
  *   yarn send:test:fcm <device-token> <scenario>
  *   node scripts/send-test-fcm.js <device-token> <scenario>
+ *   IOS_FCM_TOKEN=<device-token> node scripts/send-test-fcm.js <scenario>
  *
  * Scenarios: minimal | kitchen-sink | emoji | marketing | ios-attachment | android-big-picture
  *
@@ -20,6 +21,7 @@
 const path = require('path');
 
 const SERVICE_ACCOUNT_PATH = path.resolve(__dirname, '..', 'firebase-notifykittest.json');
+const TOKEN_ENV_KEYS = ['IOS_FCM_TOKEN', 'FCM_TOKEN'];
 
 function loadFirebaseAdmin() {
   try {
@@ -40,9 +42,6 @@ function loadBuildNotifyKitPayload() {
     process.exit(1);
   }
 }
-
-const admin = loadFirebaseAdmin();
-const buildNotifyKitPayload = loadBuildNotifyKitPayload();
 
 function normalizePayloadForFirebaseAdmin(payload) {
   const normalized = { ...payload };
@@ -170,15 +169,171 @@ const SCENARIOS = {
   },
 };
 
-async function main() {
-  const [, , token, scenario] = process.argv;
+function printUsage(stream = process.stdout) {
+  stream.write(
+    [
+      'Usage: yarn send:test:fcm <device-token> <scenario> [--correlation-id <id>]',
+      '   or: node scripts/send-test-fcm.js <device-token> <scenario> [--correlation-id <id>]',
+      '   or: IOS_FCM_TOKEN=<device-token> node scripts/send-test-fcm.js <scenario> [--correlation-id <id>]',
+      'Scenarios: ' + Object.keys(SCENARIOS).join(', '),
+      'Token fallback env: IOS_FCM_TOKEN, FCM_TOKEN',
+      'Correlation fallback env: SMOKE_CORRELATION_ID',
+    ].join('\n') + '\n',
+  );
+}
 
-  if (!token || !scenario || !SCENARIOS[scenario]) {
-    console.error('Usage: yarn send:test:fcm <device-token> <scenario>');
-    console.error('   or: node scripts/send-test-fcm.js <device-token> <scenario>');
-    console.error('Scenarios:', Object.keys(SCENARIOS).join(', '));
+function envToken(env) {
+  for (const key of TOKEN_ENV_KEYS) {
+    const value = env[key];
+    if (typeof value === 'string' && value.length > 0) {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+function hasScenario(scenario) {
+  return Object.prototype.hasOwnProperty.call(SCENARIOS, scenario);
+}
+
+function parseArgs(argv, env) {
+  const parsed = {
+    correlationId: '',
+    error: '',
+    help: false,
+    scenario: '',
+    token: '',
+  };
+  const positional = [];
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+
+    if (arg === '-h' || arg === '--help') {
+      parsed.help = true;
+      return parsed;
+    }
+
+    if (arg === '--correlation-id') {
+      const value = argv[index + 1];
+      if (typeof value !== 'string' || value.length === 0) {
+        parsed.error = 'Missing value for --correlation-id.';
+        return parsed;
+      }
+      parsed.correlationId = value;
+      index += 1;
+      continue;
+    }
+
+    const correlationPrefix = '--correlation-id=';
+    if (arg.startsWith(correlationPrefix)) {
+      const value = arg.slice(correlationPrefix.length);
+      if (value.length === 0) {
+        parsed.error = 'Missing value for --correlation-id.';
+        return parsed;
+      }
+      parsed.correlationId = value;
+      continue;
+    }
+
+    if (arg.startsWith('--')) {
+      parsed.error = `Unknown option: ${arg}`;
+      return parsed;
+    }
+
+    positional.push(arg);
+  }
+
+  if (positional.length > 2) {
+    parsed.error = `Unexpected argument: ${positional[2]}`;
+    return parsed;
+  }
+
+  const fallbackToken = envToken(env);
+  if (positional.length === 2) {
+    parsed.token = positional[0];
+    parsed.scenario = positional[1];
+  } else if (positional.length === 1 && hasScenario(positional[0])) {
+    parsed.token = fallbackToken;
+    parsed.scenario = positional[0];
+  } else if (positional.length === 1) {
+    parsed.token = positional[0];
+  } else {
+    parsed.token = fallbackToken;
+  }
+
+  if (parsed.correlationId.length === 0 && typeof env.SMOKE_CORRELATION_ID === 'string') {
+    parsed.correlationId = env.SMOKE_CORRELATION_ID;
+  }
+
+  return parsed;
+}
+
+function smokeNotificationIdFor(correlationId) {
+  return correlationId.startsWith('smoke-') ? correlationId : `smoke-${correlationId}`;
+}
+
+function scenarioConfigFor(scenario, correlationId) {
+  const config = SCENARIOS[scenario];
+  if (scenario !== 'minimal' || correlationId.length === 0) {
+    return config;
+  }
+
+  const smokeNotificationId = smokeNotificationIdFor(correlationId);
+
+  return {
+    ...config,
+    notification: {
+      ...config.notification,
+      id: smokeNotificationId,
+      title: `NotifyKit Smoke minimal ${correlationId}`,
+      body: `Smoke FCM minimal ${correlationId}`,
+      data: {
+        ...(config.notification.data ?? {}),
+        correlationId,
+        smokeNotificationId,
+      },
+    },
+  };
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2), process.env);
+
+  if (args.help) {
+    printUsage();
+    return;
+  }
+
+  if (args.error) {
+    console.error(args.error);
+    printUsage(process.stderr);
     process.exit(1);
   }
+
+  const { correlationId, scenario, token } = args;
+
+  if (!token) {
+    console.error('Missing FCM device token. Provide <device-token>, IOS_FCM_TOKEN, or FCM_TOKEN.');
+    printUsage(process.stderr);
+    process.exit(1);
+  }
+
+  if (!scenario) {
+    console.error('Missing scenario.');
+    printUsage(process.stderr);
+    process.exit(1);
+  }
+
+  if (!hasScenario(scenario)) {
+    console.error(`Unknown scenario: ${scenario}`);
+    printUsage(process.stderr);
+    process.exit(1);
+  }
+
+  const admin = loadFirebaseAdmin();
+  const buildNotifyKitPayload = loadBuildNotifyKitPayload();
 
   try {
     const serviceAccount = require(SERVICE_ACCOUNT_PATH);
@@ -193,12 +348,16 @@ async function main() {
     process.exit(1);
   }
 
-  const payload = buildNotifyKitPayload({ ...SCENARIOS[scenario], token });
+  const scenarioConfig = scenarioConfigFor(scenario, correlationId);
+  const payload = buildNotifyKitPayload({ ...scenarioConfig, token });
   const sendPayload = normalizePayloadForFirebaseAdmin(payload);
 
   console.log('Sending FCM message:');
   console.log('  Token:', token.substring(0, 20) + '...');
   console.log('  Scenario:', scenario);
+  if (correlationId.length > 0) {
+    console.log('  Correlation ID:', correlationId);
+  }
   console.log('  Payload size:', payload.sizeBytes, 'bytes');
 
   try {

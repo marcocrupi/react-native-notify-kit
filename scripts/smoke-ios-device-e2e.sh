@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." >/dev/null 2>&1 && pwd)"
+
 DEFAULT_IOS_DEVICE_ID="C274F5E5-B73D-556F-9589-E384F79EF805"
 IOS_DEVICE_ID="${IOS_DEVICE_ID:-}"
 IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-org.reactjs.native.example.NotifeeExample}"
 SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-45}"
 SMOKE_LAUNCH_TIMEOUT_SECONDS="${SMOKE_LAUNCH_TIMEOUT_SECONDS:-15}"
 SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS="${SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS:-2}"
+SMOKE_FCM_WAIT_SECONDS="${SMOKE_FCM_WAIT_SECONDS:-8}"
 SMOKE_CALLBACK_HOST="${SMOKE_CALLBACK_HOST:-}"
 SMOKE_CALLBACK_PORT="${SMOKE_CALLBACK_PORT:-}"
 XCRUN="${XCRUN:-xcrun}"
@@ -33,6 +37,7 @@ Usage:
   scripts/smoke-ios-device-e2e.sh displayed
   scripts/smoke-ios-device-e2e.sh local-display <id>
   scripts/smoke-ios-device-e2e.sh verify-displayed <id>
+  scripts/smoke-ios-device-e2e.sh fcm-minimal <id>
 
 Deep links:
   notifykit://smoke/run/fcm-token
@@ -46,8 +51,11 @@ Environment:
   SMOKE_TIMEOUT_SECONDS=$SMOKE_TIMEOUT_SECONDS
   SMOKE_LAUNCH_TIMEOUT_SECONDS=$SMOKE_LAUNCH_TIMEOUT_SECONDS
   SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS=$SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS
+  SMOKE_FCM_WAIT_SECONDS=$SMOKE_FCM_WAIT_SECONDS
   SMOKE_CALLBACK_HOST=${SMOKE_CALLBACK_HOST:-<auto-detect en0/en1>}
   SMOKE_CALLBACK_PORT=${SMOKE_CALLBACK_PORT:-<auto; default 49152>}
+  IOS_FCM_TOKEN=${IOS_FCM_TOKEN:+<set>}
+  FCM_TOKEN=${FCM_TOKEN:+<set>}
   XCRUN=$XCRUN
 
 Exit codes:
@@ -58,9 +66,11 @@ Exit codes:
   4  missing or unsupported local configuration or callback failure
 
 Notes:
-  - This wrapper does not build, install, clean up, or send FCM messages.
+  - This wrapper does not build, install, or clean up.
+  - Only fcm-minimal sends a real FCM message; all other commands are local/deep-link flows.
   - The smoke app must already be installed on the selected physical device.
   - Scenario commands launch the deep link and wait for a matching HTTP callback.
+  - fcm-minimal sends, waits SMOKE_FCM_WAIT_SECONDS, then verifies via displayed-notification callback.
   - If devicectl --payload-url does not produce a callback, the wrapper dispatches
     the same deep link through the Metro inspector after the fallback delay.
   - launch-url is a launcher-only utility and does not wait for SMOKE:RESULT.
@@ -85,6 +95,15 @@ require_arg() {
 
   if [[ -z "$value" ]]; then
     fail_config "Missing $name."
+  fi
+}
+
+require_non_negative_integer() {
+  local value="${1:-}"
+  local name="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+    fail_config "$name must be a non-negative integer."
   fi
 }
 
@@ -983,6 +1002,54 @@ verify_displayed() {
   wait_for_smoke_result_via_callback "verify-displayed" "$expected_id" "$id" "$url"
 }
 
+resolve_fcm_token() {
+  if [[ -n "${IOS_FCM_TOKEN:-}" ]]; then
+    printf '%s' "$IOS_FCM_TOKEN"
+    return
+  fi
+
+  if [[ -n "${FCM_TOKEN:-}" ]]; then
+    printf '%s' "$FCM_TOKEN"
+    return
+  fi
+
+  printf '%s' ""
+}
+
+fcm_minimal() {
+  local id="$1"
+  local token
+
+  require_arg "$id" "id"
+  require_non_negative_integer "$SMOKE_FCM_WAIT_SECONDS" "SMOKE_FCM_WAIT_SECONDS"
+
+  token="$(resolve_fcm_token)"
+  if [[ -z "$token" ]]; then
+    fail_config "Missing IOS_FCM_TOKEN or FCM_TOKEN for fcm-minimal."
+  fi
+
+  if [[ ! -f "$REPO_ROOT/firebase-notifykittest.json" ]]; then
+    fail_config "Missing firebase-notifykittest.json in repo root."
+  fi
+
+  if ! command -v node >/dev/null 2>&1; then
+    fail_config "Node.js is required to send fcm-minimal."
+  fi
+
+  echo "[smoke-ios-device-e2e] sending FCM minimal correlationId=$id"
+  (
+    cd "$REPO_ROOT"
+    IOS_FCM_TOKEN="$token" node scripts/send-test-fcm.js minimal --correlation-id "$id"
+  )
+
+  if ((SMOKE_FCM_WAIT_SECONDS > 0)); then
+    echo "[smoke-ios-device-e2e] waiting ${SMOKE_FCM_WAIT_SECONDS}s before verify-displayed"
+    sleep "$SMOKE_FCM_WAIT_SECONDS"
+  fi
+
+  verify_displayed "$id"
+}
+
 parse_result_test() {
   if ! command -v node >/dev/null 2>&1; then
     fail_config "Node.js is required to run parse-result-test."
@@ -1029,6 +1096,9 @@ main() {
       ;;
     verify-displayed)
       verify_displayed "${2:-}"
+      ;;
+    fcm-minimal)
+      fcm_minimal "${2:-}"
       ;;
     *)
       echo "Unknown command: $command" >&2
