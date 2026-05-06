@@ -21,9 +21,63 @@
 #import "NotifeeCoreDelegateHolder.h"
 #import "NotifeeCoreUtil.h"
 
+typedef void (^NotifeeCorePresentationCompletionHandler)(
+    UNNotificationPresentationOptions options);
+typedef void (^NotifeeCoreVoidCompletionHandler)(void);
+
 @interface NotifeeCore (RollingTimestampTopUp)
 + (void)topUpRollingTimestampTriggersWithCompletion:(void (^)(NSError *error))completion;
 @end
+
+@interface NotifeeCoreUNUserNotificationCenter ()
+- (void)refreshOriginalDelegateSelectorFlags;
+- (void)rechainUserNotificationCenterDelegate;
+@end
+
+static NotifeeCorePresentationCompletionHandler NotifeeCoreOneShotPresentationCompletionHandler(
+    NotifeeCorePresentationCompletionHandler completionHandler) {
+  NSObject *completionLock = [NSObject new];
+  __block BOOL completionCalled = NO;
+
+  NotifeeCorePresentationCompletionHandler oneShotCompletionHandler =
+      ^(UNNotificationPresentationOptions options) {
+        BOOL shouldCallCompletion = NO;
+        @synchronized(completionLock) {
+          if (!completionCalled) {
+            completionCalled = YES;
+            shouldCallCompletion = YES;
+          }
+        }
+
+        if (shouldCallCompletion && completionHandler != nil) {
+          completionHandler(options);
+        }
+      };
+
+  return [oneShotCompletionHandler copy];
+}
+
+static NotifeeCoreVoidCompletionHandler NotifeeCoreOneShotVoidCompletionHandler(
+    NotifeeCoreVoidCompletionHandler completionHandler) {
+  NSObject *completionLock = [NSObject new];
+  __block BOOL completionCalled = NO;
+
+  NotifeeCoreVoidCompletionHandler oneShotCompletionHandler = ^{
+    BOOL shouldCallCompletion = NO;
+    @synchronized(completionLock) {
+      if (!completionCalled) {
+        completionCalled = YES;
+        shouldCallCompletion = YES;
+      }
+    }
+
+    if (shouldCallCompletion && completionHandler != nil) {
+      completionHandler();
+    }
+  };
+
+  return [oneShotCompletionHandler copy];
+}
 
 @implementation NotifeeCoreUNUserNotificationCenter
 
@@ -47,25 +101,41 @@ struct {
 }
 
 - (void)observe {
-  static dispatch_once_t once;
-  __weak NotifeeCoreUNUserNotificationCenter *weakSelf = self;
-  dispatch_once(&once, ^{
-    NotifeeCoreUNUserNotificationCenter *strongSelf = weakSelf;
+  [self rechainUserNotificationCenterDelegate];
+}
+
+- (void)refreshOriginalDelegateSelectorFlags {
+  id<UNUserNotificationCenterDelegate> originalDelegate = self.originalDelegate;
+
+  originalUNCDelegateRespondsTo.openSettingsForNotification =
+      originalDelegate != nil &&
+      [originalDelegate respondsToSelector:@selector(userNotificationCenter:
+                                          openSettingsForNotification:)];
+  originalUNCDelegateRespondsTo.willPresentNotification =
+      originalDelegate != nil &&
+      [originalDelegate respondsToSelector:@selector(userNotificationCenter:
+                                          willPresentNotification:withCompletionHandler:)];
+  originalUNCDelegateRespondsTo.didReceiveNotificationResponse =
+      originalDelegate != nil &&
+      [originalDelegate respondsToSelector:@selector(userNotificationCenter:
+                                          didReceiveNotificationResponse:
+                                              withCompletionHandler:)];
+}
+
+- (void)rechainUserNotificationCenterDelegate {
+  @synchronized(self) {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-    if (center.delegate != nil) {
-      _originalDelegate = center.delegate;
-      originalUNCDelegateRespondsTo.openSettingsForNotification = (unsigned int)[_originalDelegate
-          respondsToSelector:@selector(userNotificationCenter:openSettingsForNotification:)];
-      originalUNCDelegateRespondsTo.willPresentNotification = (unsigned int)[_originalDelegate
-          respondsToSelector:@selector(userNotificationCenter:
-                                      willPresentNotification:withCompletionHandler:)];
-      originalUNCDelegateRespondsTo.didReceiveNotificationResponse =
-          (unsigned int)[_originalDelegate
-              respondsToSelector:@selector(userNotificationCenter:
-                                     didReceiveNotificationResponse:withCompletionHandler:)];
+    id<UNUserNotificationCenterDelegate> currentDelegate = center.delegate;
+
+    if (currentDelegate == self) {
+      [self refreshOriginalDelegateSelectorFlags];
+      return;
     }
-    center.delegate = strongSelf;
-  });
+
+    self.originalDelegate = currentDelegate;
+    [self refreshOriginalDelegateSelectorFlags];
+    center.delegate = self;
+  }
 }
 
 - (void)markInitialNotificationGathered {
@@ -176,9 +246,11 @@ struct {
     }
 
   } else if (_originalDelegate != nil && originalUNCDelegateRespondsTo.willPresentNotification) {
+    NotifeeCorePresentationCompletionHandler oneShotCompletionHandler =
+        NotifeeCoreOneShotPresentationCompletionHandler(completionHandler);
     [_originalDelegate userNotificationCenter:center
                       willPresentNotification:notification
-                        withCompletionHandler:completionHandler];
+                        withCompletionHandler:oneShotCompletionHandler];
   } else {
     // No original delegate captured and the notification is not Notifee-owned.
     // Returning UNNotificationPresentationOptionNone would silently drop the
@@ -214,9 +286,11 @@ struct {
       // Flag OFF: always forward to original delegate, never parse as Notifee
       if (_originalDelegate != nil &&
           originalUNCDelegateRespondsTo.didReceiveNotificationResponse) {
+        NotifeeCoreVoidCompletionHandler oneShotCompletionHandler =
+            NotifeeCoreOneShotVoidCompletionHandler(completionHandler);
         [_originalDelegate userNotificationCenter:center
                    didReceiveNotificationResponse:response
-                            withCompletionHandler:completionHandler];
+                            withCompletionHandler:oneShotCompletionHandler];
       } else {
         completionHandler();
       }
@@ -224,9 +298,11 @@ struct {
     }
     // Flag ON (default): existing behavior
     if (_originalDelegate != nil && originalUNCDelegateRespondsTo.didReceiveNotificationResponse) {
+      NotifeeCoreVoidCompletionHandler oneShotCompletionHandler =
+          NotifeeCoreOneShotVoidCompletionHandler(completionHandler);
       [_originalDelegate userNotificationCenter:center
                  didReceiveNotificationResponse:response
-                          withCompletionHandler:completionHandler];
+                          withCompletionHandler:oneShotCompletionHandler];
       return;
     } else {
       notifeeNotification =

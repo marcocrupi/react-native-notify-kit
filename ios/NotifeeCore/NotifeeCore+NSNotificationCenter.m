@@ -24,6 +24,10 @@
 + (void)topUpRollingTimestampTriggersWithCompletion:(void (^)(NSError *error))completion;
 @end
 
+@interface NotifeeCoreUNUserNotificationCenter (Rechain)
+- (void)rechainUserNotificationCenterDelegate;
+@end
+
 @implementation NotifeeCoreNSNotificationCenter
 
 + (instancetype)instance {
@@ -75,6 +79,8 @@
 }
 
 - (void)application_didBecomeActiveNotification:(nonnull NSNotification *)notification {
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
+
   [NotifeeCore topUpRollingTimestampTriggersWithCompletion:^(NSError *error) {
     if (error != nil) {
       NSLog(@"NotifeeCore: Failed to top up rolling timestamp triggers after app became active: %@",

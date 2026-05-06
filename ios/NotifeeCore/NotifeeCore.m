@@ -26,6 +26,10 @@
 #import "NotifeeCoreExtensionHelper.h"
 #import "NotifeeCoreUtil.h"
 
+@interface NotifeeCoreUNUserNotificationCenter (Rechain)
+- (void)rechainUserNotificationCenterDelegate;
+@end
+
 static NSString *const kNotifeeRollingPublicId = @"notifee_rolling_public_id";
 static NSString *const kNotifeeRollingOccurrenceMs = @"notifee_rolling_occurrence_ms";
 static NSString *const kNotifeeRollingInternalId = @"notifee_rolling_internal_id";
@@ -1140,6 +1144,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
  * @param block notifeeMethodVoidBlock
  */
 + (void)displayNotification:(NSDictionary *)notification withBlock:(notifeeMethodVoidBlock)block {
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
+
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     UNMutableNotificationContent *content = [self buildNotificationContent:notification
                                                                withTrigger:nil];
@@ -1223,6 +1229,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 + (void)createTriggerNotification:(NSDictionary *)notification
                       withTrigger:(NSDictionary *)trigger
                         withBlock:(notifeeMethodVoidBlock)block {
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
+
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
     UNMutableNotificationContent *content =
         [self triggerNotificationContentForNotification:notification trigger:trigger];
@@ -1543,6 +1551,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
  */
 + (void)requestPermission:(NSDictionary *)permissions
                 withBlock:(notifeeMethodNSDictionaryBlock)block {
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
+
   UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
 
   UNAuthorizationOptions options = UNAuthorizationOptionNone;
@@ -1678,6 +1688,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
 }
 
 + (void)getInitialNotification:(notifeeMethodNSDictionaryBlock)block {
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
+
   [NotifeeCoreUNUserNotificationCenter instance].initialNotificationBlock = block;
   [[NotifeeCoreUNUserNotificationCenter instance] getInitialNotification];
 }
@@ -1784,6 +1796,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
     [NotifeeCoreUNUserNotificationCenter instance].shouldHandleRemoteNotifications =
         [config[@"ios"][@"handleRemoteNotifications"] boolValue];
   }
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
   block(nil);
 }
 

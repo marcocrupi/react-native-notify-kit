@@ -18,6 +18,11 @@
 #import "NotifeeApiModule.h"
 #import <React/RCTUtils.h>
 #import <UIKit/UIKit.h>
+#import "NotifeeCore+UNUserNotificationCenter.h"
+
+@interface NotifeeCoreUNUserNotificationCenter (Rechain)
+- (void)rechainUserNotificationCenterDelegate;
+@end
 
 static NSString *kReactNativeNotifeeNotificationEvent = @"app.notifee.notification-event";
 static NSString *kReactNativeNotifeeNotificationBackgroundEvent =
@@ -56,6 +61,8 @@ RCT_EXPORT_MODULE();
 }
 
 - (void)startObserving {
+  [[NotifeeCoreUNUserNotificationCenter instance] rechainUserNotificationCenterDelegate];
+
   NSArray *eventsToFlush;
   @synchronized(self) {
     hasListeners = YES;
