@@ -274,9 +274,21 @@ function smokeNotificationIdFor(correlationId) {
   return correlationId.startsWith('smoke-') ? correlationId : `smoke-${correlationId}`;
 }
 
+const CORRELATABLE_SCENARIO_TEXT = {
+  minimal: {
+    title: correlationId => `NotifyKit Smoke minimal ${correlationId}`,
+    body: correlationId => `Smoke FCM minimal ${correlationId}`,
+  },
+  'ios-attachment': {
+    title: correlationId => `NotifyKit Smoke attachment ${correlationId}`,
+    body: correlationId => `Smoke FCM iOS attachment ${correlationId}`,
+  },
+};
+
 function scenarioConfigFor(scenario, correlationId) {
   const config = SCENARIOS[scenario];
-  if (scenario !== 'minimal' || correlationId.length === 0) {
+  const text = CORRELATABLE_SCENARIO_TEXT[scenario];
+  if (!text || correlationId.length === 0) {
     return config;
   }
 
@@ -287,8 +299,8 @@ function scenarioConfigFor(scenario, correlationId) {
     notification: {
       ...config.notification,
       id: smokeNotificationId,
-      title: `NotifyKit Smoke minimal ${correlationId}`,
-      body: `Smoke FCM minimal ${correlationId}`,
+      title: text.title(correlationId),
+      body: text.body(correlationId),
       data: {
         ...(config.notification.data ?? {}),
         correlationId,

@@ -10,6 +10,8 @@ IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-org.reactjs.native.example.NotifeeExample}"
 SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-45}"
 SMOKE_LAUNCH_TIMEOUT_SECONDS="${SMOKE_LAUNCH_TIMEOUT_SECONDS:-15}"
 SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS="${SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS:-2}"
+SMOKE_FCM_WAIT_SECONDS_ENV="${SMOKE_FCM_WAIT_SECONDS:-}"
+SMOKE_FCM_ATTACHMENT_WAIT_SECONDS_ENV="${SMOKE_FCM_ATTACHMENT_WAIT_SECONDS:-}"
 SMOKE_FCM_WAIT_SECONDS="${SMOKE_FCM_WAIT_SECONDS:-8}"
 SMOKE_CALLBACK_HOST="${SMOKE_CALLBACK_HOST:-}"
 SMOKE_CALLBACK_PORT="${SMOKE_CALLBACK_PORT:-}"
@@ -22,7 +24,15 @@ EXIT_CONFIG=4
 
 usage() {
   local device_help
+  local attachment_wait_help
   device_help="${IOS_DEVICE_ID:-<auto-detect; fallback: $DEFAULT_IOS_DEVICE_ID>}"
+  if [[ -n "$SMOKE_FCM_ATTACHMENT_WAIT_SECONDS_ENV" ]]; then
+    attachment_wait_help="$SMOKE_FCM_ATTACHMENT_WAIT_SECONDS_ENV"
+  elif [[ -n "$SMOKE_FCM_WAIT_SECONDS_ENV" ]]; then
+    attachment_wait_help="<unset; using SMOKE_FCM_WAIT_SECONDS=$SMOKE_FCM_WAIT_SECONDS_ENV>"
+  else
+    attachment_wait_help="<unset; default 12>"
+  fi
 
   cat <<EOF
 iOS smoke device automation wrapper
@@ -38,6 +48,7 @@ Usage:
   scripts/smoke-ios-device-e2e.sh local-display <id>
   scripts/smoke-ios-device-e2e.sh verify-displayed <id>
   scripts/smoke-ios-device-e2e.sh fcm-minimal <id>
+  scripts/smoke-ios-device-e2e.sh fcm-ios-attachment <id>
 
 Deep links:
   notifykit://smoke/run/fcm-token
@@ -52,6 +63,7 @@ Environment:
   SMOKE_LAUNCH_TIMEOUT_SECONDS=$SMOKE_LAUNCH_TIMEOUT_SECONDS
   SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS=$SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS
   SMOKE_FCM_WAIT_SECONDS=$SMOKE_FCM_WAIT_SECONDS
+  SMOKE_FCM_ATTACHMENT_WAIT_SECONDS=$attachment_wait_help
   SMOKE_CALLBACK_HOST=${SMOKE_CALLBACK_HOST:-<auto-detect en0/en1>}
   SMOKE_CALLBACK_PORT=${SMOKE_CALLBACK_PORT:-<auto; default 49152>}
   IOS_FCM_TOKEN=${IOS_FCM_TOKEN:+<set>}
@@ -67,10 +79,12 @@ Exit codes:
 
 Notes:
   - This wrapper does not build, install, or clean up.
-  - Only fcm-minimal sends a real FCM message; all other commands are local/deep-link flows.
+  - Only fcm-minimal and fcm-ios-attachment send real FCM messages; all other commands are local/deep-link flows.
   - The smoke app must already be installed on the selected physical device.
   - Scenario commands launch the deep link and wait for a matching HTTP callback.
   - fcm-minimal sends, waits SMOKE_FCM_WAIT_SECONDS, then verifies via displayed-notification callback.
+  - fcm-ios-attachment: Sends a real FCM ios-attachment push, waits, then verifies displayed notification by id.
+  - fcm-ios-attachment: Does not visually verify the attachment.
   - If devicectl --payload-url does not produce a callback, the wrapper dispatches
     the same deep link through the Metro inspector after the fallback delay.
   - launch-url is a launcher-only utility and does not wait for SMOKE:RESULT.
@@ -1016,6 +1030,40 @@ resolve_fcm_token() {
   printf '%s' ""
 }
 
+resolve_fcm_attachment_wait_seconds() {
+  if [[ -n "$SMOKE_FCM_ATTACHMENT_WAIT_SECONDS_ENV" ]]; then
+    printf '%s' "$SMOKE_FCM_ATTACHMENT_WAIT_SECONDS_ENV"
+    return
+  fi
+
+  if [[ -n "$SMOKE_FCM_WAIT_SECONDS_ENV" ]]; then
+    printf '%s' "$SMOKE_FCM_WAIT_SECONDS_ENV"
+    return
+  fi
+
+  printf '%s' "12"
+}
+
+require_callback_port_config() {
+  local port="$SMOKE_CALLBACK_PORT"
+
+  if [[ -z "$SMOKE_CALLBACK_PORT" ]]; then
+    return
+  fi
+
+  if [[ ! "$port" =~ ^[0-9]+$ ]] || ((10#$port < 1 || 10#$port > 65535)); then
+    fail_config "SMOKE_CALLBACK_PORT must be an integer from 1 to 65535."
+  fi
+}
+
+require_fcm_verify_config() {
+  require_wait_support
+  require_arg "$IOS_BUNDLE_ID" "IOS_BUNDLE_ID"
+  require_callback_port_config
+  resolve_device_id
+  resolve_callback_host
+}
+
 fcm_minimal() {
   local id="$1"
   local token
@@ -1045,6 +1093,45 @@ fcm_minimal() {
   if ((SMOKE_FCM_WAIT_SECONDS > 0)); then
     echo "[smoke-ios-device-e2e] waiting ${SMOKE_FCM_WAIT_SECONDS}s before verify-displayed"
     sleep "$SMOKE_FCM_WAIT_SECONDS"
+  fi
+
+  verify_displayed "$id"
+}
+
+fcm_ios_attachment() {
+  local id="$1"
+  local token
+  local wait_seconds
+
+  require_arg "$id" "id"
+  wait_seconds="$(resolve_fcm_attachment_wait_seconds)"
+  require_non_negative_integer "$wait_seconds" "SMOKE_FCM_ATTACHMENT_WAIT_SECONDS or SMOKE_FCM_WAIT_SECONDS"
+  wait_seconds=$((10#$wait_seconds))
+
+  token="$(resolve_fcm_token)"
+  if [[ -z "$token" ]]; then
+    fail_config "Missing IOS_FCM_TOKEN or FCM_TOKEN for fcm-ios-attachment."
+  fi
+
+  if [[ ! -f "$REPO_ROOT/firebase-notifykittest.json" ]]; then
+    fail_config "Missing firebase-notifykittest.json in repo root."
+  fi
+
+  if ! command -v node >/dev/null 2>&1; then
+    fail_config "Node.js is required to send fcm-ios-attachment."
+  fi
+
+  require_fcm_verify_config
+
+  echo "[smoke-ios-device-e2e] sending FCM ios-attachment correlationId=$id"
+  (
+    cd "$REPO_ROOT"
+    IOS_FCM_TOKEN="$token" node scripts/send-test-fcm.js ios-attachment --correlation-id "$id"
+  )
+
+  if ((wait_seconds > 0)); then
+    echo "[smoke-ios-device-e2e] waiting ${wait_seconds}s before verify-displayed"
+    sleep "$wait_seconds"
   fi
 
   verify_displayed "$id"
@@ -1099,6 +1186,9 @@ main() {
       ;;
     fcm-minimal)
       fcm_minimal "${2:-}"
+      ;;
+    fcm-ios-attachment)
+      fcm_ios_attachment "${2:-}"
       ;;
     *)
       echo "Unknown command: $command" >&2
