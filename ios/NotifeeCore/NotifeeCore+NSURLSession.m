@@ -18,18 +18,35 @@
 #import "NotifeeCore+NSURLSession.h"
 #import "NotifeeCoreDownloadDelegate.h"
 
+static NSTimeInterval const kNotifeeAttachmentDownloadTimeoutInterval = 25.0;
+
 @implementation NotifeeCoreNSURLSession
+
++ (NSURLSessionConfiguration *)attachmentDownloadSessionConfiguration {
+  NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+  config.timeoutIntervalForRequest = kNotifeeAttachmentDownloadTimeoutInterval;
+  config.timeoutIntervalForResource = kNotifeeAttachmentDownloadTimeoutInterval;
+  return config;
+}
+
++ (nullable NSString *)fileExtensionFromSuggestedFilename:(nullable NSString *)suggestedFilename {
+  NSString *suggestedPathExtension = [suggestedFilename pathExtension];
+  if (suggestedPathExtension.length == 0) {
+    return nil;
+  }
+
+  return [NSString stringWithFormat:@".%@", suggestedPathExtension];
+}
 
 + (NSString *)downloadItemAtURL:(NSURL *)url toFile:(NSString *)localPath error:(NSError **)error {
   NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:url];
+  request.timeoutInterval = kNotifeeAttachmentDownloadTimeoutInterval;
 
   NotifeeCoreDownloadDelegate *delegate =
       [[NotifeeCoreDownloadDelegate alloc] initWithFilePath:localPath];
 
-  // The session is created with the defaultSessionConfiguration
-  // default timeoutIntervalForRequest is 60 seconds.
   NSURLSession *session =
-      [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]
+      [NSURLSession sessionWithConfiguration:[self attachmentDownloadSessionConfiguration]
                                     delegate:delegate
                                delegateQueue:nil];
 

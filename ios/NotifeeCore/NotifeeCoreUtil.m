@@ -23,6 +23,12 @@
 #include <math.h>
 #import "NotifeeCore+NSURLSession.h"
 
+@interface NotifeeCoreNSURLSession (NotifeeCoreUtil)
+
++ (nullable NSString *)fileExtensionFromSuggestedFilename:(nullable NSString *)suggestedFilename;
+
+@end
+
 static NSString *const kNotifeeRollingTimestampTriggersStorageKey =
     @"app.notifee.core.rollingTimestampTriggers.v1";
 static NSString *const kNotifeeRollingInternalIdPrefix = @"__notifee_rolling__";
@@ -266,12 +272,14 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
     // Rename the recently downloaded file to include its file extension
     NSFileManager *fileManager = [NSFileManager defaultManager];
 
-    NSString *fileExtension = [NSString stringWithFormat:@".%@", [suggestedFilename pathExtension]];
+    NSString *fileExtension =
+        [NotifeeCoreNSURLSession fileExtensionFromSuggestedFilename:suggestedFilename];
 
-    if (!fileExtension || [fileExtension isEqualToString:@""]) {
+    if (fileExtension.length == 0) {
       NSLog(@"NotifeeCore: Failed to determine file extension for attachment "
-            @"with URL %@: %@",
-            urlString, error);
+            @"with URL %@ and suggested filename %@",
+            urlString, suggestedFilename);
+      [fileManager removeItemAtPath:tempDestination error:nil];
       return nil;
     }
 
