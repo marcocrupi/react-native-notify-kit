@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.3.2] - 2026-05-06
+
+### Fixed
+
+- **iOS**: hardened Notification Service Extension payload handling for FCM Mode. `notifee_options` is now accepted both as the FCM Mode JSON string and as the legacy/manual APNs dictionary shape. Malformed, unexpected, or non-dictionary payload shapes now fall back safely instead of risking notification delivery failure.
+- **iOS**: guarded Notification Service Extension delivery so the content handler is called at most once across normal completion and `serviceExtensionTimeWillExpire` races.
+- **iOS**: scoped Notification Service Extension helper state per request so overlapping or late attachment completions do not reuse stale singleton state from another notification request.
+- **iOS**: fixed `getNotificationCategories()` readback for `UNTextInputNotificationAction` actions. Text input actions are now detected from the action instance instead of the action class object.
+- **iOS**: hardened the non-NSE local attachment downloader by applying explicit request/resource timeouts and avoiding invalid `"."` file suffixes when a downloaded attachment has no usable filename extension. Notifications continue to fall back without the attachment when the file type cannot be determined.
+
+### Tests
+
+- **Tests**: added a lightweight ObjC harness for Notification Service Extension payload parsing, malformed payload fallback, one-shot delivery, and request-scoped helper behavior.
+- **Tests**: added a lightweight ObjC harness for the iOS non-NSE local attachment downloader timeout and filename-extension handling.
+- **Smoke app**: added iOS device automation hooks with deep-link scenarios, stable `SMOKE:RESULT` / `SMOKE:EVENT` markers, and a local HTTP callback result channel for script-readable PASS/FAIL results.
+- **Smoke app**: added iOS device smoke automation for local notification display, displayed-notification verification, FCM minimal delivery, and FCM iOS attachment delivery. The attachment smoke verifies logical notification delivery; visual attachment rendering still requires manual confirmation or future UI automation.
+
 ## [10.3.1] - 2026-05-06
 
 ### Fixed

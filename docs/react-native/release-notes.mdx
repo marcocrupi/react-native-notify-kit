@@ -5,6 +5,21 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.3.2] (2026-05-06)
+
+### Fixed
+
+- **iOS**: hardened Notification Service Extension handling for FCM Mode payloads. The extension now accepts `notifee_options` both as the FCM Mode JSON string and as the legacy/manual APNs dictionary shape, with safe fallback for malformed or unexpected payloads.
+- **iOS**: guarded Notification Service Extension delivery against duplicate `contentHandler` calls during normal-completion / timeout races.
+- **iOS**: scoped Notification Service Extension helper state per request, reducing the risk of stale state when attachment completions arrive late.
+- **iOS**: fixed `getNotificationCategories()` readback for text input notification actions.
+- **iOS**: hardened the non-NSE local attachment downloader with explicit timeouts and safer filename-extension handling.
+
+### Tests
+
+- Added ObjC harness coverage for NSE payload parsing/fallback and local attachment downloader behavior.
+- Added iOS device smoke automation with callback-based PASS/FAIL results for local notifications, displayed-notification verification, FCM minimal delivery, and FCM iOS attachment delivery.
+
 ## [10.3.1] (2026-05-06)
 
 ### Fixed
