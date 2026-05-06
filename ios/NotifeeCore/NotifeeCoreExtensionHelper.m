@@ -24,75 +24,51 @@ static NSString *const kNoExtension = @"";
 static NSString *const kImagePathPrefix = @"image/";
 
 @interface NotifeeCoreExtensionHelper ()
-@property(nonatomic, assign) BOOL notificationDelivered;
+- (NSMutableDictionary *)parseNotifeeOptions:(id)payload;
+- (void)loadAttachment:(NSDictionary *)attachmentDict
+     completionHandler:(void (^)(UNNotificationAttachment *))completionHandler;
 @end
 
-@implementation NotifeeCoreExtensionHelper
-+ (NotifeeCoreExtensionHelper *)instance {
-  static dispatch_once_t once;
-  static NotifeeCoreExtensionHelper *instance;
-  dispatch_once(&once, ^{
-    instance = [[self alloc] init];
-  });
+@interface NotifeeCoreExtensionRequestContext : NSObject
+@property(nonatomic, strong) NotifeeCoreExtensionHelper *helper;
+@property(nonatomic, copy) void (^contentHandler)(UNNotificationContent *content);
+@property(nonatomic, strong) UNMutableNotificationContent *modifiedContent;
+@property(nonatomic, assign) BOOL notificationDelivered;
 
-  return instance;
-}
+- (instancetype)initWithHelper:(NotifeeCoreExtensionHelper *)helper
+                       content:(UNMutableNotificationContent *)content
+                contentHandler:(void (^)(UNNotificationContent *content))contentHandler;
+- (void)populateNotificationContentWithRequest:(UNNotificationRequest *_Nullable)request;
+- (void)processCommunicationData:(NSMutableDictionary *)options;
+- (void)handleAttachmentsAndDeliverNotificaiton:(NSMutableDictionary *)options;
+- (void)deliverNotification;
+@end
 
-- (NSMutableDictionary *)parseNotifeeOptions:(id)payload {
-  if ([payload isKindOfClass:[NSDictionary class]]) {
-    return [payload mutableCopy];
-  }
+@implementation NotifeeCoreExtensionRequestContext
 
-  if ([payload isKindOfClass:[NSString class]]) {
-    NSData *optionsData = [payload dataUsingEncoding:NSUTF8StringEncoding];
-    if (optionsData == nil) {
-      NSLog(@"NotifeeCoreExtensionHelper: Could not decode notifee_options string as UTF-8");
-      return nil;
-    }
-
-    NSError *error = nil;
-    id jsonObject = [NSJSONSerialization JSONObjectWithData:optionsData
-                                                    options:NSJSONReadingFragmentsAllowed
-                                                      error:&error];
-
-    if (error != nil) {
-      NSLog(@"NotifeeCoreExtensionHelper: Could not parse notifee_options JSON: %@", error);
-      return nil;
-    }
-
-    if (![jsonObject isKindOfClass:[NSDictionary class]]) {
-      NSLog(@"NotifeeCoreExtensionHelper: Ignoring notifee_options JSON because it is not a "
-            @"dictionary: %@",
-            NSStringFromClass([jsonObject class]));
-      return nil;
-    }
-
-    return [jsonObject mutableCopy];
-  }
-
-  NSLog(@"NotifeeCoreExtensionHelper: Ignoring notifee_options because it is not a dictionary "
-        @"or JSON string: %@",
-        NSStringFromClass([payload class]));
-  return nil;
-}
-
-- (void)populateNotificationContent:(UNNotificationRequest *_Nullable)request
-                        withContent:(UNMutableNotificationContent *)content
-                 withContentHandler:(void (^)(UNNotificationContent *_Nonnull))contentHandler {
-  @synchronized(self) {
+- (instancetype)initWithHelper:(NotifeeCoreExtensionHelper *)helper
+                       content:(UNMutableNotificationContent *)content
+                contentHandler:(void (^)(UNNotificationContent *content))contentHandler {
+  self = [super init];
+  if (self != nil) {
+    self.helper = helper;
     self.contentHandler = [contentHandler copy];
     self.modifiedContent = content;
     self.notificationDelivered = NO;
   }
 
-  id notifeeOptionsPayload = content.userInfo[kPayloadOptionsName];
+  return self;
+}
+
+- (void)populateNotificationContentWithRequest:(UNNotificationRequest *_Nullable)request {
+  id notifeeOptionsPayload = self.modifiedContent.userInfo[kPayloadOptionsName];
   if (!notifeeOptionsPayload) {
     [self deliverNotification];
     return;
   }
 
   // fcm: apns: { payload: {notifee_options: "{}" } }
-  NSMutableDictionary *options = [self parseNotifeeOptions:notifeeOptionsPayload];
+  NSMutableDictionary *options = [self.helper parseNotifeeOptions:notifeeOptionsPayload];
   if (options == nil) {
     [self deliverNotification];
     return;
@@ -110,7 +86,7 @@ static NSString *const kImagePathPrefix = @"image/";
     options[@"id"] = request.identifier;
   }
 
-  if (options[@"title"] == nil && content.title != nil) {
+  if (options[@"title"] == nil && self.modifiedContent.title != nil) {
     options[@"title"] = self.modifiedContent.title;
   }
 
@@ -185,14 +161,100 @@ static NSString *const kImagePathPrefix = @"image/";
   }
 
   // Attempt to download attachment
-  [self loadAttachment:attachmentDict
-      completionHandler:^(UNNotificationAttachment *attachment) {
-        if (attachment != nil) {
-          self.modifiedContent.attachments = @[ attachment ];
-        }
+  [self.helper loadAttachment:attachmentDict
+            completionHandler:^(UNNotificationAttachment *attachment) {
+              if (attachment != nil) {
+                @synchronized(self) {
+                  if (!self.notificationDelivered && self.modifiedContent != nil) {
+                    self.modifiedContent.attachments = @[ attachment ];
+                  }
+                }
+              }
 
-        [self deliverNotification];
-      }];
+              [self deliverNotification];
+            }];
+}
+
+- (void)deliverNotification {
+  void (^contentHandler)(UNNotificationContent *) = nil;
+  UNNotificationContent *modifiedContent = nil;
+
+  @synchronized(self) {
+    if (self.notificationDelivered || self.contentHandler == nil) {
+      return;
+    }
+
+    contentHandler = [self.contentHandler copy];
+    modifiedContent = self.modifiedContent;
+    self.notificationDelivered = YES;
+    self.contentHandler = nil;
+    self.modifiedContent = nil;
+  }
+
+  if (contentHandler != nil && modifiedContent != nil) {
+    contentHandler(modifiedContent);
+  }
+}
+
+@end
+
+@implementation NotifeeCoreExtensionHelper
++ (NotifeeCoreExtensionHelper *)instance {
+  static dispatch_once_t once;
+  static NotifeeCoreExtensionHelper *instance;
+  dispatch_once(&once, ^{
+    instance = [[self alloc] init];
+  });
+
+  return instance;
+}
+
+- (NSMutableDictionary *)parseNotifeeOptions:(id)payload {
+  if ([payload isKindOfClass:[NSDictionary class]]) {
+    return [payload mutableCopy];
+  }
+
+  if ([payload isKindOfClass:[NSString class]]) {
+    NSData *optionsData = [payload dataUsingEncoding:NSUTF8StringEncoding];
+    if (optionsData == nil) {
+      NSLog(@"NotifeeCoreExtensionHelper: Could not decode notifee_options string as UTF-8");
+      return nil;
+    }
+
+    NSError *error = nil;
+    id jsonObject = [NSJSONSerialization JSONObjectWithData:optionsData
+                                                    options:NSJSONReadingFragmentsAllowed
+                                                      error:&error];
+
+    if (error != nil) {
+      NSLog(@"NotifeeCoreExtensionHelper: Could not parse notifee_options JSON: %@", error);
+      return nil;
+    }
+
+    if (![jsonObject isKindOfClass:[NSDictionary class]]) {
+      NSLog(@"NotifeeCoreExtensionHelper: Ignoring notifee_options JSON because it is not a "
+            @"dictionary: %@",
+            NSStringFromClass([jsonObject class]));
+      return nil;
+    }
+
+    return [jsonObject mutableCopy];
+  }
+
+  NSLog(@"NotifeeCoreExtensionHelper: Ignoring notifee_options because it is not a dictionary "
+        @"or JSON string: %@",
+        NSStringFromClass([payload class]));
+  return nil;
+}
+
+- (void)populateNotificationContent:(UNNotificationRequest *_Nullable)request
+                        withContent:(UNMutableNotificationContent *)content
+                 withContentHandler:(void (^)(UNNotificationContent *_Nonnull))contentHandler {
+  NotifeeCoreExtensionRequestContext *context =
+      [[NotifeeCoreExtensionRequestContext alloc] initWithHelper:self
+                                                         content:content
+                                                  contentHandler:contentHandler];
+  [context populateNotificationContentWithRequest:request];
 }
 
 - (NSString *)fileExtensionForResponse:(NSURLResponse *)response {
@@ -267,27 +329,6 @@ static NSString *const kImagePathPrefix = @"image/";
     NSLog(@"NotifeeCoreExtensionHelper: Failed to create attachment: %@, error %@", attachmentDict,
           exception.reason);
     completionHandler(nil);
-  }
-}
-
-- (void)deliverNotification {
-  void (^contentHandler)(UNNotificationContent *) = nil;
-  UNNotificationContent *modifiedContent = nil;
-
-  @synchronized(self) {
-    if (self.notificationDelivered || self.contentHandler == nil) {
-      return;
-    }
-
-    contentHandler = [self.contentHandler copy];
-    modifiedContent = self.modifiedContent;
-    self.notificationDelivered = YES;
-    self.contentHandler = nil;
-    self.modifiedContent = nil;
-  }
-
-  if (contentHandler != nil && modifiedContent != nil) {
-    contentHandler(modifiedContent);
   }
 }
 

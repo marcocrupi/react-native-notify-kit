@@ -17,6 +17,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UserNotifications/UserNotifications.h>
+#import <objc/runtime.h>
 #import "NotifeeCore.h"
 #import "NotifeeCoreExtensionHelper.h"
 #import "NotifeeCoreUtil.h"
@@ -25,11 +26,16 @@ static NSString *const kHarnessOriginalTitle = @"Original title";
 static NSString *const kHarnessOriginalBody = @"Original body";
 static NSString *const kHarnessRequestIdentifier = @"harness-request-id";
 
+typedef void (^HarnessAttachmentCompletion)(UNNotificationAttachment *attachment);
+
 static NSInteger gFailures = 0;
 static NSDictionary *gLastBuiltNotification = nil;
+static BOOL gCaptureAttachmentDownloads = NO;
+static NSMutableArray *gPendingAttachmentCompletions = nil;
 
 @interface NotifeeCoreExtensionHelper (PayloadHarness)
-- (void)deliverNotification;
+- (void)loadAttachment:(NSDictionary *)attachmentDict
+     completionHandler:(void (^)(UNNotificationAttachment *))completionHandler;
 @end
 
 @implementation NotifeeCore
@@ -103,47 +109,44 @@ static NSDictionary *HarnessUserInfoWithOptions(id options) {
 @property(nonatomic, strong) UNNotificationContent *deliveredContent;
 @property(nonatomic, strong) NSException *exception;
 @property(nonatomic, strong) UNMutableNotificationContent *originalContent;
+@property(nonatomic, strong) NSDictionary *builtNotification;
 @end
 
 @implementation HarnessResult
 @end
 
-static HarnessResult *HarnessInvoke(id options, BOOL includeOptionsKey) {
+static HarnessResult *HarnessInvokeWithRequestIdentifier(id options, BOOL includeOptionsKey,
+                                                         NSString *requestIdentifier) {
   gLastBuiltNotification = nil;
 
   NSDictionary *userInfo = includeOptionsKey ? HarnessUserInfoWithOptions(options) : @{};
   UNMutableNotificationContent *content = HarnessContentWithUserInfo(userInfo);
-  UNNotificationRequest *request =
-      [UNNotificationRequest requestWithIdentifier:kHarnessRequestIdentifier
-                                           content:content
-                                           trigger:nil];
+  UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:requestIdentifier
+                                                                        content:content
+                                                                        trigger:nil];
 
-  __block NSInteger handlerCallCount = 0;
-  __block UNNotificationContent *deliveredContent = nil;
-  __block NSException *exception = nil;
+  HarnessResult *result = [[HarnessResult alloc] init];
+  result.originalContent = content;
 
   NotifeeCoreExtensionHelper *helper = [NotifeeCoreExtensionHelper instance];
-  helper.contentHandler = nil;
-  helper.modifiedContent = nil;
 
   @try {
     [helper populateNotificationContent:request
                             withContent:content
                      withContentHandler:^(UNNotificationContent *contentFromHandler) {
-                       handlerCallCount += 1;
-                       deliveredContent = contentFromHandler;
+                       result.handlerCallCount += 1;
+                       result.deliveredContent = contentFromHandler;
                      }];
-    [helper deliverNotification];
   } @catch (NSException *caughtException) {
-    exception = caughtException;
+    result.exception = caughtException;
   }
 
-  HarnessResult *result = [[HarnessResult alloc] init];
-  result.handlerCallCount = handlerCallCount;
-  result.deliveredContent = deliveredContent;
-  result.exception = exception;
-  result.originalContent = content;
+  result.builtNotification = gLastBuiltNotification;
   return result;
+}
+
+static HarnessResult *HarnessInvoke(id options, BOOL includeOptionsKey) {
+  return HarnessInvokeWithRequestIdentifier(options, includeOptionsKey, kHarnessRequestIdentifier);
 }
 
 static void HarnessAssertDeliveredOnce(HarnessResult *result, NSString *testName) {
@@ -159,23 +162,94 @@ static void HarnessAssertOriginalFallback(HarnessResult *result, NSString *testN
                 @"fallback title changed");
   HarnessAssert([result.deliveredContent.body isEqualToString:kHarnessOriginalBody], testName,
                 @"fallback body changed");
-  HarnessAssert(gLastBuiltNotification == nil, testName,
+  HarnessAssert(result.builtNotification == nil, testName,
                 @"malformed payload unexpectedly reached content rebuild");
 }
 
-static void HarnessAssertBuiltNotification(NSString *testName, NSString *title, NSString *body) {
-  HarnessAssert(gLastBuiltNotification != nil, testName,
+static void HarnessAssertBuiltNotification(HarnessResult *result, NSString *testName,
+                                           NSString *title, NSString *body,
+                                           NSString *requestIdentifier) {
+  HarnessAssert(result.builtNotification != nil, testName,
                 @"valid payload did not reach content rebuild");
-  HarnessAssert([gLastBuiltNotification[@"remote"] isEqual:@YES], testName,
+  HarnessAssert([result.builtNotification[@"remote"] isEqual:@YES], testName,
                 @"valid payload did not mark notification as remote");
-  HarnessAssert([gLastBuiltNotification[@"id"] isEqualToString:kHarnessRequestIdentifier], testName,
+  HarnessAssert([result.builtNotification[@"id"] isEqualToString:requestIdentifier], testName,
                 @"valid payload did not default id from request");
-  HarnessAssert([gLastBuiltNotification[@"title"] isEqualToString:title], testName,
+  HarnessAssert([result.builtNotification[@"title"] isEqualToString:title], testName,
                 @"rebuilt title did not match payload");
-  HarnessAssert([gLastBuiltNotification[@"body"] isEqualToString:body], testName,
+  HarnessAssert([result.builtNotification[@"body"] isEqualToString:body], testName,
                 @"rebuilt body did not match payload");
-  HarnessAssert([gLastBuiltNotification[@"data"] isKindOfClass:[NSDictionary class]], testName,
+  HarnessAssert([result.builtNotification[@"data"] isKindOfClass:[NSDictionary class]], testName,
                 @"valid payload did not default data to a dictionary");
+}
+
+static NSDictionary *HarnessPayload(NSString *title, NSString *body) {
+  return @{@"title" : title, @"body" : body};
+}
+
+static NSDictionary *HarnessAttachmentPayload(NSString *title, NSString *body,
+                                              NSString *attachmentIdentifier) {
+  return @{
+    @"title" : title,
+    @"body" : body,
+    @"ios" : @{
+      @"attachments" : @[
+        @{@"id" : attachmentIdentifier, @"url" : @"https://example.invalid/notifee-harness.png"}
+      ]
+    }
+  };
+}
+
+static void HarnessInstallAttachmentStub(void) {
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    Method method = class_getInstanceMethod([NotifeeCoreExtensionHelper class],
+                                            @selector(loadAttachment:completionHandler:));
+    if (method == NULL) {
+      HarnessFail(@"attachmentStub", @"loadAttachment:completionHandler: was not found");
+      return;
+    }
+
+    IMP stubImp = imp_implementationWithBlock(
+        ^(NotifeeCoreExtensionHelper *helper, NSDictionary *attachmentDict,
+          void (^completionHandler)(UNNotificationAttachment *attachment)) {
+          (void)helper;
+          (void)attachmentDict;
+
+          if (gCaptureAttachmentDownloads) {
+            if (gPendingAttachmentCompletions == nil) {
+              gPendingAttachmentCompletions = [NSMutableArray new];
+            }
+            [gPendingAttachmentCompletions addObject:[completionHandler copy]];
+            return;
+          }
+
+          completionHandler(nil);
+        });
+    method_setImplementation(method, stubImp);
+  });
+}
+
+static void HarnessBeginCapturingAttachments(void) {
+  HarnessInstallAttachmentStub();
+  gCaptureAttachmentDownloads = YES;
+  if (gPendingAttachmentCompletions == nil) {
+    gPendingAttachmentCompletions = [NSMutableArray new];
+  }
+  [gPendingAttachmentCompletions removeAllObjects];
+}
+
+static void HarnessEndCapturingAttachments(void) {
+  gCaptureAttachmentDownloads = NO;
+  [gPendingAttachmentCompletions removeAllObjects];
+}
+
+static HarnessAttachmentCompletion HarnessPendingAttachmentCompletionAtIndex(NSUInteger index) {
+  if (gPendingAttachmentCompletions == nil || [gPendingAttachmentCompletions count] <= index) {
+    return nil;
+  }
+
+  return [gPendingAttachmentCompletions[index] copy];
 }
 
 static void TestMissingNotifeeOptionsDeliversOriginalContentOnce(void) {
@@ -201,7 +275,8 @@ static void TestLegacyDictionaryNotifeeOptionsDeliversMutatedContent(void) {
                 @"legacy dictionary title was not delivered");
   HarnessAssert([result.deliveredContent.body isEqualToString:@"Legacy body"], testName,
                 @"legacy dictionary body was not delivered");
-  HarnessAssertBuiltNotification(testName, @"Legacy title", @"Legacy body");
+  HarnessAssertBuiltNotification(result, testName, @"Legacy title", @"Legacy body",
+                                 kHarnessRequestIdentifier);
   HarnessFinishTest(testName, failuresBefore);
 }
 
@@ -218,7 +293,8 @@ static void TestJsonStringDictionaryNotifeeOptionsDeliversMutatedContent(void) {
                 @"JSON string title was not delivered");
   HarnessAssert([result.deliveredContent.body isEqualToString:@"JSON body"], testName,
                 @"JSON string body was not delivered");
-  HarnessAssertBuiltNotification(testName, @"JSON title", @"JSON body");
+  HarnessAssertBuiltNotification(result, testName, @"JSON title", @"JSON body",
+                                 kHarnessRequestIdentifier);
   HarnessFinishTest(testName, failuresBefore);
 }
 
@@ -256,6 +332,104 @@ static void TestUnexpectedNotifeeOptionsTypesFallBackToOriginalContent(void) {
   HarnessFinishTest(testName, failuresBefore);
 }
 
+static void TestSequentialRequestsRemainIndependent(void) {
+  NSString *testName = @"testSequentialRequestsRemainIndependent";
+  NSInteger failuresBefore = gFailures;
+
+  HarnessResult *resultA = HarnessInvokeWithRequestIdentifier(
+      HarnessPayload(@"Request A title", @"Request A body"), YES, @"request-a");
+  HarnessResult *resultB = HarnessInvokeWithRequestIdentifier(
+      HarnessPayload(@"Request B title", @"Request B body"), YES, @"request-b");
+
+  HarnessAssertDeliveredOnce(resultA, testName);
+  HarnessAssertDeliveredOnce(resultB, testName);
+  HarnessAssert([resultA.deliveredContent.title isEqualToString:@"Request A title"], testName,
+                @"request A title changed after request B");
+  HarnessAssert([resultA.deliveredContent.body isEqualToString:@"Request A body"], testName,
+                @"request A body changed after request B");
+  HarnessAssert([resultB.deliveredContent.title isEqualToString:@"Request B title"], testName,
+                @"request B title was not delivered");
+  HarnessAssert([resultB.deliveredContent.body isEqualToString:@"Request B body"], testName,
+                @"request B body was not delivered");
+  HarnessAssert(![resultA.deliveredContent.title isEqualToString:resultB.deliveredContent.title],
+                testName, @"request A and B delivered the same title");
+  HarnessAssertBuiltNotification(resultA, testName, @"Request A title", @"Request A body",
+                                 @"request-a");
+  HarnessAssertBuiltNotification(resultB, testName, @"Request B title", @"Request B body",
+                                 @"request-b");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestAttachmentCompletionIsOneShotPerRequest(void) {
+  NSString *testName = @"testAttachmentCompletionIsOneShotPerRequest";
+  NSInteger failuresBefore = gFailures;
+
+  HarnessBeginCapturingAttachments();
+  HarnessResult *resultA = HarnessInvokeWithRequestIdentifier(
+      HarnessAttachmentPayload(@"One-shot A title", @"One-shot A body", @"one-shot-a"), YES,
+      @"one-shot-a");
+
+  HarnessAssert(resultA.exception == nil, testName, @"request A threw an Objective-C exception");
+  HarnessAssert(resultA.handlerCallCount == 0, testName,
+                @"request A delivered before attachment completion");
+  HarnessAssert([gPendingAttachmentCompletions count] == 1, testName,
+                @"request A did not leave exactly one pending attachment completion");
+
+  HarnessAttachmentCompletion completionA = HarnessPendingAttachmentCompletionAtIndex(0);
+  if (completionA != nil) {
+    completionA(nil);
+    completionA(nil);
+  }
+  HarnessEndCapturingAttachments();
+
+  HarnessAssert(resultA.handlerCallCount == 1, testName,
+                @"request A contentHandler was not one-shot");
+  HarnessAssert([resultA.deliveredContent.title isEqualToString:@"One-shot A title"], testName,
+                @"request A delivered the wrong title");
+
+  HarnessResult *resultB = HarnessInvokeWithRequestIdentifier(
+      HarnessPayload(@"One-shot B title", @"One-shot B body"), YES, @"one-shot-b");
+  HarnessAssertDeliveredOnce(resultB, testName);
+  HarnessAssert([resultB.deliveredContent.title isEqualToString:@"One-shot B title"], testName,
+                @"request B was blocked by request A one-shot state");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestLateAttachmentCompletionUsesOriginalRequestContext(void) {
+  NSString *testName = @"testLateAttachmentCompletionUsesOriginalRequestContext";
+  NSInteger failuresBefore = gFailures;
+
+  HarnessBeginCapturingAttachments();
+  HarnessResult *resultA = HarnessInvokeWithRequestIdentifier(
+      HarnessAttachmentPayload(@"Late A title", @"Late A body", @"late-a"), YES, @"late-a");
+  HarnessAttachmentCompletion completionA = HarnessPendingAttachmentCompletionAtIndex(0);
+
+  HarnessResult *resultB = HarnessInvokeWithRequestIdentifier(
+      HarnessPayload(@"Late B title", @"Late B body"), YES, @"late-b");
+
+  HarnessAssert(resultA.exception == nil, testName, @"request A threw an Objective-C exception");
+  HarnessAssert(resultA.handlerCallCount == 0, testName,
+                @"request A delivered before its attachment completion");
+  HarnessAssertDeliveredOnce(resultB, testName);
+  HarnessAssert([resultB.deliveredContent.title isEqualToString:@"Late B title"], testName,
+                @"request B did not deliver its own content before request A completion");
+
+  if (completionA != nil) {
+    completionA(nil);
+  }
+  HarnessEndCapturingAttachments();
+
+  HarnessAssert(resultA.handlerCallCount == 1, testName,
+                @"late request A completion did not deliver request A once");
+  HarnessAssert(resultB.handlerCallCount == 1, testName,
+                @"late request A completion changed request B delivery count");
+  HarnessAssert([resultA.deliveredContent.title isEqualToString:@"Late A title"], testName,
+                @"late request A completion delivered request B title");
+  HarnessAssert([resultB.deliveredContent.title isEqualToString:@"Late B title"], testName,
+                @"request B title changed after late request A completion");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
 int main(void) {
   @autoreleasepool {
     TestMissingNotifeeOptionsDeliversOriginalContentOnce();
@@ -264,6 +438,9 @@ int main(void) {
     TestInvalidJsonStringFallsBackToOriginalContent();
     TestJsonStringArrayFallsBackToOriginalContent();
     TestUnexpectedNotifeeOptionsTypesFallBackToOriginalContent();
+    TestSequentialRequestsRemainIndependent();
+    TestAttachmentCompletionIsOneShotPerRequest();
+    TestLateAttachmentCompletionUsesOriginalRequestContext();
   }
 
   if (gFailures > 0) {
