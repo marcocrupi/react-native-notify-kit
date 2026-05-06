@@ -1191,7 +1191,8 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                    dispatch_async(dispatch_get_main_queue(), ^{
                      BOOL isApplicationActive = NO;
                      if (![NotifeeCoreUtil isAppExtension]) {
-                       UIApplication *application = [NotifeeCoreUtil notifeeUIApplication];
+                       UIApplication *application =
+                           (UIApplication *)[NotifeeCoreUtil notifeeUIApplication];
                        if (application != nil) {
                          isApplicationActive =
                              application.applicationState == UIApplicationStateActive;
