@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: fixed a Kotlin compilation issue in `prewarmForegroundService()` on some React Native/Kotlin toolchains, reported with React Native 0.77.3, where the direct `app.notifee.core.WarmupHelper` reference could fail with `Unresolved reference 'app'`. The bridge now imports `WarmupHelper` explicitly. This is a compile-time fix only with no runtime behavior, public API, JavaScript payload, Gradle, or manifest changes.
+
 ## [10.3.0] - 2026-05-05
 
 ### Changed

@@ -5,9 +5,23 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+### Fixed
+
+- **Android**: fixed a Kotlin compilation issue in `prewarmForegroundService()` on some React Native/Kotlin toolchains, reported with React Native 0.77.3, where the direct `app.notifee.core.WarmupHelper` reference could fail with `Unresolved reference 'app'`. The bridge now imports `WarmupHelper` explicitly. This is a compile-time fix only and does not change runtime behavior or the public API.
+
+## [10.3.0] (2026-05-05)
+
+### Changed
+
 - **Android**: internal Bundle/Parcelable reader modernization and deprecation cleanup. No public API, JavaScript payload, scheduling, Room, reboot recovery, foreground service, or PendingIntent behavior changes are intended.
-- **Android**: fixed `getChannelGroup()` delegation to use the channel group API instead of the channel API.
+
+### Fixed
+
 - **Android**: `pressAction: null` now fully disables notification body taps. The notification body no longer opens the app, emits `PRESS`, or populates `getInitialNotification()` when the press action is explicitly opted out. Action buttons remain unaffected.
+- **Android**: fixed `getChannelGroup()` delegation to use the channel group API instead of the channel API.
+
+### Tests
+
 - **Tests**: expanded Android regression coverage around notification, channel, trigger parsing and manager scheduler paths.
 - **Tests**: added Android unit and smoke coverage for `PRESS` / `ACTION_PRESS` routing, `InitialNotificationEvent`, Headless JS dispatch, action buttons without `launchActivity`, `pressAction: null`, and default notification body taps.
 
