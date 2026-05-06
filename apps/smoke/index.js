@@ -18,6 +18,7 @@ import { Alert, AppRegistry, Platform } from 'react-native';
 import notifee, { EventType } from 'react-native-notify-kit';
 import App from './App';
 import { name as appName } from './app.json';
+import { logSmokeEvent } from './smokeAutomation';
 
 // Build a reverse map from numeric EventType values to readable names.
 // Uses the runtime enum object as single source of truth.
@@ -38,6 +39,12 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
       `input=${detail.input ?? 'n/a'} ` +
       `data=${JSON.stringify(detail.notification?.data)}`,
   );
+  logSmokeEvent({
+    source: 'background',
+    type: typeName,
+    notification: { id: detail.notification?.id ?? null },
+    pressAction: { id: detail.pressAction?.id ?? null },
+  });
   Alert.alert(
     `BackgroundEvent (${typeName})`,
     `ID: ${detail.notification?.id}\n` +

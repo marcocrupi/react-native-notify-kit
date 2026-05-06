@@ -28,6 +28,7 @@ import {
 import { DeliveredTestScreen } from './DeliveredTestScreen';
 import { Feature15RepeatIntervalScreen } from './Feature15RepeatIntervalScreen';
 import { TriggerRaceTestScreen } from './TriggerRaceTestScreen';
+import { logSmokeEvent, logSmokeResult, smokeErrorReason } from './smokeAutomation';
 
 // VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
 // When true, the app launches directly into the race-test screen and auto-runs
@@ -51,6 +52,139 @@ type Feature15Request = {
   scenario: string;
   nonce: number;
 };
+
+type SmokeDeepLinkRequest =
+  | { scenario: 'fcm-token' }
+  | { scenario: 'displayed' }
+  | { scenario: 'local-display'; id?: string }
+  | { scenario: 'verify-displayed'; id?: string }
+  | { scenario: 'deep-link'; status: 'FAIL'; reason: string; path?: string };
+
+type DisplayedSmokeNotification = {
+  id?: string | null;
+  notification?: {
+    id?: string | null;
+    title?: string | null;
+    body?: string | null;
+    data?: Record<string, unknown> | null;
+  } | null;
+};
+
+function decodeSmokeComponent(value: string): string {
+  try {
+    return decodeURIComponent(value.replace(/\+/g, ' '));
+  } catch {
+    return value;
+  }
+}
+
+function parseSmokeQuery(queryString: string): Record<string, string> {
+  if (queryString.length === 0) {
+    return {};
+  }
+
+  return queryString.split('&').reduce<Record<string, string>>((query, part) => {
+    if (part.length === 0) {
+      return query;
+    }
+
+    const separatorIndex = part.indexOf('=');
+    const rawKey = separatorIndex === -1 ? part : part.slice(0, separatorIndex);
+    const rawValue = separatorIndex === -1 ? '' : part.slice(separatorIndex + 1);
+    query[decodeSmokeComponent(rawKey)] = decodeSmokeComponent(rawValue);
+    return query;
+  }, {});
+}
+
+function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
+  const prefix = 'notifykit://smoke/';
+  if (!url.startsWith(prefix)) {
+    return null;
+  }
+
+  const rawSmokePath = url.slice(prefix.length).split('#')[0];
+  const queryStart = rawSmokePath.indexOf('?');
+  const path = queryStart === -1 ? rawSmokePath : rawSmokePath.slice(0, queryStart);
+  const queryString = queryStart === -1 ? '' : rawSmokePath.slice(queryStart + 1);
+  const query = parseSmokeQuery(queryString);
+  const parts = path.split('/').filter(Boolean).map(decodeSmokeComponent);
+
+  if (parts[0] === 'run') {
+    switch (parts[1]) {
+      case 'fcm-token':
+        return { scenario: 'fcm-token' };
+      case 'displayed':
+        return { scenario: 'displayed' };
+      case 'local-display':
+        return { scenario: 'local-display', id: query.id };
+      default:
+        return {
+          scenario: 'deep-link',
+          status: 'FAIL',
+          reason: 'unsupported_run_scenario',
+          path,
+        };
+    }
+  }
+
+  if (parts[0] === 'verify' && parts[1] === 'displayed') {
+    return { scenario: 'verify-displayed', id: query.id };
+  }
+
+  return {
+    scenario: 'deep-link',
+    status: 'FAIL',
+    reason: 'unsupported_smoke_path',
+    path,
+  };
+}
+
+function normalizeSmokeCorrelationId(id?: string): string | null {
+  if (typeof id !== 'string') {
+    return null;
+  }
+
+  const trimmed = id.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function smokeNotificationIdFor(correlationId: string): string {
+  return correlationId.startsWith('smoke-') ? correlationId : `smoke-${correlationId}`;
+}
+
+function displayedNotificationId(notification: DisplayedSmokeNotification): string | null {
+  const id = notification.id ?? notification.notification?.id;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+function displayedNotificationIds(notifications: DisplayedSmokeNotification[]): string[] {
+  return notifications
+    .map(displayedNotificationId)
+    .filter((id): id is string => typeof id === 'string');
+}
+
+function notificationMatchesSmokeCorrelation(
+  item: DisplayedSmokeNotification,
+  correlationId: string,
+): boolean {
+  const notification = item.notification;
+  const expectedId = smokeNotificationIdFor(correlationId);
+  const itemId = displayedNotificationId(item);
+  const title = typeof notification?.title === 'string' ? notification.title : '';
+  const body = typeof notification?.body === 'string' ? notification.body : '';
+  const data = notification?.data ?? {};
+
+  return (
+    itemId === correlationId ||
+    itemId === expectedId ||
+    title.includes(correlationId) ||
+    body.includes(correlationId) ||
+    data.correlationId === correlationId ||
+    data.correlationId === expectedId ||
+    data.smokeNotificationId === correlationId ||
+    data.smokeNotificationId === expectedId
+  );
+}
 
 function extractFeature15Scenario(url: string): string | null {
   const prefix = 'notifykit://feature15/run/';
@@ -145,6 +279,12 @@ function App() {
             `input=${initialNotification.input ?? 'n/a'} ` +
             `data=${JSON.stringify(initialNotification.notification.data)}`,
         );
+        logSmokeEvent({
+          source: 'initial',
+          type: 'INITIAL_NOTIFICATION',
+          notification: { id: initialNotification.notification.id ?? null },
+          pressAction: { id: initialNotification.pressAction?.id ?? null },
+        });
         log(`getInitialNotification: ${JSON.stringify(initialNotification)}`);
         Alert.alert(
           'Notifee getInitialNotification',
@@ -208,6 +348,12 @@ function App() {
           `input=${detail.input ?? 'n/a'} ` +
           `data=${JSON.stringify(detail.notification?.data)}`,
       );
+      logSmokeEvent({
+        source: 'foreground',
+        type: typeName,
+        notification: { id: detail.notification?.id ?? null },
+        pressAction: { id: detail.pressAction?.id ?? null },
+      });
       if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
         Alert.alert(
           `Notifee ${typeName} (foreground)`,
@@ -257,7 +403,7 @@ function App() {
     [log],
   );
 
-  const ensureDefaultAndroidChannel = async () => {
+  const ensureDefaultAndroidChannel = useCallback(async () => {
     if (Platform.OS !== 'android') {
       return;
     }
@@ -267,7 +413,7 @@ function App() {
       name: 'Default Channel',
       importance: AndroidImportance.HIGH,
     });
-  };
+  }, []);
 
   const createChannel = () =>
     run('createChannel', () =>
@@ -443,6 +589,38 @@ function App() {
       return token;
     });
 
+  const runSmokeFcmToken = useCallback(async () => {
+    try {
+      const messaging = getMessaging();
+      const token = await getToken(messaging);
+      const tokenPresent = typeof token === 'string' && token.length > 0;
+
+      if (tokenPresent) {
+        console.log('[FCM TOKEN]', token);
+        logSmokeResult({
+          scenario: 'fcm-token',
+          status: 'PASS',
+          tokenPresent: true,
+        });
+        return;
+      }
+
+      logSmokeResult({
+        scenario: 'fcm-token',
+        status: 'FAIL',
+        reason: 'token_missing',
+        tokenPresent: false,
+      });
+    } catch (e: unknown) {
+      logSmokeResult({
+        scenario: 'fcm-token',
+        status: 'FAIL',
+        reason: smokeErrorReason(e),
+        tokenPresent: false,
+      });
+    }
+  }, []);
+
   const setRemoteOff = () =>
     run('setNotificationConfig(OFF)', () =>
       notifee.setNotificationConfig({ ios: { handleRemoteNotifications: false } }),
@@ -469,15 +647,207 @@ function App() {
     }
   };
 
+  const readDisplayedNotificationsForSmoke = useCallback(async () => {
+    return (await notifee.getDisplayedNotifications()) as DisplayedSmokeNotification[];
+  }, []);
+
   const getDisplayed = () =>
     run('getDisplayedNotifications', async () => {
-      const result = await notifee.getDisplayedNotifications();
+      const result = await readDisplayedNotificationsForSmoke();
       // Pretty-printed console.log so the full notification list (including
       // the `data` field populated by the #393 fix on Android) is legible in
       // `adb logcat` without manual JSON reformatting.
       console.log('[DISPLAYED]', JSON.stringify(result, null, 2));
       return result;
     });
+
+  const runSmokeDisplayed = useCallback(async () => {
+    try {
+      const result = await readDisplayedNotificationsForSmoke();
+      const ids = displayedNotificationIds(result);
+      console.log('[DISPLAYED]', JSON.stringify(result, null, 2));
+      logSmokeResult({
+        scenario: 'displayed',
+        status: 'PASS',
+        count: result.length,
+        ids,
+      });
+    } catch (e: unknown) {
+      logSmokeResult({
+        scenario: 'displayed',
+        status: 'FAIL',
+        reason: smokeErrorReason(e),
+      });
+    }
+  }, [readDisplayedNotificationsForSmoke]);
+
+  const runSmokeLocalDisplay = useCallback(
+    async (id?: string) => {
+      const correlationId = normalizeSmokeCorrelationId(id);
+      if (correlationId == null) {
+        logSmokeResult({
+          scenario: 'local-display',
+          status: 'FAIL',
+          reason: 'id_missing',
+        });
+        return;
+      }
+
+      const notificationId = smokeNotificationIdFor(correlationId);
+
+      try {
+        await ensureDefaultAndroidChannel();
+        await notifee.displayNotification({
+          id: notificationId,
+          title: `Smoke local ${correlationId}`,
+          body: `Smoke displayed correlation ${correlationId}`,
+          data: {
+            smokeScenario: 'local-display',
+            correlationId,
+            smokeNotificationId: notificationId,
+          },
+          android: { channelId: 'default' },
+        });
+        logSmokeResult({
+          scenario: 'local-display',
+          status: 'PASS',
+          id: notificationId,
+          correlationId,
+        });
+      } catch (e: unknown) {
+        logSmokeResult({
+          scenario: 'local-display',
+          status: 'FAIL',
+          id: notificationId,
+          correlationId,
+          reason: smokeErrorReason(e),
+        });
+      }
+    },
+    [ensureDefaultAndroidChannel],
+  );
+
+  const runSmokeVerifyDisplayed = useCallback(
+    async (id?: string) => {
+      const correlationId = normalizeSmokeCorrelationId(id);
+      if (correlationId == null) {
+        logSmokeResult({
+          scenario: 'verify-displayed',
+          status: 'FAIL',
+          reason: 'id_missing',
+        });
+        return;
+      }
+
+      try {
+        const result = await readDisplayedNotificationsForSmoke();
+        const ids = displayedNotificationIds(result);
+        const match = result.find(item => notificationMatchesSmokeCorrelation(item, correlationId));
+        const matchedId = match ? displayedNotificationId(match) : null;
+        console.log('[DISPLAYED]', JSON.stringify(result, null, 2));
+
+        if (match) {
+          logSmokeResult({
+            scenario: 'verify-displayed',
+            status: 'PASS',
+            id: matchedId ?? smokeNotificationIdFor(correlationId),
+            correlationId,
+            count: result.length,
+            ids,
+          });
+          return;
+        }
+
+        logSmokeResult({
+          scenario: 'verify-displayed',
+          status: 'FAIL',
+          id: smokeNotificationIdFor(correlationId),
+          correlationId,
+          reason: 'displayed_notification_not_found',
+          count: result.length,
+          ids,
+        });
+      } catch (e: unknown) {
+        logSmokeResult({
+          scenario: 'verify-displayed',
+          status: 'FAIL',
+          id: smokeNotificationIdFor(correlationId),
+          correlationId,
+          reason: smokeErrorReason(e),
+        });
+      }
+    },
+    [readDisplayedNotificationsForSmoke],
+  );
+
+  const executeSmokeDeepLink = useCallback(
+    async (request: SmokeDeepLinkRequest) => {
+      switch (request.scenario) {
+        case 'fcm-token':
+          await runSmokeFcmToken();
+          break;
+        case 'displayed':
+          await runSmokeDisplayed();
+          break;
+        case 'local-display':
+          await runSmokeLocalDisplay(request.id);
+          break;
+        case 'verify-displayed':
+          await runSmokeVerifyDisplayed(request.id);
+          break;
+        case 'deep-link':
+          logSmokeResult({
+            scenario: 'deep-link',
+            status: 'FAIL',
+            reason: request.reason,
+            path: request.path,
+          });
+          break;
+      }
+    },
+    [runSmokeDisplayed, runSmokeFcmToken, runSmokeLocalDisplay, runSmokeVerifyDisplayed],
+  );
+
+  // General smoke automation deep links:
+  // notifykit://smoke/run/fcm-token
+  // notifykit://smoke/run/displayed
+  // notifykit://smoke/run/local-display?id=<correlationId>
+  // notifykit://smoke/verify/displayed?id=<correlationId>
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const request = extractSmokeDeepLink(url);
+      if (request == null) {
+        return;
+      }
+
+      log(`Smoke deep link scenario: ${request.scenario}`);
+      executeSmokeDeepLink(request).catch((e: unknown) => {
+        logSmokeResult({
+          scenario: 'deep-link',
+          status: 'FAIL',
+          reason: smokeErrorReason(e),
+        });
+      });
+    };
+
+    Linking.getInitialURL()
+      .then(url => {
+        if (url) {
+          handleUrl(url);
+        }
+      })
+      .catch((e: unknown) => {
+        log(`Smoke initial URL error: ${smokeErrorReason(e)}`);
+      });
+
+    const subscription = Linking.addEventListener('url', event => {
+      handleUrl(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [executeSmokeDeepLink, log]);
 
   const createTrigger = () =>
     run('createTriggerNotification', async () => {
