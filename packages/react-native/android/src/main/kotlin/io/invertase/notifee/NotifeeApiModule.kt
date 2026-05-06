@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import app.notifee.core.Logger
 import app.notifee.core.Notifee
+import app.notifee.core.WarmupHelper
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -331,7 +332,7 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
         executor.submit {
             android.os.Trace.beginSection("notifee:prewarm")
             try {
-                app.notifee.core.WarmupHelper.runWarmup(context)
+                WarmupHelper.runWarmup(context)
                 promise.resolve(null)
             } catch (t: Throwable) {
                 // Best-effort semantics: warmup failures don't reject the promise.
