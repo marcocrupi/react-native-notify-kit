@@ -28,7 +28,12 @@ import {
 import { DeliveredTestScreen } from './DeliveredTestScreen';
 import { Feature15RepeatIntervalScreen } from './Feature15RepeatIntervalScreen';
 import { TriggerRaceTestScreen } from './TriggerRaceTestScreen';
-import { logSmokeEvent, logSmokeResult, smokeErrorReason } from './smokeAutomation';
+import {
+  logSmokeEvent,
+  logSmokeResult,
+  setSmokeResultCallbackUrl,
+  smokeErrorReason,
+} from './smokeAutomation';
 
 // VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
 // When true, the app launches directly into the race-test screen and auto-runs
@@ -53,12 +58,18 @@ type Feature15Request = {
   nonce: number;
 };
 
-type SmokeDeepLinkRequest =
-  | { scenario: 'fcm-token' }
-  | { scenario: 'displayed' }
-  | { scenario: 'local-display'; id?: string }
-  | { scenario: 'verify-displayed'; id?: string }
-  | { scenario: 'deep-link'; status: 'FAIL'; reason: string; path?: string };
+type SmokeDeepLinkCallback = {
+  callbackUrl?: string;
+};
+
+type SmokeDeepLinkRequest = SmokeDeepLinkCallback &
+  (
+    | { scenario: 'fcm-token' }
+    | { scenario: 'displayed' }
+    | { scenario: 'local-display'; id?: string }
+    | { scenario: 'verify-displayed'; id?: string }
+    | { scenario: 'deep-link'; status: 'FAIL'; reason: string; path?: string }
+  );
 
 type DisplayedSmokeNotification = {
   id?: string | null;
@@ -96,6 +107,11 @@ function parseSmokeQuery(queryString: string): Record<string, string> {
   }, {});
 }
 
+function smokeCallbackUrlFromQuery(query: Record<string, string>): string | undefined {
+  const callbackUrl = query.callback?.trim();
+  return callbackUrl && callbackUrl.length > 0 ? callbackUrl : undefined;
+}
+
 function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
   const prefix = 'notifykit://smoke/';
   if (!url.startsWith(prefix)) {
@@ -107,28 +123,30 @@ function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
   const path = queryStart === -1 ? rawSmokePath : rawSmokePath.slice(0, queryStart);
   const queryString = queryStart === -1 ? '' : rawSmokePath.slice(queryStart + 1);
   const query = parseSmokeQuery(queryString);
+  const callbackUrl = smokeCallbackUrlFromQuery(query);
   const parts = path.split('/').filter(Boolean).map(decodeSmokeComponent);
 
   if (parts[0] === 'run') {
     switch (parts[1]) {
       case 'fcm-token':
-        return { scenario: 'fcm-token' };
+        return { scenario: 'fcm-token', callbackUrl };
       case 'displayed':
-        return { scenario: 'displayed' };
+        return { scenario: 'displayed', callbackUrl };
       case 'local-display':
-        return { scenario: 'local-display', id: query.id };
+        return { scenario: 'local-display', id: query.id, callbackUrl };
       default:
         return {
           scenario: 'deep-link',
           status: 'FAIL',
           reason: 'unsupported_run_scenario',
           path,
+          callbackUrl,
         };
     }
   }
 
   if (parts[0] === 'verify' && parts[1] === 'displayed') {
-    return { scenario: 'verify-displayed', id: query.id };
+    return { scenario: 'verify-displayed', id: query.id, callbackUrl };
   }
 
   return {
@@ -136,6 +154,7 @@ function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
     status: 'FAIL',
     reason: 'unsupported_smoke_path',
     path,
+    callbackUrl,
   };
 }
 
@@ -782,27 +801,33 @@ function App() {
 
   const executeSmokeDeepLink = useCallback(
     async (request: SmokeDeepLinkRequest) => {
-      switch (request.scenario) {
-        case 'fcm-token':
-          await runSmokeFcmToken();
-          break;
-        case 'displayed':
-          await runSmokeDisplayed();
-          break;
-        case 'local-display':
-          await runSmokeLocalDisplay(request.id);
-          break;
-        case 'verify-displayed':
-          await runSmokeVerifyDisplayed(request.id);
-          break;
-        case 'deep-link':
-          logSmokeResult({
-            scenario: 'deep-link',
-            status: 'FAIL',
-            reason: request.reason,
-            path: request.path,
-          });
-          break;
+      setSmokeResultCallbackUrl(request.callbackUrl);
+
+      try {
+        switch (request.scenario) {
+          case 'fcm-token':
+            await runSmokeFcmToken();
+            break;
+          case 'displayed':
+            await runSmokeDisplayed();
+            break;
+          case 'local-display':
+            await runSmokeLocalDisplay(request.id);
+            break;
+          case 'verify-displayed':
+            await runSmokeVerifyDisplayed(request.id);
+            break;
+          case 'deep-link':
+            logSmokeResult({
+              scenario: 'deep-link',
+              status: 'FAIL',
+              reason: request.reason,
+              path: request.path,
+            });
+            break;
+        }
+      } finally {
+        setSmokeResultCallbackUrl(null);
       }
     },
     [runSmokeDisplayed, runSmokeFcmToken, runSmokeLocalDisplay, runSmokeVerifyDisplayed],
@@ -811,8 +836,8 @@ function App() {
   // General smoke automation deep links:
   // notifykit://smoke/run/fcm-token
   // notifykit://smoke/run/displayed
-  // notifykit://smoke/run/local-display?id=<correlationId>
-  // notifykit://smoke/verify/displayed?id=<correlationId>
+  // notifykit://smoke/run/local-display?id=<correlationId>&callback=<encoded-url>
+  // notifykit://smoke/verify/displayed?id=<correlationId>&callback=<encoded-url>
   useEffect(() => {
     const handleUrl = (url: string) => {
       const request = extractSmokeDeepLink(url);

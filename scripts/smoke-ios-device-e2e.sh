@@ -4,9 +4,11 @@ set -euo pipefail
 DEFAULT_IOS_DEVICE_ID="C274F5E5-B73D-556F-9589-E384F79EF805"
 IOS_DEVICE_ID="${IOS_DEVICE_ID:-}"
 IOS_BUNDLE_ID="${IOS_BUNDLE_ID:-org.reactjs.native.example.NotifeeExample}"
-SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-30}"
+SMOKE_TIMEOUT_SECONDS="${SMOKE_TIMEOUT_SECONDS:-45}"
 SMOKE_LAUNCH_TIMEOUT_SECONDS="${SMOKE_LAUNCH_TIMEOUT_SECONDS:-15}"
-SMOKE_TERMINATE_GRACE_SECONDS="${SMOKE_TERMINATE_GRACE_SECONDS:-2}"
+SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS="${SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS:-2}"
+SMOKE_CALLBACK_HOST="${SMOKE_CALLBACK_HOST:-}"
+SMOKE_CALLBACK_PORT="${SMOKE_CALLBACK_PORT:-}"
 XCRUN="${XCRUN:-xcrun}"
 
 EXIT_SMOKE_FAIL=1
@@ -26,6 +28,7 @@ Usage:
   scripts/smoke-ios-device-e2e.sh list-devices
   scripts/smoke-ios-device-e2e.sh launch-url <url>
   scripts/smoke-ios-device-e2e.sh parse-result-test
+  scripts/smoke-ios-device-e2e.sh callback-test
   scripts/smoke-ios-device-e2e.sh fcm-token
   scripts/smoke-ios-device-e2e.sh displayed
   scripts/smoke-ios-device-e2e.sh local-display <id>
@@ -42,23 +45,27 @@ Environment:
   IOS_BUNDLE_ID=$IOS_BUNDLE_ID
   SMOKE_TIMEOUT_SECONDS=$SMOKE_TIMEOUT_SECONDS
   SMOKE_LAUNCH_TIMEOUT_SECONDS=$SMOKE_LAUNCH_TIMEOUT_SECONDS
-  SMOKE_TERMINATE_GRACE_SECONDS=$SMOKE_TERMINATE_GRACE_SECONDS
+  SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS=$SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS
+  SMOKE_CALLBACK_HOST=${SMOKE_CALLBACK_HOST:-<auto-detect en0/en1>}
+  SMOKE_CALLBACK_PORT=${SMOKE_CALLBACK_PORT:-<auto; default 49152>}
   XCRUN=$XCRUN
 
 Exit codes:
   0  matching SMOKE:RESULT status PASS
   1  matching SMOKE:RESULT status FAIL
-  2  timeout waiting for matching SMOKE:RESULT
+  2  timeout waiting for matching callback result
   3  device/app launch failure
-  4  missing or unsupported local configuration
+  4  missing or unsupported local configuration or callback failure
 
 Notes:
   - This wrapper does not build, install, clean up, or send FCM messages.
   - The smoke app must already be installed on the selected physical device.
-  - Scenario commands launch the deep link and wait for matching SMOKE:RESULT.
+  - Scenario commands launch the deep link and wait for a matching HTTP callback.
+  - If devicectl --payload-url does not produce a callback, the wrapper dispatches
+    the same deep link through the Metro inspector after the fallback delay.
   - launch-url is a launcher-only utility and does not wait for SMOKE:RESULT.
-  - Log capture uses devicectl process launch --console because this Xcode does
-    not expose devicectl device log stream.
+  - SMOKE_CALLBACK_HOST must be reachable from the iPhone; localhost is not used
+    as the device callback default.
 EOF
 }
 
@@ -173,18 +180,47 @@ resolve_device_id() {
   echo "[smoke-ios-device-e2e] WARNING: IOS_DEVICE_ID not set and autodetect failed; using fallback $IOS_DEVICE_ID" >&2
 }
 
-supports_launch_console() {
-  "$XCRUN" devicectl device process launch --help 2>/dev/null | grep -q -- '--console'
-}
-
 require_wait_support() {
   if ! command -v node >/dev/null 2>&1; then
-    fail_config "Node.js is required to parse SMOKE:RESULT JSON."
+    fail_config "Node.js is required for the smoke callback server and result parser."
+  fi
+}
+
+autodetect_callback_host() {
+  local iface
+  local detected=""
+
+  if ! command -v ipconfig >/dev/null 2>&1; then
+    printf '%s' ""
+    return
   fi
 
-  if ! supports_launch_console; then
-    fail_config "devicectl process launch --console is not available, and no supported device log stream fallback is configured."
+  for iface in en0 en1; do
+    detected="$(ipconfig getifaddr "$iface" 2>/dev/null || true)"
+    if [[ -n "$detected" ]]; then
+      printf '%s' "$detected"
+      return
+    fi
+  done
+
+  printf '%s' ""
+}
+
+resolve_callback_host() {
+  local detected
+
+  if [[ -n "$SMOKE_CALLBACK_HOST" ]]; then
+    return
   fi
+
+  detected="$(autodetect_callback_host)"
+  if [[ -n "$detected" ]]; then
+    SMOKE_CALLBACK_HOST="$detected"
+    echo "[smoke-ios-device-e2e] autodetected callback host: $SMOKE_CALLBACK_HOST"
+    return
+  fi
+
+  fail_config "SMOKE_CALLBACK_HOST is not set and no en0/en1 IPv4 address was detected. Set SMOKE_CALLBACK_HOST to the Mac IP reachable from the iPhone."
 }
 
 list_devices() {
@@ -213,12 +249,14 @@ launch_url() {
 run_smoke_node() {
   node - "$@" <<'NODE'
 const { spawn } = require('child_process');
+const http = require('http');
 
 const EXIT_SMOKE_FAIL = 1;
 const EXIT_TIMEOUT = 2;
 const EXIT_LAUNCH_FAILURE = 3;
 const EXIT_CONFIG = 4;
 const MARKER = 'SMOKE:RESULT';
+const DEFAULT_CALLBACK_PORT = 49152;
 
 function stringValue(value) {
   return typeof value === 'string' ? value : '';
@@ -280,7 +318,225 @@ function parsePositiveInteger(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function waitConsole(args) {
+function parseCallbackPort(value) {
+  if (!value) {
+    return { port: DEFAULT_CALLBACK_PORT, fixed: false };
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 65535) {
+    throw new Error(`invalid callback port '${value}'`);
+  }
+
+  return { port: parsed, fixed: true };
+}
+
+function hostForCallbackUrl(host) {
+  return host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
+}
+
+function appendCallbackParam(rawUrl, callbackUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    parsed.searchParams.set('callback', callbackUrl);
+    return parsed.toString();
+  } catch (error) {
+    throw new Error(`invalid smoke deep link '${rawUrl}': ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function validateCallbackPayload(payload, expected) {
+  if (payload == null || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { type: 'invalid', reason: 'body_not_object' };
+  }
+
+  if (!matchesExpected(payload, expected)) {
+    return { type: 'mismatch' };
+  }
+
+  if (payload.status !== 'PASS' && payload.status !== 'FAIL') {
+    return { type: 'invalid', reason: `unsupported_status:${String(payload.status)}` };
+  }
+
+  return { type: 'match' };
+}
+
+function createCallbackServer(expected, handleMatchedPayload, handleFatalPayload) {
+  return http.createServer((request, response) => {
+    const path = new URL(request.url || '/', 'http://smoke.callback').pathname;
+    if (request.method !== 'POST' || path !== '/result') {
+      response.writeHead(404, { 'Content-Type': 'text/plain' });
+      response.end('not found');
+      return;
+    }
+
+    let body = '';
+    request.setEncoding('utf8');
+
+    request.on('data', chunk => {
+      body += chunk;
+    });
+
+    request.on('error', error => {
+      console.error(`[smoke-ios-device-e2e] WARNING: callback request error ${error instanceof Error ? error.message : String(error)}`);
+    });
+
+    request.on('end', () => {
+      let payload;
+      try {
+        payload = JSON.parse(body);
+      } catch (error) {
+        response.writeHead(400, { 'Content-Type': 'text/plain' });
+        response.end(`invalid json: ${error instanceof Error ? error.message : String(error)}`);
+        return;
+      }
+
+      const validation = validateCallbackPayload(payload, expected);
+      if (validation.type === 'mismatch') {
+        console.log(
+          `[smoke-ios-device-e2e] ignored callback result scenario=${stringValue(payload.scenario)} id=${stringValue(payload.id)} correlationId=${stringValue(payload.correlationId)}`,
+        );
+        response.writeHead(202, { 'Content-Type': 'text/plain' });
+        response.end('ignored');
+        return;
+      }
+
+      if (validation.type === 'invalid') {
+        console.error(`[smoke-ios-device-e2e] ERROR: invalid matching callback result (${validation.reason})`);
+        response.writeHead(422, { 'Content-Type': 'text/plain' });
+        response.end(validation.reason, () => handleFatalPayload());
+        return;
+      }
+
+      console.log(`[smoke-ios-device-e2e] matched callback result ${JSON.stringify(payload)}`);
+      response.writeHead(200, { 'Content-Type': 'text/plain' });
+      response.end('ok', () => handleMatchedPayload(payload));
+    });
+  });
+}
+
+function listenCallbackServer(server, portConfig) {
+  return new Promise((resolve, reject) => {
+    const firstPort = portConfig.port;
+    const lastPort = portConfig.fixed ? firstPort : Math.min(65535, firstPort + 99);
+    let port = firstPort;
+
+    const tryListen = () => {
+      const handleError = error => {
+        server.off('listening', handleListening);
+
+        if (!portConfig.fixed && error?.code === 'EADDRINUSE' && port < lastPort) {
+          port += 1;
+          tryListen();
+          return;
+        }
+
+        reject(error);
+      };
+
+      const handleListening = () => {
+        server.off('error', handleError);
+        const address = server.address();
+        const actualPort = typeof address === 'object' && address != null ? address.port : port;
+        resolve(actualPort);
+      };
+
+      server.once('error', handleError);
+      server.once('listening', handleListening);
+      server.listen(port, '0.0.0.0');
+    };
+
+    tryListen();
+  });
+}
+
+function closeServerAndExit(server, code) {
+  const forcedExit = setTimeout(() => process.exit(code), 500);
+  forcedExit.unref();
+  server.close(() => process.exit(code));
+}
+
+async function dispatchDeepLinkViaInspector(launchUrl, bundleId) {
+  if (typeof fetch !== 'function' || typeof WebSocket !== 'function') {
+    throw new Error('Node.js fetch/WebSocket globals are unavailable');
+  }
+
+  const response = await fetch('http://localhost:8081/json/list');
+  if (!response.ok) {
+    throw new Error(`Metro inspector list failed HTTP ${response.status}`);
+  }
+
+  const pages = await response.json();
+  const page = (Array.isArray(pages) ? pages : []).find(item => item?.appId === bundleId);
+  if (!page?.webSocketDebuggerUrl) {
+    throw new Error(`Metro inspector page not found for ${bundleId}`);
+  }
+
+  const wsUrl = page.webSocketDebuggerUrl.replace('localhost', '127.0.0.1');
+  const expression = `(() => {
+    const modules = Array.from(globalThis.__r?.getModules?.() ?? []);
+    const entry = modules.find(([, module]) => {
+      const name = String(module?.verboseName || module?.path || '');
+      return name === 'node_modules/react-native/index.js' || name.endsWith('/node_modules/react-native/index.js');
+    });
+    if (!entry) {
+      throw new Error('react_native_module_not_found');
+    }
+    const reactNative = globalThis.__r(entry[0]);
+    return reactNative.Linking.openURL(${JSON.stringify(launchUrl)});
+  })()`;
+
+  await new Promise((resolve, reject) => {
+    const ws = new WebSocket(wsUrl);
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('Metro inspector openURL dispatch timed out'));
+    }, 5000);
+
+    ws.addEventListener('open', () => {
+      ws.send(
+        JSON.stringify({
+          id: 1,
+          method: 'Runtime.evaluate',
+          params: {
+            expression,
+            awaitPromise: true,
+            returnByValue: true,
+          },
+        }),
+      );
+    });
+
+    ws.addEventListener('message', event => {
+      const message = JSON.parse(event.data);
+      if (message.id !== 1) {
+        return;
+      }
+
+      clearTimeout(timer);
+
+      if (message.error || message.result?.exceptionDetails) {
+        ws.close();
+        reject(new Error(JSON.stringify(message.error || message.result.exceptionDetails)));
+        return;
+      }
+
+      setTimeout(() => {
+        ws.close();
+        resolve();
+      }, 1000);
+    });
+
+    ws.addEventListener('error', error => {
+      clearTimeout(timer);
+      reject(new Error(error?.message || error?.type || String(error)));
+    });
+  });
+
+  console.log('[smoke-ios-device-e2e] deep link fallback: Metro inspector Linking.openURL dispatched');
+}
+
+async function waitCallback(args) {
   const [
     scenario,
     expectedId,
@@ -289,192 +545,226 @@ function waitConsole(args) {
     xcrun,
     deviceId,
     bundleId,
-    url,
+    baseUrl,
+    callbackHost,
+    callbackPortArg,
+    launchTimeoutArg,
   ] = args;
 
-  if (!scenario || !xcrun || !deviceId || !bundleId || !url) {
-    console.error('[smoke-ios-device-e2e] ERROR: missing wait-console configuration');
+  if (!scenario || !xcrun || !deviceId || !bundleId || !baseUrl || !callbackHost) {
+    console.error('[smoke-ios-device-e2e] ERROR: missing wait-callback configuration');
     process.exit(EXIT_CONFIG);
   }
 
-  const timeoutSeconds = parsePositiveInteger(timeoutArg, 30);
-  const terminateGraceSeconds = parsePositiveInteger(process.env.SMOKE_TERMINATE_GRACE_SECONDS, 2);
-  const terminateGraceMs = terminateGraceSeconds * 1000;
+  const timeoutSeconds = parsePositiveInteger(timeoutArg, 45);
+  const launchTimeoutSeconds = parsePositiveInteger(launchTimeoutArg, 15);
   const expected = {
     scenario,
     id: expectedId || '',
     correlationId: expectedCorrelationId || expectedId || '',
   };
-  const launchArgs = [
-    'devicectl',
-    'device',
-    'process',
-    'launch',
-    '--device',
-    deviceId,
-    bundleId,
-    '--payload-url',
-    url,
-    '--console',
-  ];
-
-  console.log(`[smoke-ios-device-e2e] device: ${deviceId}`);
-  console.log(`[smoke-ios-device-e2e] bundle: ${bundleId}`);
-  console.log(`[smoke-ios-device-e2e] url: ${url}`);
-  console.log('[smoke-ios-device-e2e] log capture: devicectl process launch --console');
-  console.log(`[smoke-ios-device-e2e] waiting for SMOKE:RESULT ${describeExpected(expected)} timeout=${timeoutSeconds}s`);
+  const portConfig = parseCallbackPort(callbackPortArg);
 
   let finished = false;
-  let childClosed = false;
-  let exitAfterChildClose = null;
-  let terminateGraceTimer = null;
-  let forceExitTimer = null;
-  const child = spawn(xcrun, launchArgs, {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  let launchClosed = false;
+  let child = null;
+  let timer = null;
+  let inspectorFallbackTimer = null;
 
-  function clearTerminationTimers() {
-    if (terminateGraceTimer != null) {
-      clearTimeout(terminateGraceTimer);
-      terminateGraceTimer = null;
-    }
-    if (forceExitTimer != null) {
-      clearTimeout(forceExitTimer);
-      forceExitTimer = null;
-    }
-  }
-
-  function finish(code) {
+  function finish(server, code) {
     if (finished) {
       return;
     }
 
     finished = true;
-    clearTimeout(timer);
-
-    const exitWithCode = () => {
-      clearTerminationTimers();
-      process.exit(code);
-    };
-
-    if (childClosed || child.exitCode !== null) {
-      exitWithCode();
-      return;
+    if (timer != null) {
+      clearTimeout(timer);
     }
-
-    exitAfterChildClose = exitWithCode;
-    child.kill('SIGTERM');
-
-    terminateGraceTimer = setTimeout(() => {
-      terminateGraceTimer = null;
-      if (!childClosed && child.exitCode === null) {
-        console.error('[smoke-ios-device-e2e] WARNING: devicectl console did not close after SIGTERM; sending SIGKILL');
-        child.kill('SIGKILL');
-
-        forceExitTimer = setTimeout(() => {
-          if (!childClosed) {
-            exitWithCode();
-          }
-        }, 1000);
-      }
-    }, terminateGraceMs);
+    if (inspectorFallbackTimer != null) {
+      clearTimeout(inspectorFallbackTimer);
+    }
+    if (child != null && !launchClosed && child.exitCode == null) {
+      child.kill('SIGTERM');
+    }
+    closeServerAndExit(server, code);
   }
 
-  const timer = setTimeout(() => {
+  const server = createCallbackServer(
+    expected,
+    payload => {
+      if (payload.status === 'PASS') {
+        console.log('[smoke-ios-device-e2e] result: PASS');
+        finish(server, 0);
+        return;
+      }
+
+      console.error(`[smoke-ios-device-e2e] result: FAIL reason=${stringValue(payload.reason) || 'unknown'}`);
+      finish(server, EXIT_SMOKE_FAIL);
+    },
+    () => finish(server, EXIT_CONFIG),
+  );
+
+  let actualPort;
+  try {
+    actualPort = await listenCallbackServer(server, portConfig);
+  } catch (error) {
+    console.error(`[smoke-ios-device-e2e] ERROR: callback_server_listen_failed ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(EXIT_CONFIG);
+  }
+
+  const callbackUrl = `http://${hostForCallbackUrl(callbackHost)}:${actualPort}/result`;
+  const launchUrl = appendCallbackParam(baseUrl, callbackUrl);
+  const launchArgs = [
+    'devicectl',
+    'device',
+    'process',
+    'launch',
+    '--timeout',
+    String(launchTimeoutSeconds),
+    '--device',
+    deviceId,
+    '--terminate-existing',
+    bundleId,
+    '--payload-url',
+    launchUrl,
+  ];
+
+  console.log(`[smoke-ios-device-e2e] device: ${deviceId}`);
+  console.log(`[smoke-ios-device-e2e] bundle: ${bundleId}`);
+  console.log(`[smoke-ios-device-e2e] callback: ${callbackUrl}`);
+  console.log(`[smoke-ios-device-e2e] url: ${launchUrl}`);
+  console.log('[smoke-ios-device-e2e] result capture: HTTP callback POST /result');
+  console.log(`[smoke-ios-device-e2e] waiting for callback result ${describeExpected(expected)} timeout=${timeoutSeconds}s`);
+
+  timer = setTimeout(() => {
     console.error(
-      `[smoke-ios-device-e2e] ERROR: timeout_waiting_for_smoke_result ${describeExpected(expected)} timeout=${timeoutSeconds}s`,
+      `[smoke-ios-device-e2e] ERROR: timeout_waiting_for_callback_result ${describeExpected(expected)} timeout=${timeoutSeconds}s`,
     );
-    finish(EXIT_TIMEOUT);
+    finish(server, EXIT_TIMEOUT);
   }, timeoutSeconds * 1000);
 
-  function handleLine(source, line) {
-    if (line.includes('SMOKE:EVENT')) {
-      console.log(`[smoke-ios-device-e2e] ${source}: ${line}`);
-      return;
+  child = spawn(xcrun, launchArgs, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', chunk => {
+    const text = String(chunk).trim();
+    if (text.length > 0) {
+      console.log(`[smoke-ios-device-e2e] devicectl stdout: ${text}`);
     }
+  });
 
-    const parsed = extractSmokeResult(line);
-    if (parsed == null) {
-      return;
+  child.stderr.setEncoding('utf8');
+  child.stderr.on('data', chunk => {
+    const text = String(chunk).trim();
+    if (text.length > 0) {
+      console.error(`[smoke-ios-device-e2e] devicectl stderr: ${text}`);
     }
-
-    if (parsed.type === 'invalid') {
-      console.error(`[smoke-ios-device-e2e] WARNING: ignoring invalid SMOKE:RESULT (${parsed.reason})`);
-      return;
-    }
-
-    const payload = parsed.payload;
-    if (!matchesExpected(payload, expected)) {
-      console.log(
-        `[smoke-ios-device-e2e] ignored SMOKE:RESULT scenario=${stringValue(payload.scenario)} id=${stringValue(payload.id)} correlationId=${stringValue(payload.correlationId)}`,
-      );
-      return;
-    }
-
-    console.log(`[smoke-ios-device-e2e] matched SMOKE:RESULT ${JSON.stringify(payload)}`);
-
-    if (payload.status === 'PASS') {
-      console.log('[smoke-ios-device-e2e] result: PASS');
-      finish(0);
-      return;
-    }
-
-    if (payload.status === 'FAIL') {
-      console.error(`[smoke-ios-device-e2e] result: FAIL reason=${stringValue(payload.reason) || 'unknown'}`);
-      finish(EXIT_SMOKE_FAIL);
-      return;
-    }
-
-    console.error(`[smoke-ios-device-e2e] WARNING: matching SMOKE:RESULT has unsupported status=${String(payload.status)}`);
-  }
-
-  function attachLineReader(stream, source) {
-    let buffer = '';
-    stream.setEncoding('utf8');
-    stream.on('data', chunk => {
-      buffer += chunk;
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        handleLine(source, line);
-      }
-    });
-    stream.on('end', () => {
-      if (buffer.length > 0) {
-        handleLine(source, buffer);
-      }
-    });
-  }
+  });
 
   child.on('error', error => {
     console.error(`[smoke-ios-device-e2e] ERROR: launch_failed ${error instanceof Error ? error.message : String(error)}`);
-    finish(EXIT_LAUNCH_FAILURE);
+    finish(server, EXIT_LAUNCH_FAILURE);
   });
 
   child.on('close', code => {
-    childClosed = true;
-
-    if (exitAfterChildClose != null) {
-      exitAfterChildClose();
-      return;
-    }
-
+    launchClosed = true;
     if (finished) {
       return;
     }
 
-    if (code === 0) {
-      console.error(`[smoke-ios-device-e2e] ERROR: process_ended_before_smoke_result ${describeExpected(expected)}`);
-      finish(EXIT_TIMEOUT);
+    if (code !== 0) {
+      console.error(`[smoke-ios-device-e2e] ERROR: launch_failed exit_code=${code}`);
+      finish(server, EXIT_LAUNCH_FAILURE);
       return;
     }
 
-    console.error(`[smoke-ios-device-e2e] ERROR: launch_failed exit_code=${code}`);
-    finish(EXIT_LAUNCH_FAILURE);
+    const fallbackSeconds = parsePositiveInteger(process.env.SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS, 2);
+    inspectorFallbackTimer = setTimeout(() => {
+      if (finished) {
+        return;
+      }
+
+      dispatchDeepLinkViaInspector(launchUrl, bundleId).catch(error => {
+        console.error(
+          `[smoke-ios-device-e2e] WARNING: deep_link_inspector_fallback_failed ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
+    }, fallbackSeconds * 1000);
+  });
+}
+
+async function runCallbackTest(args) {
+  const [timeoutArg, callbackPortArg] = args;
+  const timeoutSeconds = parsePositiveInteger(timeoutArg, 5);
+  const expected = {
+    scenario: 'callback-test',
+    id: 'smoke-callback-test',
+    correlationId: 'callback-test',
+  };
+
+  let finished = false;
+  let timer = null;
+
+  function finish(server, code) {
+    if (finished) {
+      return;
+    }
+
+    finished = true;
+    if (timer != null) {
+      clearTimeout(timer);
+    }
+    closeServerAndExit(server, code);
+  }
+
+  const server = createCallbackServer(
+    expected,
+    payload => {
+      console.log(`[smoke-ios-device-e2e] callback static test received ${payload.status}`);
+      finish(server, payload.status === 'PASS' ? 0 : EXIT_SMOKE_FAIL);
+    },
+    () => finish(server, EXIT_CONFIG),
+  );
+
+  let actualPort;
+  try {
+    actualPort = await listenCallbackServer(server, parseCallbackPort(callbackPortArg));
+  } catch (error) {
+    console.error(`[smoke-ios-device-e2e] ERROR: callback_test_listen_failed ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(EXIT_CONFIG);
+  }
+
+  const callbackUrl = `http://127.0.0.1:${actualPort}/result`;
+  timer = setTimeout(() => {
+    console.error(`[smoke-ios-device-e2e] ERROR: callback_test_timeout timeout=${timeoutSeconds}s`);
+    finish(server, EXIT_TIMEOUT);
+  }, timeoutSeconds * 1000);
+
+  const body = JSON.stringify({
+    scenario: expected.scenario,
+    status: 'PASS',
+    timestamp: new Date().toISOString(),
+    id: expected.id,
+    correlationId: expected.correlationId,
+  });
+  const request = http.request(callbackUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body),
+    },
   });
 
-  attachLineReader(child.stdout, 'stdout');
-  attachLineReader(child.stderr, 'stderr');
+  request.on('error', error => {
+    console.error(`[smoke-ios-device-e2e] ERROR: callback_test_post_failed ${error instanceof Error ? error.message : String(error)}`);
+    finish(server, EXIT_CONFIG);
+  });
+  request.on('response', response => {
+    response.resume();
+  });
+  request.end(body);
 }
 
 function runParserTest() {
@@ -562,15 +852,75 @@ function runParserTest() {
     }
   }
 
-  console.log(`[smoke-ios-device-e2e] parser static test: PASS (${cases.length}/${cases.length} cases: ${cases.map(testCase => testCase.name).join(', ')})`);
+  const callbackCases = [
+    {
+      name: 'callback PASS valido',
+      expected: { scenario: 'local-display', id: 'smoke-abc', correlationId: 'abc' },
+      payload: {
+        scenario: 'local-display',
+        status: 'PASS',
+        timestamp: '2026-05-06T00:00:00.000Z',
+        id: 'smoke-abc',
+        correlationId: 'abc',
+      },
+      expectedValidation: 'match',
+    },
+    {
+      name: 'callback scenario diverso',
+      expected: { scenario: 'verify-displayed', id: 'smoke-abc', correlationId: 'abc' },
+      payload: {
+        scenario: 'local-display',
+        status: 'PASS',
+        timestamp: '2026-05-06T00:00:00.000Z',
+        id: 'smoke-abc',
+        correlationId: 'abc',
+      },
+      expectedValidation: 'mismatch',
+    },
+    {
+      name: 'callback status non supportato',
+      expected: { scenario: 'local-display', id: 'smoke-abc', correlationId: 'abc' },
+      payload: {
+        scenario: 'local-display',
+        status: 'UNKNOWN',
+        timestamp: '2026-05-06T00:00:00.000Z',
+        id: 'smoke-abc',
+        correlationId: 'abc',
+      },
+      expectedValidation: 'invalid',
+    },
+  ];
+
+  for (const testCase of callbackCases) {
+    const validation = validateCallbackPayload(testCase.payload, testCase.expected);
+    if (validation.type !== testCase.expectedValidation) {
+      console.error(`[smoke-ios-device-e2e] callback parser test failed: ${testCase.name} validation=${validation.type}`);
+      process.exit(1);
+    }
+  }
+
+  console.log(
+    `[smoke-ios-device-e2e] parser static test: PASS (${cases.length} log cases, ${callbackCases.length} callback cases)`,
+  );
 }
 
 const [mode, ...args] = process.argv.slice(2);
 
 if (mode === 'wait-console') {
-  waitConsole(args);
+  console.error('[smoke-ios-device-e2e] ERROR: wait-console is no longer supported; use wait-callback');
+  process.exit(EXIT_CONFIG);
+} else if (mode === 'wait-callback') {
+  waitCallback(args).catch(error => {
+    console.error(`[smoke-ios-device-e2e] ERROR: wait_callback_failed ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(EXIT_CONFIG);
+  });
 } else if (mode === 'parse-result-test') {
   runParserTest();
+} else if (mode === 'callback-test') {
+  runCallbackTest(args).catch(error => {
+    console.error(`[smoke-ios-device-e2e] ERROR: callback_test_failed ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(EXIT_CONFIG);
+  });
 } else {
   console.error(`[smoke-ios-device-e2e] ERROR: unknown node mode ${mode || '<empty>'}`);
   process.exit(EXIT_CONFIG);
@@ -578,7 +928,7 @@ if (mode === 'wait-console') {
 NODE
 }
 
-wait_for_smoke_result_via_console() {
+wait_for_smoke_result_via_callback() {
   local scenario="$1"
   local expected_id="${2:-}"
   local expected_correlation_id="${3:-}"
@@ -586,8 +936,9 @@ wait_for_smoke_result_via_console() {
 
   require_wait_support
   resolve_device_id
+  resolve_callback_host
 
-  run_smoke_node wait-console \
+  run_smoke_node wait-callback \
     "$scenario" \
     "$expected_id" \
     "$expected_correlation_id" \
@@ -595,14 +946,17 @@ wait_for_smoke_result_via_console() {
     "$XCRUN" \
     "$IOS_DEVICE_ID" \
     "$IOS_BUNDLE_ID" \
-    "$url"
+    "$url" \
+    "$SMOKE_CALLBACK_HOST" \
+    "$SMOKE_CALLBACK_PORT" \
+    "$SMOKE_LAUNCH_TIMEOUT_SECONDS"
 }
 
 launch_smoke_run() {
   local scenario="$1"
   local url="notifykit://smoke/run/$scenario"
 
-  wait_for_smoke_result_via_console "$scenario" "" "" "$url"
+  wait_for_smoke_result_via_callback "$scenario" "" "" "$url"
 }
 
 local_display() {
@@ -614,7 +968,7 @@ local_display() {
   expected_id="$(smoke_notification_id_for "$id")"
   url="notifykit://smoke/run/local-display?id=$(urlencode "$id")"
 
-  wait_for_smoke_result_via_console "local-display" "$expected_id" "$id" "$url"
+  wait_for_smoke_result_via_callback "local-display" "$expected_id" "$id" "$url"
 }
 
 verify_displayed() {
@@ -626,7 +980,7 @@ verify_displayed() {
   expected_id="$(smoke_notification_id_for "$id")"
   url="notifykit://smoke/verify/displayed?id=$(urlencode "$id")"
 
-  wait_for_smoke_result_via_console "verify-displayed" "$expected_id" "$id" "$url"
+  wait_for_smoke_result_via_callback "verify-displayed" "$expected_id" "$id" "$url"
 }
 
 parse_result_test() {
@@ -635,6 +989,14 @@ parse_result_test() {
   fi
 
   run_smoke_node parse-result-test
+}
+
+callback_test() {
+  if ! command -v node >/dev/null 2>&1; then
+    fail_config "Node.js is required to run callback-test."
+  fi
+
+  run_smoke_node callback-test "$SMOKE_TIMEOUT_SECONDS" "$SMOKE_CALLBACK_PORT"
 }
 
 main() {
@@ -652,6 +1014,9 @@ main() {
       ;;
     parse-result-test)
       parse_result_test
+      ;;
+    callback-test)
+      callback_test
       ;;
     fcm-token)
       launch_smoke_run "fcm-token"

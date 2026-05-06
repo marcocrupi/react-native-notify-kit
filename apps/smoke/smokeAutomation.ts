@@ -22,6 +22,8 @@ export type SmokeEvent = {
   [key: string]: unknown;
 };
 
+let smokeResultCallbackUrl: string | null = null;
+
 export function smokeErrorReason(error: unknown): string {
   if (error instanceof Error && error.message.length > 0) {
     return error.message;
@@ -29,6 +31,29 @@ export function smokeErrorReason(error: unknown): string {
 
   const message = String(error);
   return message.length > 0 ? message : 'unknown_error';
+}
+
+async function postSmokeResultCallback(callbackUrl: string, payload: SmokeResult): Promise<void> {
+  try {
+    await fetch(callbackUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error: unknown) {
+    console.warn(`SMOKE:RESULT callback POST failed: ${smokeErrorReason(error)}`);
+  }
+}
+
+export function setSmokeResultCallbackUrl(callbackUrl?: string | null): void {
+  if (typeof callbackUrl === 'string' && callbackUrl.length > 0) {
+    smokeResultCallbackUrl = callbackUrl;
+    return;
+  }
+
+  smokeResultCallbackUrl = null;
 }
 
 export function logSmokeResult(result: SmokeResult) {
@@ -41,6 +66,10 @@ export function logSmokeResult(result: SmokeResult) {
   };
 
   console.log(`SMOKE:RESULT ${JSON.stringify(payload)}`);
+
+  if (smokeResultCallbackUrl != null) {
+    void postSmokeResultCallback(smokeResultCallbackUrl, payload);
+  }
 }
 
 export function logSmokeEvent(event: SmokeEvent) {
