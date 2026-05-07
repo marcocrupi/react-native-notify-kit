@@ -30,7 +30,7 @@
     "build:watch": "tsc --watch",
     "test:server": "jest --config jest.config.server.js",
     "prepare": "yarn run build",
-    "prepack": "bash ../../scripts/prepack-cli.sh",
+    "prepack": "cd ../.. && bash build_ios_core.sh && bash scripts/verify-ios-core-generation.sh && bash scripts/prepack-cli.sh",
     "postpack": "rm -rf cli",
     "prepublishOnly": "cd ../.. && yarn run build:core",
     "format:android": "google-java-format --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",

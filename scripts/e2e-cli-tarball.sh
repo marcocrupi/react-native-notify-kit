@@ -45,7 +45,24 @@ tar -tzf "$TARBALL_PATH" | grep -q "package/cli/dist/templates" || {
   echo "ERROR: tarball missing cli/dist/templates/" >&2
   exit 1
 }
-echo "[e2e-cli-tarball] Tarball contents verified."
+
+# Verify generated iOS core files are included in the package tarball.
+EXPECTED_IOS_CORE="$SCRATCH/expected-ios-core.txt"
+ACTUAL_IOS_CORE="$SCRATCH/actual-ios-core.txt"
+find "$REPO_ROOT/ios/NotifeeCore" -type f -print | sed "s#^$REPO_ROOT/ios/NotifeeCore/##" | sort > "$EXPECTED_IOS_CORE"
+tar -tzf "$TARBALL_PATH" | sed -n 's#^package/ios/NotifeeCore/\([^/].*\)$#\1#p' | sort > "$ACTUAL_IOS_CORE"
+
+if ! cmp -s "$EXPECTED_IOS_CORE" "$ACTUAL_IOS_CORE"; then
+  echo "ERROR: tarball iOS core contents do not match ios/NotifeeCore" >&2
+  echo "Missing from tarball:" >&2
+  comm -23 "$EXPECTED_IOS_CORE" "$ACTUAL_IOS_CORE" | sed 's/^/  - /' >&2
+  echo "Extra in tarball:" >&2
+  comm -13 "$EXPECTED_IOS_CORE" "$ACTUAL_IOS_CORE" | sed 's/^/  - /' >&2
+  exit 1
+fi
+
+IOS_CORE_COUNT="$(wc -l < "$EXPECTED_IOS_CORE" | tr -d ' ')"
+echo "[e2e-cli-tarball] Tarball contents verified, including $IOS_CORE_COUNT iOS core files."
 
 # Create scratch consumer project
 echo "[e2e-cli-tarball] Setting up scratch consumer..."

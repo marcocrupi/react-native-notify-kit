@@ -26,6 +26,7 @@
     "format:core:android:check": "cd packages/react-native && yarn format:android:check",
     "format:core:ios": "cd ios && yarn format:ios",
     "format:core:ios:check": "cd ios && yarn format:ios:check",
+    "verify:ios-core": "bash scripts/verify-ios-core-generation.sh",
     "format:android": "yarn google-java-format --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",
     "format:android:check": "yarn google-java-format --set-exit-if-changed --replace -i $(find . -type f -name \"*.java\" ! -path \"*/node_modules/*\" ! -path \"*/generated/*\")",
     "format:ios": "yarn clang-format -i --glob=\"ios/**/*.{h,cpp,m,mm}\" --style=Google",
