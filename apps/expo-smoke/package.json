@@ -1,0 +1,26 @@
+{
+  "name": "react-native-notify-kit-expo-smoke",
+  "version": "10.3.3",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "config": "expo config --type prebuild",
+    "prebuild:ios": "EXPO_NO_GIT_STATUS=1 expo prebuild --clean --platform ios",
+    "prebuild:android": "EXPO_NO_GIT_STATUS=1 expo prebuild --clean --platform android",
+    "start": "expo start --dev-client"
+  },
+  "dependencies": {
+    "expo": "~55.0.23",
+    "expo-dev-client": "~55.0.32",
+    "react": "19.2.0",
+    "react-native": "0.83.6",
+    "react-native-notify-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~5.9.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

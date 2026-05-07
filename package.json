@@ -46,6 +46,10 @@
     "smoke:android": "cd apps/smoke && npx react-native run-android",
     "smoke:ios": "cd apps/smoke && npx react-native run-ios",
     "smoke:start": "cd apps/smoke && npx react-native start",
+    "smoke:expo:config": "cd apps/expo-smoke && npx expo config --type prebuild",
+    "smoke:expo:prebuild:ios": "cd apps/expo-smoke && EXPO_NO_GIT_STATUS=1 npx expo prebuild --clean --platform ios",
+    "smoke:expo:prebuild:android": "cd apps/expo-smoke && EXPO_NO_GIT_STATUS=1 npx expo prebuild --clean --platform android",
+    "smoke:expo:start": "cd apps/expo-smoke && npx expo start --dev-client",
     "send:test:fcm": "node scripts/send-test-fcm.js"
   },
   "devDependencies": {

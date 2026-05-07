@@ -25,6 +25,7 @@ export default tseslint.config(
       '**/version.ts',
       '**/version.js',
       'apps/smoke/**',
+      'apps/expo-smoke/**',
     ],
   },
 
