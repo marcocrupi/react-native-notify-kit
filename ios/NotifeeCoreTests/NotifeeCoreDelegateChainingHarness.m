@@ -39,12 +39,13 @@ static void HarnessInstallUserNotificationCenterStub(void) {
   dispatch_once(&once, ^{
     gHarnessCenter = [HarnessUserNotificationCenter new];
 
-    Method method =
-        class_getClassMethod([UNUserNotificationCenter class], @selector(currentNotificationCenter));
+    Method method = class_getClassMethod([UNUserNotificationCenter class],
+                                         @selector(currentNotificationCenter));
     if (method == NULL) {
       gFailures += 1;
-      fprintf(stderr,
-              "[delegate-chaining] FAIL install-center-stub: currentNotificationCenter not found\n");
+      fprintf(
+          stderr,
+          "[delegate-chaining] FAIL install-center-stub: currentNotificationCenter not found\n");
       return;
     }
 
@@ -211,8 +212,7 @@ static void HarnessInstallUserNotificationCenterStub(void) {
 
 static void HarnessFail(NSString *testName, NSString *message) {
   gFailures += 1;
-  fprintf(stderr, "[delegate-chaining] FAIL %s: %s\n", testName.UTF8String,
-          message.UTF8String);
+  fprintf(stderr, "[delegate-chaining] FAIL %s: %s\n", testName.UTF8String, message.UTF8String);
   fflush(stderr);
 }
 
@@ -346,8 +346,8 @@ static void HarnessTestCapturesExistingDelegate(UNUserNotificationCenter *center
   HarnessFinishTest(testName, failuresBefore);
 }
 
-static void HarnessTestForwardsNonNotifeeWillPresent(
-    UNUserNotificationCenter *center, HarnessThirdPartyDelegate *existingDelegate) {
+static void HarnessTestForwardsNonNotifeeWillPresent(UNUserNotificationCenter *center,
+                                                     HarnessThirdPartyDelegate *existingDelegate) {
   NSString *testName = @"forwards-non-notifee-will-present";
   NSInteger failuresBefore = gFailures;
   NSInteger existingWillPresentBefore = existingDelegate.willPresentCount;
@@ -372,8 +372,8 @@ static void HarnessTestForwardsNonNotifeeWillPresent(
   HarnessFinishTest(testName, failuresBefore);
 }
 
-static void HarnessTestForwardsNonNotifeeDidReceive(
-    UNUserNotificationCenter *center, HarnessThirdPartyDelegate *existingDelegate) {
+static void HarnessTestForwardsNonNotifeeDidReceive(UNUserNotificationCenter *center,
+                                                    HarnessThirdPartyDelegate *existingDelegate) {
   NSString *testName = @"forwards-non-notifee-did-receive";
   NSInteger failuresBefore = gFailures;
   NSInteger existingDidReceiveBefore = existingDelegate.didReceiveCount;
@@ -491,10 +491,12 @@ static void HarnessTestHandleRemoteFlagDoesNotRechain(
 
   HarnessAssert(notifeeCenter.shouldHandleRemoteNotifications == NO, testName,
                 @"handleRemoteNotifications flag did not switch off on NotifyKit delegate");
-  HarnessAssertCurrentDelegate(center.delegate, lateDelegate, testName,
-                               @"handleRemoteNotifications flag unexpectedly changed current delegate");
-  HarnessAssert(center.delegate != notifeeCenter, testName,
-                @"NotifyKit unexpectedly became current delegate after handleRemoteNotifications=false");
+  HarnessAssertCurrentDelegate(
+      center.delegate, lateDelegate, testName,
+      @"handleRemoteNotifications flag unexpectedly changed current delegate");
+  HarnessAssert(
+      center.delegate != notifeeCenter, testName,
+      @"NotifyKit unexpectedly became current delegate after handleRemoteNotifications=false");
 
   id<UNUserNotificationCenterDelegate> currentDelegate = center.delegate;
   [currentDelegate userNotificationCenter:center
@@ -505,10 +507,12 @@ static void HarnessTestHandleRemoteFlagDoesNotRechain(
 
   HarnessAssert(lateDelegate.didReceiveCount == lateDidReceiveBefore + 1, testName,
                 @"late delegate did not keep didReceiveNotificationResponse after flag change");
-  HarnessAssert(existingDelegate.didReceiveCount == existingDidReceiveBefore, testName,
-                @"pre-existing delegate changed, suggesting NotifyKit re-entered the callback path");
-  HarnessAssert(completionCount == 1, testName,
-                @"late delegate didReceiveNotificationResponse completion was not called exactly once");
+  HarnessAssert(
+      existingDelegate.didReceiveCount == existingDidReceiveBefore, testName,
+      @"pre-existing delegate changed, suggesting NotifyKit re-entered the callback path");
+  HarnessAssert(
+      completionCount == 1, testName,
+      @"late delegate didReceiveNotificationResponse completion was not called exactly once");
 
   HarnessFinishTest(testName, failuresBefore);
 }
@@ -526,9 +530,10 @@ static void HarnessPrepareFutureRechainScenario(
   HarnessClearCoreEvents();
 }
 
-static void HarnessFutureTestRechainLateDelegate(
-    UNUserNotificationCenter *center, NotifeeCoreUNUserNotificationCenter *notifeeCenter,
-    HarnessThirdPartyDelegate *lateDelegate, HarnessThirdPartyDelegate *existingDelegate) {
+static void HarnessFutureTestRechainLateDelegate(UNUserNotificationCenter *center,
+                                                 NotifeeCoreUNUserNotificationCenter *notifeeCenter,
+                                                 HarnessThirdPartyDelegate *lateDelegate,
+                                                 HarnessThirdPartyDelegate *existingDelegate) {
   NSString *testName = @"rechain-late-delegate";
   NSInteger failuresBefore = gFailures;
   NSInteger lateWillPresentBefore = lateDelegate.willPresentCount;
@@ -564,9 +569,9 @@ static void HarnessFutureTestRechainLateDelegate(
   HarnessFinishTest(testName, failuresBefore);
 }
 
-static void HarnessFutureTestRechainIdempotent(
-    UNUserNotificationCenter *center, NotifeeCoreUNUserNotificationCenter *notifeeCenter,
-    HarnessThirdPartyDelegate *existingDelegate) {
+static void HarnessFutureTestRechainIdempotent(UNUserNotificationCenter *center,
+                                               NotifeeCoreUNUserNotificationCenter *notifeeCenter,
+                                               HarnessThirdPartyDelegate *existingDelegate) {
   NSString *testName = @"rechain-idempotent";
   NSInteger failuresBefore = gFailures;
   NSInteger existingWillPresentBefore = existingDelegate.willPresentCount;
@@ -582,8 +587,9 @@ static void HarnessFutureTestRechainIdempotent(
                                @"idempotent rechain changed current delegate away from NotifyKit");
   HarnessAssert(notifeeCenter.originalDelegate == existingDelegate, testName,
                 @"idempotent rechain overwrote the existing downstream delegate");
-  HarnessAssert(notifeeCenter.originalDelegate != (id<UNUserNotificationCenterDelegate>)notifeeCenter,
-                testName, @"idempotent rechain captured NotifyKit as its own downstream delegate");
+  HarnessAssert(
+      notifeeCenter.originalDelegate != (id<UNUserNotificationCenterDelegate>)notifeeCenter,
+      testName, @"idempotent rechain captured NotifyKit as its own downstream delegate");
 
   id<UNUserNotificationCenterDelegate> currentDelegate = center.delegate;
   [currentDelegate userNotificationCenter:center
@@ -625,10 +631,12 @@ static void HarnessFutureTestRechainUpdatesDownstream(
 
   HarnessAssert(lateDelegate.didReceiveCount == lateDidReceiveBefore + 1, testName,
                 @"non-NotifyKit didReceiveNotificationResponse was not forwarded to late delegate");
-  HarnessAssert(existingDelegate.didReceiveCount == existingDidReceiveBefore, testName,
-                @"stale pre-existing delegate received didReceiveNotificationResponse after rechain");
-  HarnessAssert(completionCount == 1, testName,
-                @"updated downstream didReceiveNotificationResponse completion was not exactly once");
+  HarnessAssert(
+      existingDelegate.didReceiveCount == existingDidReceiveBefore, testName,
+      @"stale pre-existing delegate received didReceiveNotificationResponse after rechain");
+  HarnessAssert(
+      completionCount == 1, testName,
+      @"updated downstream didReceiveNotificationResponse completion was not exactly once");
 
   HarnessFinishTest(testName, failuresBefore);
 }
@@ -642,10 +650,9 @@ static void HarnessFutureTestNotifeeOwnedDoesNotForward(
   NSInteger coreEventsBefore = 0;
   __block NSInteger completionCount = 0;
   __block UNNotificationPresentationOptions receivedOptions = UNNotificationPresentationOptionNone;
-  UNNotificationPresentationOptions expectedOptions = UNNotificationPresentationOptionBadge |
-                                                      UNNotificationPresentationOptionSound |
-                                                      UNNotificationPresentationOptionBanner |
-                                                      UNNotificationPresentationOptionList;
+  UNNotificationPresentationOptions expectedOptions =
+      UNNotificationPresentationOptionBadge | UNNotificationPresentationOptionSound |
+      UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionList;
 
   HarnessPrepareFutureRechainScenario(center, notifeeCenter, existingDelegate, lateDelegate, YES);
   HarnessInvokeFutureRechain(notifeeCenter);
@@ -668,15 +675,17 @@ static void HarnessFutureTestNotifeeOwnedDoesNotForward(
                 @"NotifyKit-owned willPresentNotification did not emit DELIVERED");
   HarnessAssert(completionCount == 1, testName,
                 @"NotifyKit-owned willPresentNotification completion was not exactly once");
-  HarnessAssert(receivedOptions == expectedOptions, testName,
-                @"NotifyKit-owned willPresentNotification did not use NotifyKit presentation options");
+  HarnessAssert(
+      receivedOptions == expectedOptions, testName,
+      @"NotifyKit-owned willPresentNotification did not use NotifyKit presentation options");
 
   HarnessFinishTest(testName, failuresBefore);
 }
 
-static void HarnessFutureTestNonNotifeeForwarded(
-    UNUserNotificationCenter *center, NotifeeCoreUNUserNotificationCenter *notifeeCenter,
-    HarnessThirdPartyDelegate *lateDelegate, HarnessThirdPartyDelegate *existingDelegate) {
+static void HarnessFutureTestNonNotifeeForwarded(UNUserNotificationCenter *center,
+                                                 NotifeeCoreUNUserNotificationCenter *notifeeCenter,
+                                                 HarnessThirdPartyDelegate *lateDelegate,
+                                                 HarnessThirdPartyDelegate *existingDelegate) {
   NSString *testName = @"rechain-non-notifee-forwarded";
   NSInteger failuresBefore = gFailures;
   NSInteger lateDidReceiveBefore = lateDelegate.didReceiveCount;
@@ -727,10 +736,12 @@ static void HarnessFutureTestHandleRemoteFalsePreserved(
                       completionCount += 1;
                     }];
 
-  HarnessAssert(lateDelegate.didReceiveCount == lateDidReceiveBefore + 1, testName,
-                @"remote non-NotifyKit response was not forwarded with handleRemoteNotifications=false");
-  HarnessAssert(HarnessCoreEventCount() == coreEventsBefore, testName,
-                @"remote non-NotifyKit response emitted a core event with handleRemoteNotifications=false");
+  HarnessAssert(
+      lateDelegate.didReceiveCount == lateDidReceiveBefore + 1, testName,
+      @"remote non-NotifyKit response was not forwarded with handleRemoteNotifications=false");
+  HarnessAssert(
+      HarnessCoreEventCount() == coreEventsBefore, testName,
+      @"remote non-NotifyKit response emitted a core event with handleRemoteNotifications=false");
   HarnessAssert(completionCount == 1, testName,
                 @"remote non-NotifyKit response completion was not exactly once");
 
@@ -822,10 +833,9 @@ static void HarnessFutureTestRechainRefreshesSelectorFlags(
   __block NSInteger willPresentCompletionCount = 0;
   __block NSInteger didReceiveCompletionCount = 0;
   __block UNNotificationPresentationOptions receivedOptions = UNNotificationPresentationOptionNone;
-  UNNotificationPresentationOptions fallbackOptions = UNNotificationPresentationOptionBanner |
-                                                      UNNotificationPresentationOptionSound |
-                                                      UNNotificationPresentationOptionList |
-                                                      UNNotificationPresentationOptionBadge;
+  UNNotificationPresentationOptions fallbackOptions =
+      UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |
+      UNNotificationPresentationOptionList | UNNotificationPresentationOptionBadge;
 
   HarnessPrepareFutureRechainScenario(center, notifeeCenter, existingDelegate,
                                       didReceiveOnlyDelegate, YES);
@@ -848,8 +858,9 @@ static void HarnessFutureTestRechainRefreshesSelectorFlags(
                       didReceiveCompletionCount += 1;
                     }];
 
-  HarnessAssert(willPresentCompletionCount == 1, testName,
-                @"willPresent fallback completion was not exactly once for selector-sparse downstream");
+  HarnessAssert(
+      willPresentCompletionCount == 1, testName,
+      @"willPresent fallback completion was not exactly once for selector-sparse downstream");
   HarnessAssert(receivedOptions == fallbackOptions, testName,
                 @"willPresent fallback options were not used for selector-sparse downstream");
   HarnessAssert(didReceiveOnlyDelegate.didReceiveCount == didReceiveOnlyBefore + 1, testName,
@@ -860,9 +871,10 @@ static void HarnessFutureTestRechainRefreshesSelectorFlags(
   HarnessFinishTest(testName, failuresBefore);
 }
 
-static void HarnessRunFutureRechainTests(
-    UNUserNotificationCenter *center, NotifeeCoreUNUserNotificationCenter *notifeeCenter,
-    HarnessThirdPartyDelegate *lateDelegate, HarnessThirdPartyDelegate *existingDelegate) {
+static void HarnessRunFutureRechainTests(UNUserNotificationCenter *center,
+                                         NotifeeCoreUNUserNotificationCenter *notifeeCenter,
+                                         HarnessThirdPartyDelegate *lateDelegate,
+                                         HarnessThirdPartyDelegate *existingDelegate) {
   if (!HarnessShouldRunFutureRechainTests()) {
     return;
   }
@@ -871,9 +883,8 @@ static void HarnessRunFutureRechainTests(
   fflush(stdout);
 
   if (![notifeeCenter respondsToSelector:HarnessFutureRechainSelector()]) {
-    NSString *message =
-        @"runtime rechain helper not implemented yet; expected selector "
-         "rechainUserNotificationCenterDelegate";
+    NSString *message = @"runtime rechain helper not implemented yet; expected selector "
+                         "rechainUserNotificationCenterDelegate";
     NSArray<NSString *> *futureTests = @[
       @"rechain-late-delegate",
       @"rechain-idempotent",

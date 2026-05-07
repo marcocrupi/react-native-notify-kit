@@ -21,8 +21,7 @@
 #import "NotifeeCoreDelegateHolder.h"
 #import "NotifeeCoreUtil.h"
 
-typedef void (^NotifeeCorePresentationCompletionHandler)(
-    UNNotificationPresentationOptions options);
+typedef void (^NotifeeCorePresentationCompletionHandler)(UNNotificationPresentationOptions options);
 typedef void (^NotifeeCoreVoidCompletionHandler)(void);
 
 @interface NotifeeCore (RollingTimestampTopUp)
@@ -110,16 +109,16 @@ struct {
   originalUNCDelegateRespondsTo.openSettingsForNotification =
       originalDelegate != nil &&
       [originalDelegate respondsToSelector:@selector(userNotificationCenter:
-                                          openSettingsForNotification:)];
+                                                openSettingsForNotification:)];
   originalUNCDelegateRespondsTo.willPresentNotification =
       originalDelegate != nil &&
-      [originalDelegate respondsToSelector:@selector(userNotificationCenter:
-                                          willPresentNotification:withCompletionHandler:)];
+      [originalDelegate respondsToSelector:@selector
+                        (userNotificationCenter:willPresentNotification:withCompletionHandler:)];
   originalUNCDelegateRespondsTo.didReceiveNotificationResponse =
       originalDelegate != nil &&
-      [originalDelegate respondsToSelector:@selector(userNotificationCenter:
-                                          didReceiveNotificationResponse:
-                                              withCompletionHandler:)];
+      [originalDelegate
+          respondsToSelector:@selector(userNotificationCenter:
+                                 didReceiveNotificationResponse:withCompletionHandler:)];
 }
 
 - (void)rechainUserNotificationCenterDelegate {
