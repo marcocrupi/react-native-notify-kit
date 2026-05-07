@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.3.3] - 2026-05-07
+
+### Fixed
+
+- **iOS**: improved `UNUserNotificationCenter` delegate chaining reliability. NotifyKit now performs a controlled idempotent rechain when relevant iOS notification APIs or lifecycle hooks run, so if another SDK assigns itself as the notification center delegate after NotifyKit, NotifyKit can capture that delegate as downstream and reinstall itself as the current delegate. The downstream delegate selector flags are refreshed during rechain, NotifyKit-owned notifications remain handled by NotifyKit, and non-NotifyKit notifications continue to be forwarded downstream. This internal fix does not add a public API, does not use method swizzling, does not introduce a general delegate multiplexer, and preserves `setNotificationConfig({ ios: { handleRemoteNotifications: false } })` behavior for non-NotifyKit remote notifications while keeping FCM Mode notifications marked with `__notifee_notification` NotifyKit-owned.
+- **iOS**: guarded downstream delegate completion handlers for forwarded notification callbacks so duplicate downstream completion calls do not invoke the upstream completion more than once. No timeout or fallback behavior is introduced when a downstream delegate does not call completion.
+
+### Tests
+
+- **Tests**: added and validated an iOS delegate chaining harness covering current delegate capture, late delegate override, explicit rechain behavior, downstream forwarding, NotifyKit-owned ownership, selector flag refresh, `handleRemoteNotifications: false`, FCM Mode ownership, and downstream completion one-shot behavior.
+
+### Tooling
+
+- **Packaging/iOS**: fixed generated iOS core packaging so the npm tarball is built from a verified `NotifeeCore` source copy. The package `prepack` step now regenerates `packages/react-native/ios/NotifeeCore` from the root `ios/NotifeeCore`, verifies that all 17 generated files match the source of truth, and the tarball E2E check now asserts that all 17 iOS core files are included. This prevents local ignored files from masking missing package sources in clean clones or release builds, and removes the anomalous generated file from tracking.
+
 ## [10.3.2] - 2026-05-06
 
 ### Fixed

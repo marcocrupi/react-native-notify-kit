@@ -5,6 +5,26 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.3.3] (2026-05-07)
+
+Patch release focused on iOS notification delegate reliability and generated iOS core packaging. It does not add a public API, change JavaScript payloads, or introduce a breaking change.
+
+### iOS
+
+- Improved `UNUserNotificationCenter` delegate chaining reliability with an internal idempotent rechain path. This helps NotifyKit stay in the notification callback path when another SDK assigns itself as the notification center delegate after NotifyKit, while refreshing downstream selector flags and preserving downstream forwarding for non-NotifyKit notifications.
+- Preserved NotifyKit ownership for local, trigger, and FCM Mode notifications marked with `__notifee_notification`, including when `handleRemoteNotifications` is disabled for non-NotifyKit remote notifications.
+- Guarded downstream delegate completion handlers so duplicate downstream completion calls do not invoke the upstream completion more than once. No downstream completion timeout or fallback behavior is introduced.
+- The delegate reliability fix does not use method swizzling and does not introduce a general delegate multiplexer.
+
+### Packaging
+
+- Regenerated and verified the generated package iOS core before packing.
+- Added verification that `packages/react-native/ios/NotifeeCore` matches the root `ios/NotifeeCore` source of truth and that the npm tarball includes all 17 iOS core files.
+
+### Tests
+
+- Added iOS delegate chaining harness coverage for current delegate capture, late delegate override, explicit rechain behavior, downstream forwarding, NotifyKit-owned ownership, selector flag refresh, `handleRemoteNotifications: false`, FCM Mode ownership, and downstream completion one-shot behavior.
+
 ## [10.3.2] (2026-05-06)
 
 ### Fixed
