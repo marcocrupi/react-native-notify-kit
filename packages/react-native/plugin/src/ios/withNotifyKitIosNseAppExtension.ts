@@ -24,14 +24,7 @@ export function withNotifyKitIosNseAppExtension<TConfig extends ExpoConfigLike>(
     return config;
   }
 
-  const hostBundleIdentifier = config.ios?.bundleIdentifier;
-  if (!hostBundleIdentifier) {
-    throw new Error(
-      '[react-native-notify-kit] ios.bundleIdentifier is required when ios.notificationServiceExtension.enabled is true.',
-    );
-  }
-
-  const bundleIdentifier = `${hostBundleIdentifier}${nseOptions.bundleSuffix}`;
+  const bundleIdentifier = resolveNotifyKitIosNseBundleIdentifier(config, nseOptions);
   const currentAppExtensions = getCurrentAppExtensions(config);
   const nextAppExtensions = upsertNotifyKitIosNseAppExtension(currentAppExtensions, {
     targetName: nseOptions.targetName,
@@ -42,6 +35,20 @@ export function withNotifyKitIosNseAppExtension<TConfig extends ExpoConfigLike>(
     ...config,
     extra: setNestedAppExtensions(config.extra, nextAppExtensions),
   } as TConfig;
+}
+
+export function resolveNotifyKitIosNseBundleIdentifier(
+  config: ExpoConfigLike,
+  nseOptions: NormalizedIosNotificationServiceExtensionOptions,
+): string {
+  const hostBundleIdentifier = config.ios?.bundleIdentifier;
+  if (!hostBundleIdentifier) {
+    throw new Error(
+      '[react-native-notify-kit] ios.bundleIdentifier is required when ios.notificationServiceExtension.enabled is true.',
+    );
+  }
+
+  return `${hostBundleIdentifier}${nseOptions.bundleSuffix}`;
 }
 
 export function upsertNotifyKitIosNseAppExtension(

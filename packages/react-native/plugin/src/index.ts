@@ -3,7 +3,9 @@ import {
   withNotifyKitIosNseAppExtension,
   type ExpoConfigLike,
 } from './ios/withNotifyKitIosNseAppExtension';
+import { withNotifyKitIosNseFiles } from './ios/withNotifyKitIosNseFiles';
 import { withNotifyKitIosNsePodfile } from './ios/withNotifyKitIosNsePodfile';
+import { withNotifyKitIosNseXcodeProject } from './ios/withNotifyKitIosNseXcodeProject';
 
 type ConfigPlugin<TProps> = (config: ExpoConfigLike, props?: TProps) => ExpoConfigLike;
 
@@ -26,8 +28,10 @@ export const withNotifyKit: ConfigPlugin<NotifyKitPluginOptions | undefined> = (
   const options = normalizeNotifyKitPluginOptions(props);
   const nseOptions = options.ios.notificationServiceExtension;
   const configWithAppExtension = withNotifyKitIosNseAppExtension(config, nseOptions);
+  const configWithFiles = withNotifyKitIosNseFiles(configWithAppExtension, nseOptions);
+  const configWithXcodeProject = withNotifyKitIosNseXcodeProject(configWithFiles, nseOptions);
 
-  return withNotifyKitIosNsePodfile(configWithAppExtension, nseOptions);
+  return withNotifyKitIosNsePodfile(configWithXcodeProject, nseOptions);
 };
 
 export default createRunOncePlugin(withNotifyKit, pkg.name, pkg.version);

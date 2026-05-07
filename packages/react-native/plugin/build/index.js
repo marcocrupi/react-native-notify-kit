@@ -6,16 +6,24 @@ const {
   withNotifyKitIosNseAppExtension,
 } = require('./ios/withNotifyKitIosNseAppExtension');
 const {
+  withNotifyKitIosNseFiles,
+} = require('./ios/withNotifyKitIosNseFiles');
+const {
   withNotifyKitIosNsePodfile,
 } = require('./ios/withNotifyKitIosNsePodfile');
+const {
+  withNotifyKitIosNseXcodeProject,
+} = require('./ios/withNotifyKitIosNseXcodeProject');
 const pkg = require('../../package.json');
 
 function withNotifyKit(config, props = {}) {
   const options = normalizeNotifyKitPluginOptions(props);
   const nseOptions = options.ios.notificationServiceExtension;
   const configWithAppExtension = withNotifyKitIosNseAppExtension(config, nseOptions);
+  const configWithFiles = withNotifyKitIosNseFiles(configWithAppExtension, nseOptions);
+  const configWithXcodeProject = withNotifyKitIosNseXcodeProject(configWithFiles, nseOptions);
 
-  return withNotifyKitIosNsePodfile(configWithAppExtension, nseOptions);
+  return withNotifyKitIosNsePodfile(configWithXcodeProject, nseOptions);
 }
 
 const plugin = createRunOncePlugin(withNotifyKit, pkg.name, pkg.version);
@@ -25,6 +33,8 @@ module.exports.default = plugin;
 module.exports.withNotifyKit = withNotifyKit;
 module.exports.normalizeNotifyKitPluginOptions = normalizeNotifyKitPluginOptions;
 module.exports.withNotifyKitIosNseAppExtension = withNotifyKitIosNseAppExtension;
+module.exports.withNotifyKitIosNseFiles = withNotifyKitIosNseFiles;
+module.exports.withNotifyKitIosNseXcodeProject = withNotifyKitIosNseXcodeProject;
 module.exports.withNotifyKitIosNsePodfile = withNotifyKitIosNsePodfile;
 
 function requireExpoConfigPlugins() {

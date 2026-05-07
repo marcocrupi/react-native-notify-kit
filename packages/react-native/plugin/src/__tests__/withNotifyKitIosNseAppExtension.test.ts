@@ -1,4 +1,5 @@
 import {
+  resolveNotifyKitIosNseBundleIdentifier,
   upsertNotifyKitIosNseAppExtension,
   withNotifyKitIosNseAppExtension,
 } from '../ios/withNotifyKitIosNseAppExtension';
@@ -43,6 +44,19 @@ describe('NotifyKit Expo EAS appExtensions config', () => {
         bundleIdentifier: 'com.notifykit.exposmoke.NotifyKitNSE',
       },
     ]);
+  });
+
+  it('resolves the same bundleIdentifier used for the EAS appExtension config', () => {
+    expect(
+      resolveNotifyKitIosNseBundleIdentifier(
+        {
+          ios: {
+            bundleIdentifier: 'com.notifykit.exposmoke',
+          },
+        },
+        enabledOptions,
+      ),
+    ).toBe('com.notifykit.exposmoke.NotifyKitNSE');
   });
 
   it('keeps an existing matching appExtension idempotent', () => {

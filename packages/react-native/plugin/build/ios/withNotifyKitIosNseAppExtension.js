@@ -5,14 +5,7 @@ function withNotifyKitIosNseAppExtension(config, nseOptions) {
     return config;
   }
 
-  const hostBundleIdentifier = config.ios && config.ios.bundleIdentifier;
-  if (!hostBundleIdentifier) {
-    throw new Error(
-      '[react-native-notify-kit] ios.bundleIdentifier is required when ios.notificationServiceExtension.enabled is true.',
-    );
-  }
-
-  const bundleIdentifier = `${hostBundleIdentifier}${nseOptions.bundleSuffix}`;
+  const bundleIdentifier = resolveNotifyKitIosNseBundleIdentifier(config, nseOptions);
   const currentAppExtensions = getCurrentAppExtensions(config);
   const nextAppExtensions = upsertNotifyKitIosNseAppExtension(currentAppExtensions, {
     targetName: nseOptions.targetName,
@@ -23,6 +16,17 @@ function withNotifyKitIosNseAppExtension(config, nseOptions) {
     ...config,
     extra: setNestedAppExtensions(config.extra, nextAppExtensions),
   };
+}
+
+function resolveNotifyKitIosNseBundleIdentifier(config, nseOptions) {
+  const hostBundleIdentifier = config.ios && config.ios.bundleIdentifier;
+  if (!hostBundleIdentifier) {
+    throw new Error(
+      '[react-native-notify-kit] ios.bundleIdentifier is required when ios.notificationServiceExtension.enabled is true.',
+    );
+  }
+
+  return `${hostBundleIdentifier}${nseOptions.bundleSuffix}`;
 }
 
 function upsertNotifyKitIosNseAppExtension(appExtensions, nextExtension) {
@@ -133,5 +137,6 @@ function isPlainObject(value) {
 
 module.exports = {
   withNotifyKitIosNseAppExtension,
+  resolveNotifyKitIosNseBundleIdentifier,
   upsertNotifyKitIosNseAppExtension,
 };
