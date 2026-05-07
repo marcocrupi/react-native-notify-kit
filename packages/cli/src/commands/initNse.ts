@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import xcode from 'xcode';
-import { detectIosProject, deriveBundleId } from '../lib/detectProject';
+import { detectIosProject } from '../lib/detectProject';
+import {
+  deriveNseBundleIdentifier,
+  validateNseBundleSuffix,
+  validateNseTargetName,
+} from '../lib/initNseCore';
 import { writeTemplates } from '../lib/writeTemplates';
 import { patchPodfile } from '../lib/patchPodfile';
 import { patchXcodeProject } from '../lib/patchXcodeProject';
@@ -27,20 +32,12 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     dryRun = false,
   } = opts;
 
-  // 0. Validate target name (prevents Podfile/pbxproj injection via special chars)
-  if (!/^[A-Za-z0-9_\-.]+$/.test(targetName)) {
-    logger.error(
-      `Invalid target name '${targetName}'. Must match [A-Za-z0-9_-.]\n` +
-        '  Target names can only contain letters, digits, underscores, hyphens, and dots.',
-    );
-    process.exit(1);
-  }
-
-  // 0b. Validate bundle suffix (prevents pbxproj injection via quotes/newlines)
-  if (!/^\.[A-Za-z0-9\-.]+$/.test(bundleSuffix)) {
-    logger.error(
-      `Invalid bundle suffix '${bundleSuffix}'. Must start with '.' and contain only letters, digits, hyphens, and dots.`,
-    );
+  // 0. Validate user-provided names before they reach Podfile/pbxproj patching.
+  try {
+    validateNseTargetName(targetName);
+    validateNseBundleSuffix(bundleSuffix);
+  } catch (e: unknown) {
+    logger.error(e instanceof Error ? e.message : String(e));
     process.exit(1);
   }
 
@@ -57,7 +54,7 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
   logger.success(`Detected iOS project at ${projectInfo.xcodeProjectPath}`);
 
   // 2. Derive bundle ID
-  const bundleId = deriveBundleId(
+  const bundleId = deriveNseBundleIdentifier(
     projectInfo.parentBundleId,
     bundleSuffix,
     projectInfo.parentTargetName,

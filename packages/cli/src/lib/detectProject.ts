@@ -2,6 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import xcode from 'xcode';
 
+export { deriveNseBundleIdentifier as deriveBundleId } from './initNseCore';
+
 export interface ProjectInfo {
   xcodeProjectPath: string;
   pbxprojPath: string;
@@ -57,49 +59,6 @@ export function detectIosProject(iosPath?: string): ProjectInfo {
     parentBundleId: bundleId,
     parentTargetName: targetName,
   };
-}
-
-/**
- * Derives the NSE bundle ID from the parent target.
- */
-export function deriveBundleId(
-  parentBundleId: string | null,
-  suffix: string,
-  parentTargetName?: string,
-): string {
-  if (!parentBundleId) {
-    return `$(PRODUCT_BUNDLE_IDENTIFIER:default)${suffix}`;
-  }
-
-  if (!parentBundleId.includes('$(') && !parentBundleId.includes('${')) {
-    return parentBundleId + suffix;
-  }
-
-  const expandedBundleId = expandKnownBundleIdVariables(parentBundleId, parentTargetName);
-  if (expandedBundleId && !expandedBundleId.includes('$(') && !expandedBundleId.includes('${')) {
-    return expandedBundleId + suffix;
-  }
-
-  // Variable-based bundle ID we could not fully resolve statically.
-  return `$(PRODUCT_BUNDLE_IDENTIFIER:default)${suffix}`;
-}
-
-function expandKnownBundleIdVariables(bundleId: string, parentTargetName?: string): string | null {
-  if (!parentTargetName) {
-    return null;
-  }
-
-  const normalizedTargetName = toRfc1034Identifier(parentTargetName);
-
-  return bundleId
-    .replace(/\$\((?:PRODUCT_NAME|TARGET_NAME):rfc1034identifier\)/g, normalizedTargetName)
-    .replace(/\$\{(?:PRODUCT_NAME|TARGET_NAME):rfc1034identifier\}/g, normalizedTargetName)
-    .replace(/\$\((?:PRODUCT_NAME|TARGET_NAME)\)/g, parentTargetName)
-    .replace(/\$\{(?:PRODUCT_NAME|TARGET_NAME)\}/g, parentTargetName);
-}
-
-function toRfc1034Identifier(value: string): string {
-  return value.replace(/[^A-Za-z0-9.-]/g, '-');
 }
 
 function readParentTarget(pbxprojPath: string): {

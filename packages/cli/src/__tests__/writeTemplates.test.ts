@@ -1,6 +1,11 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import {
+  renderNotificationServiceSwift,
+  renderNseEntitlementsPlist,
+  renderNseInfoPlist,
+} from '../lib/initNseCore';
 import { writeTemplates } from '../lib/writeTemplates';
 
 describe('writeTemplates', () => {
@@ -25,6 +30,7 @@ describe('writeTemplates', () => {
       path.join(tmp, 'NotifyKitNSE', 'NotificationService.swift'),
       'utf-8',
     );
+    expect(swift).toBe(renderNotificationServiceSwift());
     expect(swift).toContain('import RNNotifeeCore');
     expect(swift).toContain('NotifeeExtensionHelper.populateNotificationContent');
   });
@@ -37,6 +43,7 @@ describe('writeTemplates', () => {
       force: false,
     });
     const plist = fs.readFileSync(path.join(tmp, 'NotifyKitNSE', 'Info.plist'), 'utf-8');
+    expect(plist).toBe(renderNseInfoPlist({ targetName: 'NotifyKitNSE' }));
     expect(plist).toContain('<string>NotifyKitNSE</string>');
     expect(plist).toContain('com.apple.usernotifications.service');
     expect(plist).not.toContain('{{TARGET_NAME}}');
@@ -49,7 +56,9 @@ describe('writeTemplates', () => {
       bundleId: 'com.test.nse',
       force: false,
     });
-    expect(fs.existsSync(path.join(tmp, 'NotifyKitNSE', 'NotifyKitNSE.entitlements'))).toBe(true);
+    const entitlementsPath = path.join(tmp, 'NotifyKitNSE', 'NotifyKitNSE.entitlements');
+    expect(fs.existsSync(entitlementsPath)).toBe(true);
+    expect(fs.readFileSync(entitlementsPath, 'utf-8')).toBe(renderNseEntitlementsPlist());
   });
 
   it('refuses to overwrite existing directory without --force', () => {

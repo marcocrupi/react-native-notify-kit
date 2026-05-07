@@ -1,12 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-
-// Templates live at dist/templates/ in dev (relative to dist/lib/writeTemplates.js)
-// and at cli/dist/templates/ in the bundled prepack (relative to cli/dist/cli.bundle.js).
-// The fallback path handles the bundled context where __dirname is the bundle's dir.
-const TEMPLATES_DIR = fs.existsSync(path.join(__dirname, 'templates'))
-  ? path.join(__dirname, 'templates')
-  : path.join(__dirname, '..', 'templates');
+import {
+  renderNotificationServiceSwift,
+  renderNseEntitlementsPlist,
+  renderNseInfoPlist,
+} from './initNseCore';
 
 export interface WriteTemplatesOptions {
   iosDir: string;
@@ -33,26 +31,21 @@ export function writeTemplates(opts: WriteTemplatesOptions): string[] {
 
   const files = [
     {
-      template: 'NotificationService.swift.tmpl',
       output: 'NotificationService.swift',
+      content: renderNotificationServiceSwift(),
     },
     {
-      template: 'Info.plist.tmpl',
       output: 'Info.plist',
+      content: renderNseInfoPlist({ targetName: opts.targetName }),
     },
     {
-      template: 'NotifyKitNSE.entitlements.tmpl',
       output: `${opts.targetName}.entitlements`,
+      content: renderNseEntitlementsPlist(),
     },
   ];
 
   const written: string[] = [];
-  for (const { template, output } of files) {
-    const templatePath = path.join(TEMPLATES_DIR, template);
-    let content = fs.readFileSync(templatePath, 'utf-8');
-    content = content.replace(/\{\{TARGET_NAME\}\}/g, opts.targetName);
-    content = content.replace(/\{\{BUNDLE_ID\}\}/g, opts.bundleId);
-
+  for (const { output, content } of files) {
     const outputPath = path.join(targetDir, output);
     fs.writeFileSync(outputPath, content, 'utf-8');
     written.push(outputPath);
