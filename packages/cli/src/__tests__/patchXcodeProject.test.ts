@@ -2,7 +2,10 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import xcode from 'xcode';
-import { patchXcodeProject } from '../lib/patchXcodeProject';
+import {
+  patchXcodeProject,
+  patchXcodeProjectForNotifyKitNse,
+} from '../lib/patchXcodeProject';
 
 const FIXTURE_DIR = path.join(__dirname, 'fixtures', 'sample-rn-app');
 
@@ -35,6 +38,21 @@ function getTargetNames(proj: ReturnType<typeof xcode.project>): string[] {
     .map(([, v]) => String((v as Record<string, unknown>).name).replace(/"/g, ''));
 }
 
+function getNativeTarget(
+  proj: ReturnType<typeof xcode.project>,
+  targetName: string,
+): { uuid: string; target: Record<string, unknown> } | undefined {
+  const targets = proj.pbxNativeTargetSection();
+  for (const [uuid, value] of Object.entries(targets)) {
+    if (typeof value !== 'object' || uuid.endsWith('_comment')) continue;
+    const target = value as Record<string, unknown>;
+    if (String(target.name ?? '').replace(/"/g, '') === targetName) {
+      return { uuid, target };
+    }
+  }
+  return undefined;
+}
+
 function getBuildSetting(
   proj: ReturnType<typeof xcode.project>,
   targetProductName: string,
@@ -50,6 +68,69 @@ function getBuildSetting(
     }
   }
   return undefined;
+}
+
+function getProductFileReference(
+  proj: ReturnType<typeof xcode.project>,
+  targetName: string,
+): Record<string, unknown> | undefined {
+  const target = getNativeTarget(proj, targetName);
+  const productReference = target?.target.productReference;
+  if (typeof productReference !== 'string') return undefined;
+
+  const fileRefs = (proj as any).hash.project.objects.PBXFileReference as
+    | Record<string, unknown>
+    | undefined;
+  const fileRef = fileRefs?.[productReference];
+  return typeof fileRef === 'object' ? (fileRef as Record<string, unknown>) : undefined;
+}
+
+function getTargetDependencyCount(
+  proj: ReturnType<typeof xcode.project>,
+  hostTargetName: string,
+  dependencyTargetName: string,
+): number {
+  const hostTarget = getNativeTarget(proj, hostTargetName);
+  const dependencyTarget = getNativeTarget(proj, dependencyTargetName);
+  if (!hostTarget || !dependencyTarget) return 0;
+
+  const dependencies = Array.isArray(hostTarget.target.dependencies)
+    ? hostTarget.target.dependencies
+    : [];
+  const dependencyObjects = (proj as any).hash.project.objects.PBXTargetDependency as
+    | Record<string, unknown>
+    | undefined;
+
+  return dependencies.filter(depRef => {
+    const depUuid = (depRef as Record<string, unknown>)?.value;
+    if (typeof depUuid !== 'string') return false;
+    const dependency = dependencyObjects?.[depUuid];
+    if (typeof dependency !== 'object') return false;
+    return (dependency as Record<string, unknown>).target === dependencyTarget.uuid;
+  }).length;
+}
+
+function countSourceBuildFiles(
+  proj: ReturnType<typeof xcode.project>,
+  targetName: string,
+  sourceComment: string,
+): number {
+  const target = getNativeTarget(proj, targetName);
+  if (!target || !Array.isArray(target.target.buildPhases)) return 0;
+
+  const sourcesPhaseRef = target.target.buildPhases.find(
+    phase => (phase as Record<string, unknown>).comment === 'Sources',
+  ) as Record<string, unknown> | undefined;
+  const sourcesPhaseUuid = sourcesPhaseRef?.value;
+  if (typeof sourcesPhaseUuid !== 'string') return 0;
+
+  const phases = (proj as any).hash.project.objects.PBXSourcesBuildPhase as
+    | Record<string, unknown>
+    | undefined;
+  const phase = phases?.[sourcesPhaseUuid] as Record<string, unknown> | undefined;
+  const files = Array.isArray(phase?.files) ? phase.files : [];
+
+  return files.filter(file => (file as Record<string, unknown>).comment === sourceComment).length;
 }
 
 function getShellScriptPhase(
@@ -79,6 +160,107 @@ describe('patchXcodeProject', () => {
 
   afterEach(() => {
     ctx.cleanup();
+  });
+
+  it('patchXcodeProjectForNotifyKitNse returns didChange true on a base project', () => {
+    const proj = parseProject(ctx.pbxprojPath);
+    const result = patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+    });
+
+    const nseTarget = getNativeTarget(proj, 'NotifyKitNSE');
+    const hostTarget = getNativeTarget(proj, 'NotifeeExample');
+
+    expect(result).toEqual({
+      didChange: true,
+      targetUuid: nseTarget?.uuid,
+      productUuid: nseTarget?.target.productReference,
+      hostTargetUuid: hostTarget?.uuid,
+      warnings: [],
+    });
+    expect(getTargetNames(proj)).toContain('NotifyKitNSE');
+  });
+
+  it('patchXcodeProjectForNotifyKitNse is idempotent on an already patched project', () => {
+    const proj = parseProject(ctx.pbxprojPath);
+    const first = patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+    });
+    const patchedProject = proj.writeSync();
+
+    const second = patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+    });
+
+    expect(first.didChange).toBe(true);
+    expect(second).toEqual({ didChange: false, warnings: [] });
+    expect(proj.writeSync()).toBe(patchedProject);
+    expect(getTargetNames(proj).filter(n => n === 'NotifyKitNSE')).toHaveLength(1);
+    expect(
+      countSourceBuildFiles(proj, 'NotifyKitNSE', 'NotificationService.swift in Sources'),
+    ).toBe(1);
+    expect(getTargetDependencyCount(proj, 'NotifeeExample', 'NotifyKitNSE')).toBe(1);
+  });
+
+  it('removes broken undefined fields from the .appex product file reference', () => {
+    const proj = parseProject(ctx.pbxprojPath);
+    patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+    });
+
+    const productFileReference = getProductFileReference(proj, 'NotifyKitNSE');
+
+    expect(productFileReference).toBeDefined();
+    expect(productFileReference?.name).toBe('"NotifyKitNSE.appex"');
+    expect(productFileReference).not.toHaveProperty('fileEncoding');
+    expect(productFileReference).not.toHaveProperty('lastKnownFileType');
+  });
+
+  it('adds a manual target dependency from the host app to the NSE target', () => {
+    const proj = parseProject(ctx.pbxprojPath);
+    patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+    });
+
+    expect(getTargetDependencyCount(proj, 'NotifeeExample', 'NotifyKitNSE')).toBe(1);
+  });
+
+  it('keeps the default object-based build settings aligned with the CLI patcher', () => {
+    const proj = parseProject(ctx.pbxprojPath);
+    patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+    });
+
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'INFOPLIST_FILE')).toBe(
+      'NotifyKitNSE/Info.plist',
+    );
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'PRODUCT_BUNDLE_IDENTIFIER')).toBe(
+      'com.test.nse',
+    );
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'TARGETED_DEVICE_FAMILY')).toBe('1,2');
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'IPHONEOS_DEPLOYMENT_TARGET')).toBe('15.1');
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'SWIFT_VERSION')).toBe('5.0');
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'CODE_SIGN_ENTITLEMENTS')).toBe(
+      'NotifyKitNSE/NotifyKitNSE.entitlements',
+    );
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'GENERATE_INFOPLIST_FILE')).toBe('NO');
+  });
+
+  it('applies a custom deployment target through the object-based API', () => {
+    const proj = parseProject(ctx.pbxprojPath);
+    patchXcodeProjectForNotifyKitNse(proj, {
+      targetName: 'NotifyKitNSE',
+      bundleIdentifier: 'com.test.nse',
+      deploymentTarget: '16.2',
+    });
+
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'IPHONEOS_DEPLOYMENT_TARGET')).toBe('16.2');
   });
 
   it('adds NotifyKitNSE target as app_extension', () => {

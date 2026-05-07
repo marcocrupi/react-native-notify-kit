@@ -16,12 +16,29 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import xcode from 'xcode';
 
+export type XcodeProject = ReturnType<typeof xcode.project>;
+
 export interface PatchXcodeOptions {
   pbxprojPath: string;
   targetName: string;
   bundleId: string;
   iosDir: string;
   dryRun: boolean;
+}
+
+export interface NotifyKitNseXcodePatchOptions {
+  targetName: string;
+  bundleIdentifier: string;
+  parentTargetName?: string;
+  deploymentTarget?: string;
+}
+
+export interface NotifyKitNseXcodePatchResult {
+  didChange: boolean;
+  targetUuid?: string;
+  productUuid?: string;
+  hostTargetUuid?: string;
+  warnings: string[];
 }
 
 /**
@@ -32,17 +49,40 @@ export function patchXcodeProject(opts: PatchXcodeOptions): boolean {
   const proj = xcode.project(opts.pbxprojPath);
   proj.parseSync();
 
+  const result = patchXcodeProjectForNotifyKitNse(proj, {
+    targetName: opts.targetName,
+    bundleIdentifier: opts.bundleId,
+  });
+
+  // writeSync() returns content as string, must write manually.
+  if (result.didChange && !opts.dryRun) {
+    fs.writeFileSync(opts.pbxprojPath, proj.writeSync());
+  }
+
+  return result.didChange;
+}
+
+export function patchXcodeProjectForNotifyKitNse(
+  proj: XcodeProject,
+  options: NotifyKitNseXcodePatchOptions,
+): NotifyKitNseXcodePatchResult {
+  const { targetName, bundleIdentifier, parentTargetName, deploymentTarget = '15.1' } = options;
+  const warnings: string[] = [];
+
   // Idempotency: check if target already exists
-  if (targetExists(proj, opts.targetName)) {
-    return false;
+  if (targetExists(proj, targetName)) {
+    return { didChange: false, warnings };
   }
 
   // 1. Add the extension target
-  const target = proj.addTarget(opts.targetName, 'app_extension', opts.targetName);
+  const target = proj.addTarget(targetName, 'app_extension', targetName);
 
   if (!target || !target.uuid) {
-    throw new Error(`xcode library failed to create target '${opts.targetName}'`);
+    throw new Error(`xcode library failed to create target '${targetName}'`);
   }
+
+  const targetUuid = target.uuid;
+  const productUuid = getTargetProductUuid(target);
 
   // xcode@3.x bug: addTarget creates the .appex product reference with
   // `fileEncoding = undefined` and `lastKnownFileType = undefined` instead
@@ -51,19 +91,19 @@ export function patchXcodeProject(opts: PatchXcodeOptions): boolean {
   // `pod install`. Strip these fields post-addTarget to restore a clean
   // product reference that CocoaPods accepts.
   // Discovered: F3 Round 3, Check 3 smoke-app integration (2026-04).
-  fixProductFileReference(proj, opts.targetName);
+  fixProductFileReference(proj, targetName);
 
   // 2. Add build phases
-  proj.addBuildPhase([], 'PBXSourcesBuildPhase', 'Sources', target.uuid);
-  proj.addBuildPhase([], 'PBXFrameworksBuildPhase', 'Frameworks', target.uuid);
-  proj.addBuildPhase([], 'PBXResourcesBuildPhase', 'Resources', target.uuid);
+  proj.addBuildPhase([], 'PBXSourcesBuildPhase', 'Sources', targetUuid);
+  proj.addBuildPhase([], 'PBXFrameworksBuildPhase', 'Frameworks', targetUuid);
+  proj.addBuildPhase([], 'PBXResourcesBuildPhase', 'Resources', targetUuid);
 
   // 3. Create PBX group for the NSE target files, then register the source file
-  const group = proj.addPbxGroup([], opts.targetName, opts.targetName);
+  const group = proj.addPbxGroup([], targetName, targetName);
   proj.addSourceFile(
-    `${opts.targetName}/NotificationService.swift`,
+    `${targetName}/NotificationService.swift`,
     {
-      target: target.uuid,
+      target: targetUuid,
     },
     group.uuid,
   );
@@ -79,24 +119,29 @@ export function patchXcodeProject(opts: PatchXcodeOptions): boolean {
   // CocoaPods' post_install to crash. Xcode auto-creates the embed phase
   // when the user opens the project and sees the dependency.
   // Discovered: F3 Round 3, Check 3 smoke-app integration (2026-04).
-  const hostUuid = findHostTarget(proj);
+  const hostUuid = findHostTarget(proj, parentTargetName);
   if (hostUuid) {
-    addTargetDependencyManual(proj, hostUuid, target.uuid, opts.targetName);
+    addTargetDependencyManual(proj, hostUuid, targetUuid, targetName);
     stripRnfbInfoPlistInputPath(proj, hostUuid);
   }
 
   // 5. Set build settings for all configurations
-  setBuildSettings(proj, opts.targetName, opts.bundleId);
+  setBuildSettings(proj, targetName, bundleIdentifier, deploymentTarget);
 
-  // 6. Write — writeSync() returns content as string, must write manually
-  if (!opts.dryRun) {
-    fs.writeFileSync(opts.pbxprojPath, proj.writeSync());
-  }
-
-  return true;
+  return {
+    didChange: true,
+    targetUuid,
+    productUuid,
+    hostTargetUuid: hostUuid ?? undefined,
+    warnings,
+  };
 }
 
-function findHostTarget(proj: ReturnType<typeof xcode.project>): string | null {
+function findHostTarget(proj: XcodeProject, parentTargetName?: string): string | null {
+  if (parentTargetName) {
+    return findTargetByName(proj, parentTargetName);
+  }
+
   const targets = proj.pbxNativeTargetSection();
   for (const [key, value] of Object.entries(targets)) {
     if (typeof value !== 'object' || key.endsWith('_comment')) continue;
@@ -109,23 +154,36 @@ function findHostTarget(proj: ReturnType<typeof xcode.project>): string | null {
   return null;
 }
 
-function targetExists(proj: ReturnType<typeof xcode.project>, name: string): boolean {
+function findTargetByName(proj: XcodeProject, name: string): string | null {
   const targets = proj.pbxNativeTargetSection();
-  for (const [, value] of Object.entries(targets)) {
+  for (const [key, value] of Object.entries(targets)) {
     if (typeof value !== 'object') continue;
     const target = value as Record<string, unknown>;
     const targetName = String(target.name ?? '').replace(/"/g, '');
     if (targetName === name) {
-      return true;
+      return key;
     }
   }
-  return false;
+  return null;
+}
+
+function targetExists(proj: XcodeProject, name: string): boolean {
+  return findTargetByName(proj, name) !== null;
+}
+
+function getTargetProductUuid(target: {
+  uuid: string;
+  pbxNativeTarget?: Record<string, unknown>;
+}): string | undefined {
+  const productReference = target.pbxNativeTarget?.productReference;
+  return typeof productReference === 'string' ? productReference : undefined;
 }
 
 function setBuildSettings(
-  proj: ReturnType<typeof xcode.project>,
+  proj: XcodeProject,
   targetName: string,
   bundleId: string,
+  deploymentTarget: string,
 ): void {
   const configs = proj.pbxXCBuildConfigurationSection();
 
@@ -140,14 +198,14 @@ function setBuildSettings(
     settings.INFOPLIST_FILE = `"${targetName}/Info.plist"`;
     settings.PRODUCT_BUNDLE_IDENTIFIER = `"${bundleId}"`;
     settings.TARGETED_DEVICE_FAMILY = `"1,2"`;
-    settings.IPHONEOS_DEPLOYMENT_TARGET = '15.1';
+    settings.IPHONEOS_DEPLOYMENT_TARGET = deploymentTarget;
     settings.SWIFT_VERSION = '5.0';
     settings.CODE_SIGN_ENTITLEMENTS = `"${targetName}/${targetName}.entitlements"`;
     settings.GENERATE_INFOPLIST_FILE = 'NO';
   }
 }
 
-function fixProductFileReference(proj: ReturnType<typeof xcode.project>, targetName: string): void {
+function fixProductFileReference(proj: XcodeProject, targetName: string): void {
   const fileRefs = (proj as any).hash.project.objects.PBXFileReference;
   if (!fileRefs) return;
   for (const [, value] of Object.entries(fileRefs)) {
@@ -172,7 +230,7 @@ function genUuid(): string {
  * CocoaPods requires these entries to detect the host→extension relationship.
  */
 function addTargetDependencyManual(
-  proj: ReturnType<typeof xcode.project>,
+  proj: XcodeProject,
   hostUuid: string,
   extensionUuid: string,
   extensionName: string,
@@ -208,10 +266,7 @@ function addTargetDependencyManual(
   }
 }
 
-function stripRnfbInfoPlistInputPath(
-  proj: ReturnType<typeof xcode.project>,
-  hostUuid: string,
-): void {
+function stripRnfbInfoPlistInputPath(proj: XcodeProject, hostUuid: string): void {
   const objects = (proj as any).hash.project.objects;
   const hostTarget = objects.PBXNativeTarget?.[hostUuid];
   const shellPhases = objects.PBXShellScriptBuildPhase;
