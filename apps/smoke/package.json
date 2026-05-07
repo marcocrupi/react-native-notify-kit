@@ -1,6 +1,6 @@
 {
   "name": "react-native-notify-kit-smoke",
-  "version": "10.3.2",
+  "version": "10.3.3",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
