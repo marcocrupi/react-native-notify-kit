@@ -35,7 +35,7 @@ However, `expo-notifications` does not cover several advanced capabilities that 
 - **Full-screen intent notifications** (alarm/call screens)
 - **Ongoing / persistent notifications**
 
-This fork fills the gap: it preserves all of Notifee's advanced features, migrates the bridge to React Native's **New Architecture** (TurboModules), and actively fixes the critical bugs left unresolved upstream. See the [bug fix table](#bugs-fixed-from-upstream-notifee) below. It also supports Expo CNG / prebuild development builds for iOS FCM Mode through an official config plugin. Expo Go is not supported.
+This fork fills the gap: it preserves all of Notifee's advanced features, migrates the bridge to React Native's **New Architecture** (TurboModules), and actively fixes the critical bugs left unresolved upstream. See the [bug fix table](#bugs-fixed-from-upstream-notifee) below. It also supports Expo CNG / prebuild development builds through an official config plugin. Expo Go is not supported.
 
 ## Project Status
 
@@ -44,7 +44,10 @@ This fork fills the gap: it preserves all of Notifee's advanced features, migrat
 - Officially recommended by Invertase as the community-maintained fork (April 2026)
 - Maintained fork of Notifee — actively developed and published as `react-native-notify-kit`
 - New Architecture only (TurboModules)
-- Expo CNG / prebuild support for iOS FCM Mode via config plugin. Expo Go is not supported; use Expo development builds.
+- Expo CNG / prebuild support for development builds. Expo Go is not supported.
+- iOS FCM Mode Notification Service Extension automation via config plugin.
+- Android foreground service manifest configuration via config plugin, with explicit opt-in for foreground service types.
+- Android Expo FCM smoke validation using RNFirebase data-only messages and `notifee.handleFcmMessage`.
 - Minimum supported React Native: `0.73`
 - Development target: React Native `0.84`
 - License: `Apache-2.0`
@@ -153,7 +156,7 @@ useEffect(() => {
 
 ## Notifee FCM Mode (NEW in 10.0.0, Expo CNG in 10.4.0)
 
-**Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS**: one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and set up the iOS Notification Service Extension with the Expo config plugin or, for bare React Native, the `init-nse` CLI:
+**Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS**: one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and set up the iOS Notification Service Extension with the Expo config plugin or, for bare React Native, the `init-nse` CLI. On Android, FCM Mode remains data-only: RNFirebase receives the message and calls `notifee.handleFcmMessage`.
 
 ```bash
 # server: build the payload
@@ -169,7 +172,9 @@ npx react-native-notify-kit init-nse && cd ios && pod install
 
 ### Expo CNG / development builds
 
-Expo CNG / development builds are supported for iOS FCM Mode. Add the config plugin to your Expo config and run prebuild; the plugin generates and wires the Notification Service Extension used by NotifyKit FCM Mode. Expo Go is not supported because this feature requires native targets.
+Expo CNG / development builds are supported. Expo Go is not supported because this library requires native modules and native notification targets/capabilities.
+
+On iOS, add the config plugin to your Expo config and run prebuild; the plugin generates and wires the Notification Service Extension used by NotifyKit FCM Mode.
 
 ```ts
 export default {
@@ -193,13 +198,38 @@ export default {
 };
 ```
 
-Android Expo base runtime has been validated. Advanced Android config plugin automation for foreground service declarations, exact alarms, full-screen intent, and related permissions is not part of 10.4.0.
+On Android, FCM Mode stays data-only. Configure Firebase and RNFirebase in the app, create the Android channel used by your payloads, then call `notifee.handleFcmMessage(remoteMessage)` from RNFirebase `onMessage` and `setBackgroundMessageHandler`. The Expo smoke app validates foreground and background delivery with the `android-expo-smoke` scenario on a real device.
+
+Android foreground service manifest configuration is also available through the NotifyKit config plugin, but it is explicit opt-in:
+
+```ts
+export default {
+  expo: {
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          android: {
+            foregroundService: {
+              types: ['shortService'],
+            },
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+The plugin does not configure Firebase, does not add `USE_EXACT_ALARM`, does not add `USE_FULL_SCREEN_INTENT`, and does not choose a foreground service type by default.
 
 See the full guide: **[docs/fcm-mode.mdx](docs/fcm-mode.mdx)** — covers architecture, server SDK reference, client API, NSE setup, payload schema, migration, troubleshooting, and known limitations.
 
 ## Push Notifications (Firebase)
 
 This library handles notification **display and management**. For receiving push notifications, pair it with [`@react-native-firebase/messaging`](https://rnfirebase.io/messaging/usage):
+
+Firebase setup remains the consumer app's responsibility. The NotifyKit Expo config plugin does not install or configure Firebase, does not copy `google-services.json`, and does not patch Gradle for Firebase.
 
 > **New in 10.0.0:** for a turnkey FCM integration that handles both platforms (no duplicate on Android, APNs-reliable on iOS), use **[Notifee FCM Mode](docs/fcm-mode.mdx)** instead of the manual pattern below. The sections that follow still apply for basic Firebase setup (google-services plugin, permissions, APNs capability).
 
@@ -405,6 +435,7 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **Minimum React Native 0.73**, development target **0.84**
 - **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
 - **Single Android module** — the original Notifee shipped a pre-compiled AAR bundled inside the npm tarball under a frozen Maven coordinate; this fork compiles the core from source as part of the React Native bridge module on every consumer build. Eliminates the `FAIL_ON_PROJECT_REPOS` issue on RN 0.74+ and the Gradle cache staleness bug that could serve outdated bytecode after `yarn upgrade`.
+- **Expo CNG development builds** — iOS FCM Mode NSE automation and Android foreground service manifest configuration are available through the config plugin. Android Expo FCM smoke validation uses RNFirebase data-only messages plus `notifee.handleFcmMessage`.
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee
 - **35 upstream bugs fixed** — see [Bugs Fixed from Upstream Notifee](#bugs-fixed-from-upstream-notifee) below
 - **Reliable trigger notifications** — AlarmManager is the default backend instead of WorkManager, with automatic fallback when exact alarm permission is not granted

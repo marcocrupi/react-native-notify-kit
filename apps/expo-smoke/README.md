@@ -107,9 +107,10 @@ Background Android checks:
 - Open the app once, register FCM, then send it to the background.
 - Send `android-expo-smoke`, which uses Android data-only and high priority.
 - Confirm `SMOKE:FCM_BACKGROUND_MESSAGE`, `SMOKE:FCM_ANDROID_CHANNEL_READY`, and `SMOKE:FCM_BACKGROUND_HANDLE_OK`.
-- Confirm the notification is visible. If tapping it is tested, confirm `SMOKE:BACKGROUND_EVENT_PRESS`.
+- Confirm the notification is visible.
+- Tap validation is not a 10.4.0 release gate for this fixture. During executor validation, tapping reopened the app and removed the notification, but `SMOKE:BACKGROUND_EVENT_PRESS` was not observed.
 
-Killed-state Android is best-effort only. A normally killed process can be tested after the app has been launched at least once, but `adb shell am force-stop` is not covered because Android and FCM do not guarantee wake from force-stop.
+Killed-state Android is best-effort only. A normally killed process can be tested after the app has been launched at least once, for example with `adb shell am kill`. `adb shell am force-stop` is not covered because Android and FCM do not guarantee wake from force-stop.
 
 ## Runtime Markers
 

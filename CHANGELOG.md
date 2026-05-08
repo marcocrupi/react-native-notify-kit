@@ -11,8 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **Expo**: added Expo CNG / prebuild support for iOS FCM Mode via the official config plugin. Expo development builds can generate and wire the `NotifyKitNSE` Notification Service Extension during prebuild. Expo Go is not supported because this path requires native targets.
+- **Expo**: added Expo CNG / prebuild support for development builds. Expo Go is not supported because this library requires native modules and native notification targets/capabilities.
+- **Expo / iOS / FCM Mode**: added official config plugin automation for the `NotifyKitNSE` Notification Service Extension used by iOS FCM Mode, including generated Swift service, `Info.plist`, entitlements, Xcode target wiring, EAS `appExtensions` metadata, Podfile target, `RNNotifeeCore` dependency, and `.appex` embedding.
+- **Expo / Android / foreground services**: added explicit opt-in config plugin support for NotifyKit foreground service manifest requirements. When configured, the plugin writes `app.notifee.core.ForegroundService`, `android:foregroundServiceType`, the base `FOREGROUND_SERVICE` permission, required type-specific `FOREGROUND_SERVICE_*` permissions, and the required `specialUse` subtype property.
 - **Expo smoke app**: added `apps/expo-smoke` fixture coverage for development build validation with Expo SDK 55, React Native 0.83.6, `expo-dev-client`, and `react-native-notify-kit` resolved from the workspace or a packed tarball.
+- **Expo smoke app / Android FCM**: added Android FCM smoke support through local `google-services.json`, RNFirebase data-only receive paths, `notifee.handleFcmMessage`, and the `android-expo-smoke` sender scenario.
 
 ### Fixed
 
@@ -25,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Packaging / Expo**: validated real npm tarball install from a scratch fixture, plugin resolution from `node_modules`, Expo config, iOS prebuild, `pod install`, `xcodebuild`, `NotifyKitNSE.appex` generation, and embedding in the app bundle.
 - **Expo smoke app**: validated development build runtime smoke on iOS and Android, including TurboModule startup and basic notification display/read paths.
 - **FCM Mode / iOS**: validated foreground delivery on a physical iPhone with real FCM payloads and a generated NSE, including logical iOS attachment metadata in `getDisplayedNotifications()`. Tap, killed state, visual lock-screen/banner attachment rendering, textual NSE logs, and data-only RNFirebase client-handler paths are not claimed as verified in this release.
+- **Expo / Android**: validated Expo config, Android prebuild, `expo run:android`, base NotifyKit runtime, FCM token registration, foreground `android-expo-smoke`, background `android-expo-smoke`, visible notification display, and killed-state best-effort delivery without force-stop on a Pixel 9 Pro XL running Android 16 / SDK 36.
+- **FCM Mode / Android / Expo**: validated RNFirebase data-only foreground and background receive paths with `SMOKE:FCM_ON_MESSAGE`, `SMOKE:FCM_FOREGROUND_HANDLE_OK`, `SMOKE:FOREGROUND_EVENT_DELIVERED`, `SMOKE:FCM_BACKGROUND_MESSAGE`, and `SMOKE:FCM_BACKGROUND_HANDLE_OK`.
+- **FCM Mode / Android / Expo**: Android tap reopened the app during executor validation and removed the notification, but `SMOKE:BACKGROUND_EVENT_PRESS` was not observed and remains a follow-up.
 
 ## [10.3.3] - 2026-05-07
 

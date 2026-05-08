@@ -7,14 +7,16 @@ description: react-native-notify-kit API releases
 
 ## [10.4.0] (2026-05-08)
 
-Release focused on the first official Expo CNG integration for FCM Mode on iOS. This is support for Expo prebuild and development builds, not Expo Go.
+Release focused on the first official Expo CNG integration for development builds across iOS and Android. This is support for Expo prebuild and development builds, not Expo Go.
 
 ### Expo CNG
 
 - Added an official config plugin entry for `react-native-notify-kit`.
-- The plugin can generate and wire the `NotifyKitNSE` Notification Service Extension during Expo prebuild, so Expo development builds can use the iOS FCM Mode attachment/rich-notification path without manually creating the NSE in Xcode.
+- iOS: the plugin can generate and wire the `NotifyKitNSE` Notification Service Extension during Expo prebuild, so Expo development builds can use the FCM Mode attachment/rich-notification path without manually creating the NSE in Xcode.
+- Android: the plugin can configure NotifyKit foreground service manifest requirements when explicitly opted in through `android.foregroundService.types`.
 - The plugin supports `ios.notificationServiceExtension: true` and an object form with `enabled`, `targetName`, and `bundleSuffix`.
-- Expo Go is not supported because the feature requires native iOS targets.
+- The Android foreground service config supports type-specific manifest permissions and requires `specialUseSubtype` when `specialUse` is selected.
+- Expo Go is not supported because NotifyKit requires native modules and native notification targets/capabilities.
 
 ### iOS
 
@@ -23,12 +25,27 @@ Release focused on the first official Expo CNG integration for FCM Mode on iOS. 
 - Static framework alignment was fixed for Expo projects using Firebase and `use_frameworks!`.
 - `NotifeeExtensionHelper` header imports were adjusted so `RNNotifeeCore` can compile inside the generated NSE under static-framework/header-map constraints.
 
+### Android
+
+- Android foreground service manifest configuration is available through the NotifyKit config plugin, but it is opt-in. Android remains no-op by default when `android.foregroundService` is omitted.
+- The plugin writes `app.notifee.core.ForegroundService`, `android:foregroundServiceType`, `FOREGROUND_SERVICE`, type-specific `FOREGROUND_SERVICE_*` permissions where Android defines them, and the `specialUse` subtype property when required.
+- The plugin does not configure Firebase, does not install RNFirebase, does not add `USE_EXACT_ALARM`, does not add `USE_FULL_SCREEN_INTENT`, and does not add Maven or `extraMavenRepos` workarounds.
+- Android FCM Mode in Expo remains data-only: RNFirebase receives the message and the app calls `notifee.handleFcmMessage(remoteMessage)`.
+
 ### Validation
 
 - Validated a real npm tarball install from a scratch fixture, plugin resolution from `node_modules`, Expo config, iOS prebuild, `pod install`, `xcodebuild`, `NotifyKitNSE.appex` generation, and app embedding.
 - Validated Expo development build runtime smoke on iOS and Android.
-- Validated iOS FCM Mode foreground delivery on a physical iPhone with a real generated NSE and logical attachment metadata visible through `getDisplayedNotifications()`.
-- Tap handling, killed-state delivery, visual lock-screen/banner attachment rendering, textual NSE logs, and data-only RNFirebase client-handler paths were not completed as release gates for 10.4.0.
+- Validated iOS FCM Mode foreground delivery on a physical iPhone with a generated NSE and logical attachment metadata visible through `getDisplayedNotifications()`.
+- Validated Android Expo config, Android prebuild, `expo run:android`, base runtime, FCM token registration, foreground `android-expo-smoke`, background `android-expo-smoke`, visible notification display, and killed-state best-effort delivery without force-stop on a Pixel 9 Pro XL running Android 16 / SDK 36.
+- Validated Android RNFirebase data-only foreground and background paths through `SMOKE:FCM_ON_MESSAGE`, `SMOKE:FCM_FOREGROUND_HANDLE_OK`, `SMOKE:FOREGROUND_EVENT_DELIVERED`, `SMOKE:FCM_BACKGROUND_MESSAGE`, and `SMOKE:FCM_BACKGROUND_HANDLE_OK`.
+
+### Limits
+
+- Expo Go remains unsupported.
+- Android background and killed-state data-only delivery depends on FCM priority, device state, Doze, and OEM policy. Force-stop is excluded.
+- Android tap reopened the app during executor validation, but `SMOKE:BACKGROUND_EVENT_PRESS` was not observed and remains a follow-up.
+- iOS tap, iOS killed state, visual lock-screen/banner attachment rendering, textual NSE log capture, and iOS RNFirebase data-only/client-handler validation were not completed as release gates for 10.4.0.
 
 ## [10.3.3] (2026-05-07)
 
