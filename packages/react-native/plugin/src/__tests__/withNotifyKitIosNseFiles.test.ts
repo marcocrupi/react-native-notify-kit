@@ -37,11 +37,11 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     }
   });
 
-  it('leaves config unchanged and does not register withDangerousMod when NSE is disabled', () => {
+  it('leaves config unchanged and does not register withDangerousMod when NSE is disabled', async () => {
     const withDangerousMod = jest.fn();
     jest.doMock('expo/config-plugins', () => ({ withDangerousMod }), { virtual: true });
 
-    const { withNotifyKitIosNseFiles } = require('../ios/withNotifyKitIosNseFiles');
+    const { withNotifyKitIosNseFiles } = await import('../ios/withNotifyKitIosNseFiles');
     const config = {};
 
     expect(
@@ -53,7 +53,7 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     expect(withDangerousMod).not.toHaveBeenCalled();
   });
 
-  it('generates the three NSE files from the shared renderers when enabled', () => {
+  it('generates the three NSE files from the shared renderers when enabled', async () => {
     const tempIosRoot = makeTempIosRoot();
     tempIosRoots.push(tempIosRoot);
     const withDangerousMod = jest.fn((config, [platform, action]) => {
@@ -67,7 +67,7 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     });
     jest.doMock('expo/config-plugins', () => ({ withDangerousMod }), { virtual: true });
 
-    const { withNotifyKitIosNseFiles } = require('../ios/withNotifyKitIosNseFiles');
+    const { withNotifyKitIosNseFiles } = await import('../ios/withNotifyKitIosNseFiles');
     const config = withNotifyKitIosNseFiles({}, enabledOptions);
 
     expect(withDangerousMod).toHaveBeenCalledTimes(1);
@@ -83,7 +83,7 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     );
   });
 
-  it('uses the configured targetName in paths and plist content', () => {
+  it('uses the configured targetName in paths and plist content', async () => {
     const tempIosRoot = makeTempIosRoot();
     tempIosRoots.push(tempIosRoot);
     const withDangerousMod = jest.fn((config, [, action]) =>
@@ -96,7 +96,7 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withDangerousMod }), { virtual: true });
 
-    const { withNotifyKitIosNseFiles } = require('../ios/withNotifyKitIosNseFiles');
+    const { withNotifyKitIosNseFiles } = await import('../ios/withNotifyKitIosNseFiles');
     withNotifyKitIosNseFiles(
       {},
       {
@@ -115,10 +115,10 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     expect(fs.existsSync(path.join(tempIosRoot, 'NotifyKitNSE'))).toBe(false);
   });
 
-  it('treats existing identical files as a no-op', () => {
+  it('treats existing identical files as a no-op', async () => {
     const tempIosRoot = makeTempIosRoot();
     tempIosRoots.push(tempIosRoot);
-    const { writeNotifyKitIosNseFiles } = require('../ios/withNotifyKitIosNseFiles');
+    const { writeNotifyKitIosNseFiles } = await import('../ios/withNotifyKitIosNseFiles');
 
     writeNotifyKitIosNseFiles(tempIosRoot, 'NotifyKitNSE');
     const notificationServicePath = path.join(
@@ -132,14 +132,14 @@ describe('NotifyKit Expo NSE file generation mod', () => {
     expect(readFile(notificationServicePath)).toBe(initialContents);
   });
 
-  it('throws instead of overwriting an existing different file', () => {
+  it('throws instead of overwriting an existing different file', async () => {
     const tempIosRoot = makeTempIosRoot();
     tempIosRoots.push(tempIosRoot);
     const targetDir = path.join(tempIosRoot, 'NotifyKitNSE');
     fs.mkdirSync(targetDir, { recursive: true });
     fs.writeFileSync(path.join(targetDir, 'NotificationService.swift'), '// custom file\n', 'utf8');
 
-    const { writeNotifyKitIosNseFiles } = require('../ios/withNotifyKitIosNseFiles');
+    const { writeNotifyKitIosNseFiles } = await import('../ios/withNotifyKitIosNseFiles');
 
     expect(() => writeNotifyKitIosNseFiles(tempIosRoot, 'NotifyKitNSE')).toThrow(
       /Refusing to overwrite existing .*NotificationService\.swift/,

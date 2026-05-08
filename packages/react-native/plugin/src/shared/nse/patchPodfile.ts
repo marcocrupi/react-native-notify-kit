@@ -124,11 +124,7 @@ function buildUseFrameworksLine(useFrameworks: false | true | 'static' | 'dynami
   return '';
 }
 
-function appendNseTarget(
-  content: string,
-  block: string,
-  placement: 'nested' | 'topLevel',
-): string {
+function appendNseTarget(content: string, block: string, placement: 'nested' | 'topLevel'): string {
   if (placement === 'nested') {
     return content + '\n' + block;
   }

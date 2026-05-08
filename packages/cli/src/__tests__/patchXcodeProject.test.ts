@@ -2,10 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import xcode from 'xcode';
-import {
-  patchXcodeProject,
-  patchXcodeProjectForNotifyKitNse,
-} from '../lib/patchXcodeProject';
+import { patchXcodeProject, patchXcodeProjectForNotifyKitNse } from '../lib/patchXcodeProject';
 
 const FIXTURE_DIR = path.join(__dirname, 'fixtures', 'sample-rn-app');
 
@@ -237,12 +234,8 @@ describe('patchXcodeProject', () => {
       bundleIdentifier: 'com.test.nse',
     });
 
-    expect(getBuildSetting(proj, 'NotifyKitNSE', 'INFOPLIST_FILE')).toBe(
-      'NotifyKitNSE/Info.plist',
-    );
-    expect(getBuildSetting(proj, 'NotifyKitNSE', 'PRODUCT_BUNDLE_IDENTIFIER')).toBe(
-      'com.test.nse',
-    );
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'INFOPLIST_FILE')).toBe('NotifyKitNSE/Info.plist');
+    expect(getBuildSetting(proj, 'NotifyKitNSE', 'PRODUCT_BUNDLE_IDENTIFIER')).toBe('com.test.nse');
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'TARGETED_DEVICE_FAMILY')).toBe('1,2');
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'IPHONEOS_DEPLOYMENT_TARGET')).toBe('15.1');
     expect(getBuildSetting(proj, 'NotifyKitNSE', 'SWIFT_VERSION')).toBe('5.0');

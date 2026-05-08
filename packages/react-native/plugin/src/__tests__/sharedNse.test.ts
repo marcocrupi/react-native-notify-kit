@@ -51,7 +51,9 @@ function countOccurrences(content: string, needle: string): number {
 
 function getTopLevelTargetBlock(content: string, targetName: string): string {
   const escapedTargetName = targetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = content.match(new RegExp(`^target '${escapedTargetName}' do\\n[\\s\\S]*?^end\\n?`, 'm'));
+  const match = content.match(
+    new RegExp(`^target '${escapedTargetName}' do\\n[\\s\\S]*?^end\\n?`, 'm'),
+  );
   return match?.[0] ?? '';
 }
 
@@ -222,8 +224,8 @@ describe('plugin shared NSE core helpers', () => {
     }
   });
 
-  it('keeps the committed CJS build helper loadable through an internal path', () => {
-    const built = require('../../build/shared/nse');
+  it('keeps the committed CJS build helper loadable through an internal path', async () => {
+    const built = await import('../../build/shared/nse');
 
     expect(typeof built.validateNseTargetName).toBe('function');
     expect(typeof built.patchPodfileForNotifyKitNse).toBe('function');
@@ -290,8 +292,12 @@ describe('plugin shared NSE Podfile patcher', () => {
       "pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'",
     );
     expect(first.contents).toContain(RNFB_POST_INSTALL_MARKER);
-    expect(first.contents).toContain(`rnfb_info_plist_input_path = '${RNFB_INFO_PLIST_INPUT_PATH}'`);
-    expect(first.contents).toContain('script_phase[:input_files].delete(rnfb_info_plist_input_path)');
+    expect(first.contents).toContain(
+      `rnfb_info_plist_input_path = '${RNFB_INFO_PLIST_INPUT_PATH}'`,
+    );
+    expect(first.contents).toContain(
+      'script_phase[:input_files].delete(rnfb_info_plist_input_path)',
+    );
     expect(first.contents).toContain('phase.input_paths.delete(rnfb_info_plist_input_path)');
     expect(countOccurrences(first.contents, "target 'NotifyKitNSE' do")).toBe(1);
     expect(countOccurrences(first.contents, RNFB_POST_INSTALL_MARKER)).toBe(1);
@@ -328,7 +334,7 @@ describe('plugin shared NSE Podfile patcher', () => {
 
     expect(first.didChange).toBe(true);
     expect(first.contents).toMatch(/^target 'NotifyKitNSE' do/m);
-    expect(first.contents).not.toMatch(/^  target 'NotifyKitNSE' do/m);
+    expect(first.contents).not.toMatch(/^ {2}target 'NotifyKitNSE' do/m);
     expect(hostTargetBlock).not.toContain("target 'NotifyKitNSE' do");
     expect(nseTargetBlock).not.toContain('inherit! :search_paths');
     expect(nseTargetBlock).not.toContain('use_frameworks!');
@@ -431,9 +437,7 @@ describe('plugin shared NSE Xcode patcher', () => {
     ).toBe(1);
     expect(
       countSourceBuildFiles(pluginProj, 'NotifyKitNSE', 'NotificationService.swift in Sources'),
-    ).toBe(
-      countSourceBuildFiles(cliProj, 'NotifyKitNSE', 'NotificationService.swift in Sources'),
-    );
+    ).toBe(countSourceBuildFiles(cliProj, 'NotifyKitNSE', 'NotificationService.swift in Sources'));
 
     const pluginProductFileReference = getProductFileReference(pluginProj, 'NotifyKitNSE');
     const cliProductFileReference = getProductFileReference(cliProj, 'NotifyKitNSE');

@@ -169,11 +169,12 @@ describe('NotifyKit Expo Xcode project mod', () => {
     jest.resetModules();
   });
 
-  it('leaves config unchanged and does not register withXcodeProject when NSE is disabled', () => {
+  it('leaves config unchanged and does not register withXcodeProject when NSE is disabled', async () => {
     const withXcodeProject = jest.fn();
     jest.doMock('expo/config-plugins', () => ({ withXcodeProject }), { virtual: true });
 
-    const { withNotifyKitIosNseXcodeProject } = require('../ios/withNotifyKitIosNseXcodeProject');
+    const { withNotifyKitIosNseXcodeProject } =
+      await import('../ios/withNotifyKitIosNseXcodeProject');
     const config = {};
 
     expect(
@@ -185,7 +186,7 @@ describe('NotifyKit Expo Xcode project mod', () => {
     expect(withXcodeProject).not.toHaveBeenCalled();
   });
 
-  it('patches the Xcode project with default targetName, bundleIdentifier, dependency, and Copy Files phase', () => {
+  it('patches the Xcode project with default targetName, bundleIdentifier, dependency, and Copy Files phase', async () => {
     const withXcodeProject = jest.fn((config, action) =>
       action({
         ...config,
@@ -197,7 +198,8 @@ describe('NotifyKit Expo Xcode project mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withXcodeProject }), { virtual: true });
 
-    const { withNotifyKitIosNseXcodeProject } = require('../ios/withNotifyKitIosNseXcodeProject');
+    const { withNotifyKitIosNseXcodeProject } =
+      await import('../ios/withNotifyKitIosNseXcodeProject');
     const config = withNotifyKitIosNseXcodeProject(
       {
         ios: {
@@ -230,9 +232,9 @@ describe('NotifyKit Expo Xcode project mod', () => {
         TARGETED_DEVICE_FAMILY: '1,2',
       },
     ]);
-    expect(countSourceBuildFiles(proj, 'NotifyKitNSE', 'NotificationService.swift in Sources')).toBe(
-      1,
-    );
+    expect(
+      countSourceBuildFiles(proj, 'NotifyKitNSE', 'NotificationService.swift in Sources'),
+    ).toBe(1);
     expect(getTargetDependencyCount(proj, 'NotifeeExample', 'NotifyKitNSE')).toBe(1);
 
     const copyFilesPhases = getHostCopyFilesPhases(proj, 'NotifeeExample');
@@ -253,7 +255,7 @@ describe('NotifyKit Expo Xcode project mod', () => {
     ).toBeUndefined();
   });
 
-  it('uses the configured targetName and bundle suffix', () => {
+  it('uses the configured targetName and bundle suffix', async () => {
     const withXcodeProject = jest.fn((config, action) =>
       action({
         ...config,
@@ -265,7 +267,8 @@ describe('NotifyKit Expo Xcode project mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withXcodeProject }), { virtual: true });
 
-    const { withNotifyKitIosNseXcodeProject } = require('../ios/withNotifyKitIosNseXcodeProject');
+    const { withNotifyKitIosNseXcodeProject } =
+      await import('../ios/withNotifyKitIosNseXcodeProject');
     const config = withNotifyKitIosNseXcodeProject(
       {
         ios: {
@@ -308,7 +311,7 @@ describe('NotifyKit Expo Xcode project mod', () => {
     );
   });
 
-  it('throws when a newly-created NSE target cannot be linked to the host app target', () => {
+  it('throws when a newly-created NSE target cannot be linked to the host app target', async () => {
     const withXcodeProject = jest.fn((config, action) =>
       action({
         ...config,
@@ -320,7 +323,8 @@ describe('NotifyKit Expo Xcode project mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withXcodeProject }), { virtual: true });
 
-    const { withNotifyKitIosNseXcodeProject } = require('../ios/withNotifyKitIosNseXcodeProject');
+    const { withNotifyKitIosNseXcodeProject } =
+      await import('../ios/withNotifyKitIosNseXcodeProject');
 
     expect(() =>
       withNotifyKitIosNseXcodeProject(

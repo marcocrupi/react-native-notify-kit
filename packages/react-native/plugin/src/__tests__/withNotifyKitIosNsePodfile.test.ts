@@ -40,7 +40,9 @@ function countOccurrences(content: string, needle: string): number {
 
 function getTopLevelTargetBlock(content: string, targetName: string): string {
   const escapedTargetName = targetName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = content.match(new RegExp(`^target '${escapedTargetName}' do\\n[\\s\\S]*?^end\\n?`, 'm'));
+  const match = content.match(
+    new RegExp(`^target '${escapedTargetName}' do\\n[\\s\\S]*?^end\\n?`, 'm'),
+  );
   return match?.[0] ?? '';
 }
 
@@ -49,11 +51,11 @@ describe('NotifyKit Expo Podfile mod', () => {
     jest.resetModules();
   });
 
-  it('leaves config unchanged and does not register withPodfile when NSE is disabled', () => {
+  it('leaves config unchanged and does not register withPodfile when NSE is disabled', async () => {
     const withPodfile = jest.fn();
     jest.doMock('expo/config-plugins', () => ({ withPodfile }), { virtual: true });
 
-    const { withNotifyKitIosNsePodfile } = require('../ios/withNotifyKitIosNsePodfile');
+    const { withNotifyKitIosNsePodfile } = await import('../ios/withNotifyKitIosNsePodfile');
     const config = {};
 
     expect(
@@ -65,7 +67,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     expect(withPodfile).not.toHaveBeenCalled();
   });
 
-  it('patches modResults.contents when NSE is enabled', () => {
+  it('patches modResults.contents when NSE is enabled', async () => {
     const withPodfile = jest.fn((config, action) =>
       action({
         ...config,
@@ -80,7 +82,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withPodfile }), { virtual: true });
 
-    const { withNotifyKitIosNsePodfile } = require('../ios/withNotifyKitIosNsePodfile');
+    const { withNotifyKitIosNsePodfile } = await import('../ios/withNotifyKitIosNsePodfile');
     const config = withNotifyKitIosNsePodfile({}, enabledOptions);
 
     expect(withPodfile).toHaveBeenCalledTimes(1);
@@ -89,7 +91,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     const nseTargetBlock = getTopLevelTargetBlock(contents, 'NotifyKitNSE');
 
     expect(contents).toMatch(/^target 'NotifyKitNSE' do/m);
-    expect(contents).not.toMatch(/^  target 'NotifyKitNSE' do/m);
+    expect(contents).not.toMatch(/^ {2}target 'NotifyKitNSE' do/m);
     expect(hostTargetBlock).not.toContain("target 'NotifyKitNSE' do");
     expect(nseTargetBlock).not.toContain('inherit! :search_paths');
     expect(nseTargetBlock).not.toContain('use_frameworks!');
@@ -101,7 +103,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     );
   });
 
-  it('propagates static host use_frameworks to the Expo NSE target', () => {
+  it('propagates static host use_frameworks to the Expo NSE target', async () => {
     const withPodfile = jest.fn((config, action) =>
       action({
         ...config,
@@ -116,7 +118,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withPodfile }), { virtual: true });
 
-    const { withNotifyKitIosNsePodfile } = require('../ios/withNotifyKitIosNsePodfile');
+    const { withNotifyKitIosNsePodfile } = await import('../ios/withNotifyKitIosNsePodfile');
     const config = withNotifyKitIosNsePodfile({}, enabledOptions);
     const nseTargetBlock = getTopLevelTargetBlock(config.modResults.contents, 'NotifyKitNSE');
 
@@ -128,7 +130,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     expect(countOccurrences(nseTargetBlock, 'use_frameworks!')).toBe(1);
   });
 
-  it('propagates expo-build-properties static use_frameworks to the Expo NSE target', () => {
+  it('propagates expo-build-properties static use_frameworks to the Expo NSE target', async () => {
     const withPodfile = jest.fn((config, action) =>
       action({
         ...config,
@@ -143,7 +145,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withPodfile }), { virtual: true });
 
-    const { withNotifyKitIosNsePodfile } = require('../ios/withNotifyKitIosNsePodfile');
+    const { withNotifyKitIosNsePodfile } = await import('../ios/withNotifyKitIosNsePodfile');
     const config = withNotifyKitIosNsePodfile(
       {
         plugins: [
@@ -169,7 +171,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     expect(countOccurrences(nseTargetBlock, 'use_frameworks!')).toBe(1);
   });
 
-  it('keeps the Expo Podfile patch idempotent on repeated mod runs', () => {
+  it('keeps the Expo Podfile patch idempotent on repeated mod runs', async () => {
     const withPodfile = jest.fn((config, action) => {
       const first = action({
         ...config,
@@ -195,7 +197,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     });
     jest.doMock('expo/config-plugins', () => ({ withPodfile }), { virtual: true });
 
-    const { withNotifyKitIosNsePodfile } = require('../ios/withNotifyKitIosNsePodfile');
+    const { withNotifyKitIosNsePodfile } = await import('../ios/withNotifyKitIosNsePodfile');
     const config = withNotifyKitIosNsePodfile({}, enabledOptions);
     const contents = config.modResults.contents;
     const nseTargetBlock = getTopLevelTargetBlock(contents, 'NotifyKitNSE');
@@ -211,7 +213,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     expect(nseTargetBlock).not.toContain('use_frameworks!');
   });
 
-  it('passes the configured targetName to the Podfile patcher', () => {
+  it('passes the configured targetName to the Podfile patcher', async () => {
     const withPodfile = jest.fn((config, action) =>
       action({
         ...config,
@@ -226,7 +228,7 @@ describe('NotifyKit Expo Podfile mod', () => {
     );
     jest.doMock('expo/config-plugins', () => ({ withPodfile }), { virtual: true });
 
-    const { withNotifyKitIosNsePodfile } = require('../ios/withNotifyKitIosNsePodfile');
+    const { withNotifyKitIosNsePodfile } = await import('../ios/withNotifyKitIosNsePodfile');
     const config = withNotifyKitIosNsePodfile(
       {},
       {
@@ -239,24 +241,25 @@ describe('NotifyKit Expo Podfile mod', () => {
     expect(config.modResults.contents).not.toContain("target 'NotifyKitNSE' do");
   });
 
-  it('calculates packagePathFromIos from projectRoot and platformProjectRoot', () => {
-    const { resolveNotifyKitPackagePathFromIos } = require('../ios/withNotifyKitIosNsePodfile');
+  it('calculates packagePathFromIos from projectRoot and platformProjectRoot', async () => {
+    const { resolveNotifyKitPackagePathFromIos } =
+      await import('../ios/withNotifyKitIosNsePodfile');
 
     expect(resolveNotifyKitPackagePathFromIos(expoSmokeRoot, expoSmokeIosRoot)).toBe(
       '../../../packages/react-native',
     );
   });
 
-  it('normalizes Windows backslashes in Podfile paths', () => {
-    const { normalizePodfilePath } = require('../ios/withNotifyKitIosNsePodfile');
+  it('normalizes Windows backslashes in Podfile paths', async () => {
+    const { normalizePodfilePath } = await import('../ios/withNotifyKitIosNsePodfile');
 
     expect(normalizePodfilePath('..\\..\\packages\\react-native')).toBe(
       '../../packages/react-native',
     );
   });
 
-  it('detects Podfile use_frameworks linkage from in-memory contents', () => {
-    const { detectPodfileUseFrameworks } = require('../ios/withNotifyKitIosNsePodfile');
+  it('detects Podfile use_frameworks linkage from in-memory contents', async () => {
+    const { detectPodfileUseFrameworks } = await import('../ios/withNotifyKitIosNsePodfile');
 
     expect(detectPodfileUseFrameworks(BASIC_PODFILE)).toBe(false);
     expect(detectPodfileUseFrameworks(PODFILE_WITH_STATIC_USE_FRAMEWORKS)).toBe('static');
