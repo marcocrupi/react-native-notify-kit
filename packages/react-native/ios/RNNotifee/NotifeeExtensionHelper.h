@@ -15,12 +15,12 @@
  *
  */
 
+#import <Foundation/Foundation.h>
+
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_10_0 || \
     __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_14
 #import <UserNotifications/UserNotifications.h>
 #endif
-
-#import "NotifeeCore.h"
 
 NS_ASSUME_NONNULL_BEGIN
 @interface NotifeeExtensionHelper : NSObject
