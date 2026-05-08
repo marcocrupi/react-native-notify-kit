@@ -3,6 +3,9 @@
 const { createRunOncePlugin } = requireExpoConfigPlugins();
 const { normalizeNotifyKitPluginOptions } = require('./options');
 const {
+  withNotifyKitAndroidManifest,
+} = require('./android/withNotifyKitAndroidManifest');
+const {
   withNotifyKitIosNseAppExtension,
 } = require('./ios/withNotifyKitIosNseAppExtension');
 const {
@@ -18,8 +21,16 @@ const pkg = require('../../package.json');
 
 function withNotifyKit(config, props = {}) {
   const options = normalizeNotifyKitPluginOptions(props);
+  const foregroundServiceOptions = options.android.foregroundService;
   const nseOptions = options.ios.notificationServiceExtension;
-  const configWithAppExtension = withNotifyKitIosNseAppExtension(config, nseOptions);
+  const configWithAndroidManifest = withNotifyKitAndroidManifest(
+    config,
+    foregroundServiceOptions,
+  );
+  const configWithAppExtension = withNotifyKitIosNseAppExtension(
+    configWithAndroidManifest,
+    nseOptions,
+  );
   const configWithFiles = withNotifyKitIosNseFiles(configWithAppExtension, nseOptions);
   const configWithXcodeProject = withNotifyKitIosNseXcodeProject(configWithFiles, nseOptions);
 
@@ -32,6 +43,7 @@ module.exports = plugin;
 module.exports.default = plugin;
 module.exports.withNotifyKit = withNotifyKit;
 module.exports.normalizeNotifyKitPluginOptions = normalizeNotifyKitPluginOptions;
+module.exports.withNotifyKitAndroidManifest = withNotifyKitAndroidManifest;
 module.exports.withNotifyKitIosNseAppExtension = withNotifyKitIosNseAppExtension;
 module.exports.withNotifyKitIosNseFiles = withNotifyKitIosNseFiles;
 module.exports.withNotifyKitIosNseXcodeProject = withNotifyKitIosNseXcodeProject;

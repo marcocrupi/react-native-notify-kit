@@ -1,4 +1,5 @@
 import { normalizeNotifyKitPluginOptions, type NotifyKitPluginOptions } from './options';
+import { withNotifyKitAndroidManifest } from './android/withNotifyKitAndroidManifest';
 import {
   withNotifyKitIosNseAppExtension,
   type ExpoConfigLike,
@@ -26,8 +27,13 @@ export const withNotifyKit: ConfigPlugin<NotifyKitPluginOptions | undefined> = (
   props = {},
 ) => {
   const options = normalizeNotifyKitPluginOptions(props);
+  const foregroundServiceOptions = options.android.foregroundService;
   const nseOptions = options.ios.notificationServiceExtension;
-  const configWithAppExtension = withNotifyKitIosNseAppExtension(config, nseOptions);
+  const configWithAndroidManifest = withNotifyKitAndroidManifest(config, foregroundServiceOptions);
+  const configWithAppExtension = withNotifyKitIosNseAppExtension(
+    configWithAndroidManifest,
+    nseOptions,
+  );
   const configWithFiles = withNotifyKitIosNseFiles(configWithAppExtension, nseOptions);
   const configWithXcodeProject = withNotifyKitIosNseXcodeProject(configWithFiles, nseOptions);
 

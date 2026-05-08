@@ -3,6 +3,22 @@
 const DEFAULT_IOS_NSE_TARGET_NAME = 'NotifyKitNSE';
 const DEFAULT_IOS_NSE_BUNDLE_SUFFIX = '.NotifyKitNSE';
 
+const ANDROID_FOREGROUND_SERVICE_TYPES = [
+  'camera',
+  'connectedDevice',
+  'dataSync',
+  'health',
+  'location',
+  'mediaPlayback',
+  'mediaProjection',
+  'microphone',
+  'phoneCall',
+  'remoteMessaging',
+  'shortService',
+  'specialUse',
+  'systemExempted',
+];
+
 const TARGET_NAME_PATTERN = /^[A-Za-z0-9_\-.]+$/;
 const BUNDLE_SUFFIX_PATTERN = /^\.[A-Za-z0-9\-.]+$/;
 
@@ -11,6 +27,11 @@ function normalizeNotifyKitPluginOptions(options = {}) {
     ios: {
       notificationServiceExtension: normalizeIosNotificationServiceExtensionOptions(
         options.ios && options.ios.notificationServiceExtension,
+      ),
+    },
+    android: {
+      foregroundService: normalizeAndroidForegroundServiceOptions(
+        options.android && options.android.foregroundService,
       ),
     },
   };
@@ -90,6 +111,105 @@ function validateEnabledIosNotificationServiceExtensionOptions(options) {
   return options;
 }
 
+function normalizeAndroidForegroundServiceOptions(input) {
+  if (input === undefined) {
+    return disabledAndroidForegroundServiceOptions();
+  }
+
+  if (!isPlainObject(input)) {
+    throw new Error(
+      '[react-native-notify-kit] android.foregroundService must be an object with a non-empty types array.',
+    );
+  }
+
+  const types = normalizeAndroidForegroundServiceTypes(input.types);
+  const specialUseSubtype = normalizeSpecialUseSubtype(input.specialUseSubtype);
+  const hasSpecialUse = types.includes('specialUse');
+
+  if (hasSpecialUse && specialUseSubtype === undefined) {
+    throw new Error(
+      '[react-native-notify-kit] android.foregroundService.specialUseSubtype must be a non-empty string when types includes specialUse.',
+    );
+  }
+
+  if (!hasSpecialUse && specialUseSubtype !== undefined) {
+    throw new Error(
+      '[react-native-notify-kit] android.foregroundService.specialUseSubtype requires types to include specialUse.',
+    );
+  }
+
+  return {
+    enabled: true,
+    types,
+    ...(specialUseSubtype === undefined ? {} : { specialUseSubtype }),
+  };
+}
+
+function disabledAndroidForegroundServiceOptions() {
+  return {
+    enabled: false,
+    types: [],
+  };
+}
+
+function normalizeAndroidForegroundServiceTypes(input) {
+  if (!Array.isArray(input)) {
+    throw new Error(
+      '[react-native-notify-kit] android.foregroundService.types must be a non-empty array.',
+    );
+  }
+
+  if (input.length === 0) {
+    throw new Error(
+      '[react-native-notify-kit] android.foregroundService.types must be a non-empty array.',
+    );
+  }
+
+  const seen = new Set();
+  const types = [];
+
+  for (const value of input) {
+    if (typeof value !== 'string') {
+      throw new Error(
+        '[react-native-notify-kit] android.foregroundService.types must contain only strings.',
+      );
+    }
+
+    const type = value.trim();
+    if (!isAndroidForegroundServiceType(type)) {
+      throw new Error(
+        `[react-native-notify-kit] Invalid android.foregroundService type '${value}'. ` +
+          `Allowed values: ${ANDROID_FOREGROUND_SERVICE_TYPES.join(', ')}.`,
+      );
+    }
+
+    if (!seen.has(type)) {
+      seen.add(type);
+      types.push(type);
+    }
+  }
+
+  return types;
+}
+
+function normalizeSpecialUseSubtype(input) {
+  if (input === undefined) {
+    return undefined;
+  }
+
+  if (typeof input !== 'string' || input.trim().length === 0) {
+    throw new Error(
+      '[react-native-notify-kit] android.foregroundService.specialUseSubtype must be a non-empty string.',
+    );
+  }
+
+  return input.trim();
+}
+
+function isAndroidForegroundServiceType(value) {
+  return ANDROID_FOREGROUND_SERVICE_TYPES.includes(value);
+}
+
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -97,6 +217,8 @@ function isPlainObject(value) {
 module.exports = {
   DEFAULT_IOS_NSE_TARGET_NAME,
   DEFAULT_IOS_NSE_BUNDLE_SUFFIX,
+  ANDROID_FOREGROUND_SERVICE_TYPES,
   normalizeNotifyKitPluginOptions,
   normalizeIosNotificationServiceExtensionOptions,
+  normalizeAndroidForegroundServiceOptions,
 };
