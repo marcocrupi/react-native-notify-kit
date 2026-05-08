@@ -3,6 +3,9 @@
 /.expo
 .expo-shared
 node_modules
+/firebase/GoogleService-Info.plist
+/firebase/google-services.json
 /firebase/*.plist
 /firebase/*.json
+/firebase-notifykittest.json
 /.env.local

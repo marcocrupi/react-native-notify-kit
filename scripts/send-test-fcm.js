@@ -1,13 +1,14 @@
 /**
- * Manual FCM test helper — sends a push notification to a device using
+ * Manual FCM test helper - sends a push notification to a device using
  * the NotifyKit server SDK + Firebase Admin.
  *
  * Usage:
  *   yarn send:test:fcm <device-token> <scenario>
  *   node scripts/send-test-fcm.js <device-token> <scenario>
  *   IOS_FCM_TOKEN=<device-token> node scripts/send-test-fcm.js <scenario>
+ *   ANDROID_FCM_TOKEN=<device-token> node scripts/send-test-fcm.js android-expo-smoke
  *
- * Scenarios: minimal | kitchen-sink | emoji | marketing | ios-attachment | android-big-picture
+ * Scenarios: minimal | kitchen-sink | emoji | marketing | ios-attachment | android-big-picture | android-expo-smoke
  *
  * Prerequisites:
  *   - Run `yarn install` from the repo root
@@ -21,7 +22,9 @@
 const path = require('path');
 
 const SERVICE_ACCOUNT_PATH = path.resolve(__dirname, '..', 'firebase-notifykittest.json');
-const TOKEN_ENV_KEYS = ['IOS_FCM_TOKEN', 'FCM_TOKEN'];
+const IOS_TOKEN_ENV_KEYS = ['IOS_FCM_TOKEN', 'FCM_TOKEN'];
+const ANDROID_TOKEN_ENV_KEYS = ['ANDROID_FCM_TOKEN', 'FCM_TOKEN'];
+const DEFAULT_TOKEN_ENV_KEYS = ['IOS_FCM_TOKEN', 'ANDROID_FCM_TOKEN', 'FCM_TOKEN'];
 
 function loadFirebaseAdmin() {
   try {
@@ -167,6 +170,23 @@ const SCENARIOS = {
       ttl: 3600,
     },
   },
+  'android-expo-smoke': {
+    token: '',
+    notification: {
+      id: 'android-expo-smoke-test',
+      title: 'Android Expo Smoke',
+      body: 'NotifyKit Android Expo FCM data-only smoke',
+      data: { source: 'send-test-fcm', scenario: 'android-expo-smoke' },
+      android: {
+        channelId: 'expo-smoke-default',
+        pressAction: { id: 'default', launchActivity: 'default' },
+      },
+    },
+    options: {
+      androidPriority: 'high',
+      ttl: 3600,
+    },
+  },
 };
 
 function printUsage(stream = process.stdout) {
@@ -175,15 +195,24 @@ function printUsage(stream = process.stdout) {
       'Usage: yarn send:test:fcm <device-token> <scenario> [--correlation-id <id>]',
       '   or: node scripts/send-test-fcm.js <device-token> <scenario> [--correlation-id <id>]',
       '   or: IOS_FCM_TOKEN=<device-token> node scripts/send-test-fcm.js <scenario> [--correlation-id <id>]',
+      '   or: ANDROID_FCM_TOKEN=<device-token> node scripts/send-test-fcm.js android-expo-smoke [--correlation-id <id>]',
       'Scenarios: ' + Object.keys(SCENARIOS).join(', '),
-      'Token fallback env: IOS_FCM_TOKEN, FCM_TOKEN',
+      'Token fallback env: IOS_FCM_TOKEN, ANDROID_FCM_TOKEN, FCM_TOKEN',
       'Correlation fallback env: SMOKE_CORRELATION_ID',
     ].join('\n') + '\n',
   );
 }
 
-function envToken(env) {
-  for (const key of TOKEN_ENV_KEYS) {
+function tokenEnvKeysForScenario(scenario) {
+  if (scenario === 'android-expo-smoke' || scenario === 'android-big-picture') {
+    return ANDROID_TOKEN_ENV_KEYS;
+  }
+
+  return IOS_TOKEN_ENV_KEYS;
+}
+
+function envToken(env, keys = DEFAULT_TOKEN_ENV_KEYS) {
+  for (const key of keys) {
     const value = env[key];
     if (typeof value === 'string' && value.length > 0) {
       return value;
@@ -255,8 +284,8 @@ function parseArgs(argv, env) {
     parsed.token = positional[0];
     parsed.scenario = positional[1];
   } else if (positional.length === 1 && hasScenario(positional[0])) {
-    parsed.token = fallbackToken;
     parsed.scenario = positional[0];
+    parsed.token = envToken(env, tokenEnvKeysForScenario(parsed.scenario));
   } else if (positional.length === 1) {
     parsed.token = positional[0];
   } else {
@@ -282,6 +311,10 @@ const CORRELATABLE_SCENARIO_TEXT = {
   'ios-attachment': {
     title: correlationId => `NotifyKit Smoke attachment ${correlationId}`,
     body: correlationId => `Smoke FCM iOS attachment ${correlationId}`,
+  },
+  'android-expo-smoke': {
+    title: correlationId => `Android Expo Smoke ${correlationId}`,
+    body: correlationId => `Android Expo FCM data-only ${correlationId}`,
   },
 };
 
@@ -327,7 +360,9 @@ async function main() {
   const { correlationId, scenario, token } = args;
 
   if (!token) {
-    console.error('Missing FCM device token. Provide <device-token>, IOS_FCM_TOKEN, or FCM_TOKEN.');
+    console.error(
+      'Missing FCM device token. Provide <device-token>, IOS_FCM_TOKEN, ANDROID_FCM_TOKEN, or FCM_TOKEN.',
+    );
     printUsage(process.stderr);
     process.exit(1);
   }

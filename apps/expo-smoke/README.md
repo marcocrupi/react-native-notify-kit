@@ -10,8 +10,8 @@ This app is intentionally separate from `apps/smoke`, which remains the full Rea
 - Local workspace dependency: `react-native-notify-kit: workspace:*`.
 - Manual runtime checks for `getNotificationSettings`, `requestPermission`, Android channel creation/readback, `displayNotification`, `getDisplayedNotifications`, foreground `DELIVERED`/`PRESS`, `cancelNotification`, and `cancelAllNotifications`.
 - Config plugin resolution with iOS Notification Service Extension config validation and EAS `appExtensions` metadata.
-- Opt-in iOS FCM runtime checks with RNFirebase, local Firebase plist, token capture, foreground FCM handling, and background message handling.
-- No Android FCM, deep links, callback HTTP server, trigger stress, foreground service, exact alarms, reboot recovery, or advanced Android action suite.
+- Opt-in iOS and Android FCM runtime checks with RNFirebase, local Firebase config files, token capture, foreground FCM handling, and background message handling.
+- No deep links, callback HTTP server, trigger stress, exact alarms, reboot recovery, Android killed-state guarantee, or advanced Android action suite.
 
 ## Commands
 
@@ -35,21 +35,30 @@ yarn workspace react-native-notify-kit-expo-smoke start
 
 The generated `ios/`, `android/`, and `.expo/` directories are ignored because this fixture follows Expo Continuous Native Generation. The source of truth is `app.config.ts` plus the JS/TS files in this directory.
 
-## Opt-In iOS FCM Runtime
+## Opt-In FCM Runtime
 
-FCM runtime is not required for the base Expo smoke. Enable it only for iPhone physical-device testing with:
+FCM runtime is not required for the base Expo smoke. Enable it only for Firebase-backed development build testing with:
 
 ```sh
 EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM=1
 ```
 
-Place the local Firebase iOS plist at:
+Place the local Firebase config files at:
 
 ```txt
 apps/expo-smoke/firebase/GoogleService-Info.plist
+apps/expo-smoke/firebase/google-services.json
 ```
 
-The plist is ignored and must not be committed. `firebase-notifykittest.json`, `google-services.json`, service accounts, `.env.local`, and FCM tokens must also stay local.
+Both files are required when the FCM gate is enabled because the Expo config is shared by iOS and Android prebuild paths. They are ignored and must not be committed. `firebase-notifykittest.json`, service accounts, `.env.local`, and FCM tokens must also stay local.
+
+The Android app registered in Firebase must use this package name:
+
+```txt
+com.notifykit.exposmoke
+```
+
+Firebase and RNFirebase setup are fixture and consumer responsibilities. The NotifyKit Expo config plugin does not install Firebase, copy `google-services.json`, or patch Gradle for Firebase.
 
 Run the FCM iOS flow from the repository root:
 
@@ -69,7 +78,38 @@ IOS_FCM_TOKEN=<token> yarn send:test:fcm minimal
 IOS_FCM_TOKEN=<token> yarn send:test:fcm ios-attachment
 ```
 
-Android FCM is outside the scope of this fixture.
+Run the FCM Android flow from the repository root:
+
+```sh
+EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM=1 yarn smoke:expo:config
+EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM=1 yarn smoke:expo:prebuild:android
+(cd apps/expo-smoke && EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM=1 npx expo run:android)
+```
+
+Start the dev client, press `Request permission`, then press `Register FCM`. Copy the token from the `SMOKE:FCM_TOKEN` log line. On Android 13 and newer, notification permission must be granted before display can be verified.
+
+Send the Android data-only smoke payload from the repository root:
+
+```sh
+yarn build:rn:server
+ANDROID_FCM_TOKEN=<token> yarn send:test:fcm android-expo-smoke
+```
+
+Foreground Android checks:
+
+- Keep the app open.
+- Send `android-expo-smoke`.
+- Confirm `SMOKE:FCM_ON_MESSAGE`, `SMOKE:FCM_ANDROID_CHANNEL_READY`, `SMOKE:FCM_FOREGROUND_HANDLE_OK`, and `SMOKE:FOREGROUND_EVENT_DELIVERED`.
+- Confirm a notification is shown through `notifee.handleFcmMessage(remoteMessage)`.
+
+Background Android checks:
+
+- Open the app once, register FCM, then send it to the background.
+- Send `android-expo-smoke`, which uses Android data-only and high priority.
+- Confirm `SMOKE:FCM_BACKGROUND_MESSAGE`, `SMOKE:FCM_ANDROID_CHANNEL_READY`, and `SMOKE:FCM_BACKGROUND_HANDLE_OK`.
+- Confirm the notification is visible. If tapping it is tested, confirm `SMOKE:BACKGROUND_EVENT_PRESS`.
+
+Killed-state Android is best-effort only. A normally killed process can be tested after the app has been launched at least once, but `adb shell am force-stop` is not covered because Android and FCM do not guarantee wake from force-stop.
 
 ## Runtime Markers
 
@@ -89,9 +129,16 @@ The app writes short `SMOKE:*` markers to the Metro/device console and a readabl
 - `SMOKE:CANCEL_ALL_OK`
 - `SMOKE:FCM_REGISTERED`
 - `SMOKE:FCM_TOKEN`
+- `SMOKE:FCM_ON_MESSAGE_REGISTERED`
+- `SMOKE:FCM_BACKGROUND_HANDLER_REGISTERED`
+- `SMOKE:FCM_ANDROID_CHANNEL_READY`
 - `SMOKE:FCM_ON_MESSAGE`
 - `SMOKE:FCM_HANDLE_OK`
+- `SMOKE:FCM_FOREGROUND_HANDLE_OK`
+- `SMOKE:FCM_FOREGROUND_HANDLE_ERROR`
 - `SMOKE:FCM_BACKGROUND_MESSAGE`
+- `SMOKE:FCM_BACKGROUND_HANDLE_OK`
+- `SMOKE:FCM_BACKGROUND_HANDLE_ERROR`
 - `SMOKE:FCM_TOKEN_REFRESH`
 - `SMOKE:BACKGROUND_EVENT_PRESS`
 - `SMOKE:FCM_ERROR`
@@ -107,7 +154,7 @@ The app writes short `SMOKE:*` markers to the Metro/device console and a readabl
 
 ## Manual Android Check
 
-Android smoke base will be used to verify runtime package resolution, autolinking, Android channels, and local notifications. There is not yet Android config plugin automation in this fixture.
+Android smoke base verifies runtime package resolution, autolinking, Android channels, and local notifications. FCM checks are opt-in through the FCM runtime flow above.
 
 1. Run `yarn smoke:expo:prebuild:android`.
 2. From `apps/expo-smoke`, run `npx expo run:android` against an emulator or device.

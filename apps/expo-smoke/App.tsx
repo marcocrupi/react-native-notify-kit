@@ -9,16 +9,17 @@ import {
   Text,
   View,
 } from 'react-native';
-import notifee, {
-  AndroidImportance,
-  EventType,
-  type NotificationSettings,
-} from 'react-native-notify-kit';
+import notifee, { EventType, type NotificationSettings } from 'react-native-notify-kit';
 
-const CHANNEL_ID = 'expo-smoke-default';
-const CHANNEL_NAME = 'Expo Smoke Default';
+import {
+  FCM_SMOKE_CHANNEL_ID,
+  FCM_SMOKE_ENABLED,
+  ensureAndroidFcmChannel,
+  isFcmSmokeRuntimePlatform,
+  prepareNotifyKitFcm,
+} from './fcmSmoke';
+
 const MAX_LOG_ENTRIES = 80;
-const FCM_MODE_ENABLED = process.env.EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM === '1';
 
 type LogEntry = {
   id: number;
@@ -129,7 +130,7 @@ export default function App(): React.JSX.Element {
   const [lastNotificationId, setLastNotificationId] = useState<string | undefined>();
   const fcmTokenRef = useRef<string | undefined>(undefined);
   const nextLogIdRef = useRef(0);
-  const isFcmRuntimeEnabled = FCM_MODE_ENABLED && Platform.OS === 'ios';
+  const isFcmRuntimeEnabled = FCM_SMOKE_ENABLED && isFcmSmokeRuntimePlatform();
 
   const addLog = useCallback((message: string, options: LogOptions = {}) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -179,6 +180,24 @@ export default function App(): React.JSX.Element {
     return messagingModule.default();
   }, []);
 
+  const logAndroidFcmChannelReady = useCallback(
+    (channelId?: string) => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+
+      const markerDetail = channelId ?? FCM_SMOKE_CHANNEL_ID;
+      addLog('FCM Android channel ready', {
+        marker: 'SMOKE:FCM_ANDROID_CHANNEL_READY',
+        markerDetail,
+        value: {
+          id: markerDetail,
+        },
+      });
+    },
+    [addLog],
+  );
+
   useEffect(() => {
     addLog('App started', {
       marker: 'SMOKE:APP_STARTED',
@@ -223,17 +242,29 @@ export default function App(): React.JSX.Element {
   }, [addLog, logError]);
 
   useEffect(() => {
-    if (!FCM_MODE_ENABLED) {
+    if (!FCM_SMOKE_ENABLED) {
       return undefined;
     }
 
     if (!isFcmRuntimeEnabled) {
-      addLog('Skip: iOS-only FCM mode.');
+      addLog('Skip: FCM mode supports iOS and Android only.');
       return undefined;
     }
 
     try {
       const messaging = getMessaging();
+
+      void prepareNotifyKitFcm()
+        .then(logAndroidFcmChannelReady)
+        .catch(error => {
+          logFcmError('bootstrap', error);
+        });
+
+      addLog('FCM foreground listener registered', {
+        marker: 'SMOKE:FCM_ON_MESSAGE_REGISTERED',
+        markerDetail: Platform.OS,
+      });
+
       const unsubscribeMessage = messaging.onMessage(async remoteMessage => {
         addLog('FCM foreground message', {
           marker: 'SMOKE:FCM_ON_MESSAGE',
@@ -241,6 +272,9 @@ export default function App(): React.JSX.Element {
         });
 
         try {
+          const channelId = await prepareNotifyKitFcm();
+          logAndroidFcmChannelReady(channelId);
+
           const result = await notifee.handleFcmMessage(remoteMessage as NotifyKitFcmMessage);
           addLog('FCM foreground handled', {
             marker: 'SMOKE:FCM_HANDLE_OK',
@@ -249,7 +283,19 @@ export default function App(): React.JSX.Element {
               result,
             },
           });
+          addLog('FCM foreground handled', {
+            marker: 'SMOKE:FCM_FOREGROUND_HANDLE_OK',
+            markerDetail: result ?? 'null',
+            value: {
+              result,
+            },
+          });
         } catch (error) {
+          addLog('FCM foreground handle failed', {
+            marker: 'SMOKE:FCM_FOREGROUND_HANDLE_ERROR',
+            markerDetail: getErrorMarkerDetail('foreground', error),
+            value: getErrorMessage(error),
+          });
           logFcmError('foreground', error);
         }
       });
@@ -271,7 +317,7 @@ export default function App(): React.JSX.Element {
       logFcmError('listener', error);
       return undefined;
     }
-  }, [addLog, getMessaging, isFcmRuntimeEnabled, logFcmError]);
+  }, [addLog, getMessaging, isFcmRuntimeEnabled, logAndroidFcmChannelReady, logFcmError]);
 
   const getNotificationSettings = useCallback(async () => {
     try {
@@ -309,18 +355,15 @@ export default function App(): React.JSX.Element {
         return undefined;
       }
 
-      const channelId = await notifee.createChannel({
-        id: CHANNEL_ID,
-        name: CHANNEL_NAME,
-        importance: AndroidImportance.HIGH,
-      });
+      const channelId = await ensureAndroidFcmChannel();
       addLog('Android channel ready', {
         marker: 'SMOKE:CHANNEL_CREATED',
-        markerDetail: channelId,
+        markerDetail: channelId ?? FCM_SMOKE_CHANNEL_ID,
         value: {
-          id: channelId,
+          id: channelId ?? FCM_SMOKE_CHANNEL_ID,
         },
       });
+      logAndroidFcmChannelReady(channelId);
 
       if (hasGetChannels()) {
         const channels = await notifee.getChannels();
@@ -333,7 +376,7 @@ export default function App(): React.JSX.Element {
 
       return channelId;
     },
-    [addLog],
+    [addLog, logAndroidFcmChannelReady],
   );
 
   const ensureAndroidChannelFromButton = useCallback(async () => {
@@ -424,12 +467,14 @@ export default function App(): React.JSX.Element {
 
   const registerFcm = useCallback(async () => {
     if (!isFcmRuntimeEnabled) {
-      addLog('Skip: iOS-only FCM mode.');
+      addLog('Skip: FCM mode supports iOS and Android only.');
       return;
     }
 
     try {
       const messaging = getMessaging();
+      const channelId = await prepareNotifyKitFcm();
+      logAndroidFcmChannelReady(channelId);
       const authorizationStatus = await messaging.requestPermission();
 
       await messaging.registerDeviceForRemoteMessages();
@@ -453,7 +498,7 @@ export default function App(): React.JSX.Element {
     } catch (error) {
       logFcmError('register', error);
     }
-  }, [addLog, getMessaging, isFcmRuntimeEnabled, logFcmError]);
+  }, [addLog, getMessaging, isFcmRuntimeEnabled, logAndroidFcmChannelReady, logFcmError]);
 
   const clearLog = useCallback(() => {
     setLogs([]);
@@ -510,7 +555,7 @@ export default function App(): React.JSX.Element {
 
   const fcmActions = useMemo<SmokeAction[]>(
     () =>
-      FCM_MODE_ENABLED
+      FCM_SMOKE_ENABLED
         ? [
             {
               label: 'Register FCM',

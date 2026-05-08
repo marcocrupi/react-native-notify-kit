@@ -4,10 +4,16 @@ import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import notifee, { EventType } from 'react-native-notify-kit';
 
 import App from './App';
+import {
+  FCM_SMOKE_CHANNEL_ID,
+  FCM_SMOKE_ENABLED,
+  configureNotifyKitFcm,
+  ensureAndroidFcmChannel,
+  isFcmSmokeRuntimePlatform,
+  prepareNotifyKitFcm,
+} from './fcmSmoke';
 
-const CHANNEL_ID = 'expo-smoke-default';
-const isFcmModeEnabled =
-  process.env.EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM === '1' && Platform.OS === 'ios';
+const isFcmModeEnabled = FCM_SMOKE_ENABLED && isFcmSmokeRuntimePlatform();
 
 type MessagingModule = typeof import('@react-native-firebase/messaging');
 type NotifyKitFcmMessage = Parameters<typeof notifee.handleFcmMessage>[0];
@@ -31,22 +37,27 @@ const getMessaging = (): FirebaseMessagingTypes.Module => {
 const getMessageMarkerDetail = (remoteMessage: FirebaseMessagingTypes.RemoteMessage): string =>
   remoteMessage.messageId ?? remoteMessage.from ?? 'unknown';
 
+const logAndroidChannelReady = (channelId?: string): void => {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
+  console.log(`SMOKE:FCM_ANDROID_CHANNEL_READY ${channelId ?? FCM_SMOKE_CHANNEL_ID}`);
+};
+
 const configureFcmMode = (): void => {
   if (!isFcmModeEnabled) {
     return;
   }
 
   try {
-    void notifee
-      .setFcmConfig({
-        defaultChannelId: CHANNEL_ID,
-        defaultPressAction: {
-          id: 'default',
-        },
-        fallbackBehavior: 'display',
-      })
+    void configureNotifyKitFcm().catch(error => {
+      console.log(`SMOKE:FCM_ERROR config ${trimMarkerDetail(getErrorMessage(error))}`);
+    });
+    void ensureAndroidFcmChannel()
+      .then(logAndroidChannelReady)
       .catch(error => {
-        console.log(`SMOKE:FCM_ERROR config ${trimMarkerDetail(getErrorMessage(error))}`);
+        console.log(`SMOKE:FCM_ERROR channel ${trimMarkerDetail(getErrorMessage(error))}`);
       });
 
     const messaging = getMessaging();
@@ -55,14 +66,22 @@ const configureFcmMode = (): void => {
       console.log(`SMOKE:FCM_BACKGROUND_MESSAGE ${getMessageMarkerDetail(remoteMessage)}`);
 
       try {
+        const channelId = await prepareNotifyKitFcm();
+        logAndroidChannelReady(channelId);
+
         const result = await notifee.handleFcmMessage(remoteMessage as NotifyKitFcmMessage);
         console.log(`SMOKE:FCM_HANDLE_OK ${result ?? 'null'}`);
+        console.log(`SMOKE:FCM_BACKGROUND_HANDLE_OK ${result ?? 'null'}`);
         return result;
       } catch (error) {
+        console.log(
+          `SMOKE:FCM_BACKGROUND_HANDLE_ERROR ${trimMarkerDetail(getErrorMessage(error))}`,
+        );
         console.log(`SMOKE:FCM_ERROR background ${trimMarkerDetail(getErrorMessage(error))}`);
         return undefined;
       }
     });
+    console.log(`SMOKE:FCM_BACKGROUND_HANDLER_REGISTERED ${Platform.OS}`);
 
     notifee.onBackgroundEvent(async ({ type, detail }) => {
       if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
