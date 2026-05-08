@@ -1,6 +1,6 @@
 # Notify Kit FCM Mode
 
-> **Hitting upstream Notifee [#1133](https://github.com/invertase/notifee/issues/1133) ("onBackgroundEvent not triggered on iOS for remote notifications")?** FCM Mode resolves it. The client-side `onBackgroundEvent` handler only fires for remote pushes on iOS when the APNs payload carries a `notifee_options` blob that the Notification Service Extension can enrich into `userInfo[__notifee_notification]` before delivery. Shipping FCM payloads via the server SDK and scaffolding the NSE with `npx react-native-notify-kit init-nse` is the end-to-end fix — see the architecture and setup sections below.
+> **Hitting upstream Notifee [#1133](https://github.com/invertase/notifee/issues/1133) ("onBackgroundEvent not triggered on iOS for remote notifications")?** FCM Mode resolves it. The client-side `onBackgroundEvent` handler only fires for remote pushes on iOS when the APNs payload carries a `notifee_options` blob that the Notification Service Extension can enrich into `userInfo[__notifee_notification]` before delivery. Shipping FCM payloads via the server SDK and wiring the NSE through the Expo config plugin or the bare React Native `init-nse` CLI is the end-to-end fix. Expo Go is not supported.
 
 A delivery pattern for apps that want **`react-native-notify-kit` as the sole display layer for FCM push notifications** on both Android and iOS.
 
@@ -9,6 +9,7 @@ FCM Mode solves two problems at once: the Android `notification`-payload duplica
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Quick start](#quick-start)
+- [Expo CNG / development builds](#expo-cng--development-builds)
 - [Server SDK reference](#server-sdk-reference)
 - [Client API reference](#client-api-reference)
 - [iOS NSE setup](#ios-nse-setup)
@@ -37,7 +38,7 @@ FCM Mode picks the right payload per platform and hides the asymmetry behind a s
 - **Android** uses a **data-only** payload, so the FCM SDK never auto-displays. Your app receives the message in `setBackgroundMessageHandler` / `onMessage` and calls `notifee.handleFcmMessage(remoteMessage)` — a one-liner that parses the embedded `notifee_options` blob and renders the notification with full control over channel, style, actions, etc.
 - **iOS** uses an **alert payload** (`aps.alert`) with `mutable-content: 1` and a `notifee_options` blob in `apns.payload`. A Notification Service Extension reads the blob, reshapes the notification (attachments, category, thread-id, interruption level, sound), and the OS displays the rewritten content. APNs reliability (~99% on APNs priority 10) instead of the silent-push throttle.
 - The **server SDK** (`react-native-notify-kit/server`) generates both payload shapes from one `buildNotifyKitPayload(input)` call, so your backend doesn't care about the split.
-- The **CLI** (`npx react-native-notify-kit init-nse`) scaffolds the iOS NSE target, patches the Podfile, and wires the `.pbxproj` — the one-time iOS setup is a single command.
+- The **Expo config plugin** generates and wires the iOS NSE during Expo prebuild. For bare React Native, the **CLI** (`npx react-native-notify-kit init-nse`) scaffolds the same NSE target, patches the Podfile, and wires the `.pbxproj`.
 
 If you're already using the "data-only + `displayNotification` from headless task" pattern documented in the main README, FCM Mode is a superset: it replaces the iOS half with an alert + NSE path that doesn't drop pushes. See the [migration guide](#migration-from-the-manual-pattern) below.
 
@@ -53,7 +54,7 @@ Stick with a simpler pattern when:
 
 - You only ship Android, or only ship iOS — the asymmetry cost disappears.
 - You're happy with iOS data-only drops — many marketing / engagement notifications are fine at 60% delivery.
-- You can't run a Notification Service Extension (Expo managed workflow currently — see [Known limitations](#known-limitations)).
+- You need Expo Go. FCM Mode on iOS requires a native Notification Service Extension, so use Expo CNG / prebuild development builds instead.
 
 ## Architecture
 
@@ -194,16 +195,40 @@ export default function App() {
 
 That's it for Android. On iOS the same `handleFcmMessage` call is a no-op in background/killed (the NSE has already displayed the notification); in foreground it displays the in-app banner as usual.
 
-### 4. iOS client: scaffold the NSE
+### 4. iOS client: create the NSE
 
-From your project root:
+For Expo CNG / development builds, add the config plugin and run Expo prebuild. Do not run this in Expo Go.
+
+```ts
+export default {
+  expo: {
+    name: 'MyApp',
+    slug: 'my-app',
+    ios: {
+      bundleIdentifier: 'com.example.myapp',
+    },
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          ios: {
+            notificationServiceExtension: true,
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+For bare React Native, run:
 
 ```bash
 npx react-native-notify-kit init-nse
 cd ios && pod install
 ```
 
-This creates a `NotifyKitNSE` target, patches the Podfile, and wires `.pbxproj`. Open `ios/<YourApp>.xcworkspace` in Xcode, verify the NSE target's signing, then build. Full detail in [iOS NSE setup](#ios-nse-setup).
+Both paths create a `NotifyKitNSE` target, add the `RNNotifeeCore` dependency, and embed the `.appex` in the host app. Full detail in [iOS NSE setup](#ios-nse-setup).
 
 ### 5. Verify
 
@@ -211,9 +236,121 @@ Send a test payload to a real device. The notification should:
 
 - Display once on both platforms (no duplicates).
 - Show any attachments, category actions, thread-id grouping, and custom sounds server-side.
-- Fire the `EventType.PRESS` event on tap, with `detail.notification.data` containing your custom `data` fields.
+- Route tap handling through your registered handlers after you configure and validate your app's press-action flow.
 
 Keep reading for the full API surface and error cases.
+
+## Expo CNG / development builds
+
+Expo CNG support is available for FCM Mode on iOS. The config plugin can generate and wire the iOS Notification Service Extension during prebuild, so Expo development build apps can use NotifyKit FCM Mode without manually creating the NSE in Xcode.
+
+Expo Go is not supported. This path requires native targets, an embedded `.appex`, CocoaPods, signing, and a development build or EAS build.
+
+### Expo config
+
+Boolean `true` enables the default NSE target:
+
+```ts
+export default {
+  expo: {
+    name: 'MyApp',
+    slug: 'my-app',
+    ios: {
+      bundleIdentifier: 'com.example.myapp',
+      googleServicesFile: './GoogleService-Info.plist',
+    },
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          ios: {
+            notificationServiceExtension: true,
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+Use the object form only when you need a custom target name or bundle suffix:
+
+```ts
+export default {
+  expo: {
+    name: 'MyApp',
+    slug: 'my-app',
+    ios: {
+      bundleIdentifier: 'com.example.myapp',
+    },
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          ios: {
+            notificationServiceExtension: {
+              enabled: true,
+              targetName: 'NotifyKitNSE',
+              bundleSuffix: '.NotifyKitNSE',
+            },
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+The object form is explicit: set `enabled: true`. An object without `enabled: true` is treated as disabled.
+
+### What the plugin changes
+
+During Expo prebuild, the plugin:
+
+- upserts `extra.eas.build.experimental.ios.appExtensions` with the NSE target and bundle identifier
+- generates `NotificationService.swift`
+- generates the NSE `Info.plist`
+- generates an entitlements file
+- patches the Xcode project with the `NotifyKitNSE` target
+- adds the host app dependency on the NSE target
+- embeds `NotifyKitNSE.appex` in the host app's Copy Files phase
+- patches the Podfile with a top-level `NotifyKitNSE` target and `pod 'RNNotifeeCore'`
+- mirrors static `use_frameworks!` linkage when Expo/Firebase static frameworks require it
+
+The default bundle identifier is `<ios.bundleIdentifier>.NotifyKitNSE`. The plugin requires `ios.bundleIdentifier` when `ios.notificationServiceExtension` is enabled.
+
+### Prerequisites
+
+- Use Expo prebuild, `expo run:ios`, or EAS development builds. Expo Go cannot load the generated native extension.
+- Add `GoogleService-Info.plist` to the Expo project and point `ios.googleServicesFile` at it if your Firebase setup expects Expo to copy it.
+- Configure APNs key or certificates in Firebase Console.
+- Configure Apple signing, capabilities, and any EAS credentials needed by your project and the generated app extension.
+- Test remote pushes on a physical iPhone. The simulator is not a reliable gate for remote-push NSE behavior.
+
+Typical local flow:
+
+```bash
+npx expo prebuild --platform ios
+npx expo run:ios --device
+```
+
+For EAS:
+
+```bash
+eas build --profile development --platform ios
+```
+
+### What remains manual
+
+- Firebase project setup
+- APNs setup in Firebase
+- Apple signing and capability review when your project uses custom provisioning or App Groups
+- EAS credentials if your build profile does not auto-manage them
+- Any custom NSE logic you add after generation
+
+### Android Expo scope
+
+Android Expo base runtime has been validated with prebuild and a development build. Android config plugin automation for foreground service declarations, exact-alarm permissions, full-screen intent, and related advanced Android setup is not part of 10.4.0.
 
 ## Server SDK reference
 
@@ -588,16 +725,25 @@ AppRegistry.registerComponent('MyApp', () => App);
 
 ## iOS NSE setup
 
-iOS requires a Notification Service Extension (NSE) to rewrite incoming APNs notifications before display. FCM Mode ships with a CLI that scaffolds this for you.
+iOS requires a Notification Service Extension (NSE) to rewrite incoming APNs notifications before display. FCM Mode has two automated setup paths:
 
-### Automated setup (recommended)
+- Expo CNG / prebuild: use the config plugin.
+- Bare React Native: use the `init-nse` CLI.
+
+### Expo CNG setup
+
+Use the [Expo CNG / development builds](#expo-cng--development-builds) setup above. The plugin runs during prebuild and generates the Swift service, `Info.plist`, entitlements, Xcode target, host dependency, `.appex` embed phase, EAS `appExtensions` entry, and Podfile target.
+
+Do not use `npx react-native-notify-kit init-nse` as the primary Expo setup path. Generated Expo native folders are disposable, so the plugin is the durable source of truth.
+
+### Bare React Native CLI setup
 
 ```bash
 npx react-native-notify-kit init-nse
 cd ios && pod install
 ```
 
-What the CLI does:
+What the bare CLI does:
 
 1. **Auto-detects** your iOS project (`ios/*.xcodeproj` or `.xcworkspace`) and your main app target's bundle ID.
 2. **Creates** three files under `ios/NotifyKitNSE/`:
@@ -639,11 +785,11 @@ Parent bundle ID uses a variable: $(PRODUCT_BUNDLE_PREFIX).MyApp
 
 ### Manual setup
 
-If the CLI doesn't work for your project (Expo managed workflow, heavily customized Xcode configs, exotic monorepo layouts), the [legacy manual guide](../apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md) walks through the Xcode steps. You'll still use the same `NotifeeExtensionHelper.populateNotificationContent(...)` call — only the scaffolding differs.
+If automation does not work for your bare React Native project because of heavily customized Xcode configs or exotic monorepo layouts, the [legacy manual guide](../apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md) walks through the Xcode steps. You'll still use the same `NotifeeExtensionHelper.populateNotificationContent(...)` call; only the scaffolding differs.
 
 ### What the Swift template does
 
-The generated `NotificationService.swift` is under your ownership after generation — regenerating with `--force` will overwrite it, so if you customize it, keep the `populateNotificationContent` call intact. The template:
+The generated `NotificationService.swift` is under your ownership after generation. Regenerating with CLI `--force` or rebuilding disposable Expo native folders can overwrite it, so if you customize it, keep the `populateNotificationContent` call intact. The template:
 
 1. Implements `didReceive(_:withContentHandler:)`.
 2. Hands the request to `NotifeeExtensionHelper.populateNotificationContent(...)` — the ObjC helper shipped in `RNNotifeeCore` that reads `notifee_options` and applies attachments, category, thread-id, and sound.
@@ -887,7 +1033,7 @@ notifee.setFcmConfig({ defaultChannelId: 'default' });
 
 ### Step 3 — iOS
 
-Run the CLI: `npx react-native-notify-kit init-nse && cd ios && pod install`. If you already had a Notify Kit Service Extension (e.g. from the legacy ObjC guide), you can either keep it and skip this step, or regenerate with `--force` to get the new Swift template.
+For Expo CNG / development builds, add the config plugin and run prebuild. For bare React Native, run the CLI: `npx react-native-notify-kit init-nse && cd ios && pod install`. If you already had a Notify Kit Service Extension (e.g. from the legacy ObjC guide), you can either keep it and skip this step, or regenerate with `--force` to get the new Swift template.
 
 ### Compatibility during migration
 
@@ -895,9 +1041,25 @@ Old clients on old payloads keep working: the manual `displayNotification` path 
 
 ## Troubleshooting
 
+### Expo Go does not work
+
+Expo Go cannot load `react-native-notify-kit` native code, the generated iOS NSE target, or the embedded `.appex`. Use Expo CNG / prebuild with a development build or EAS build.
+
+### Expo prebuild did not generate `NotifyKitNSE`
+
+- Confirm the plugin is listed as `react-native-notify-kit` in `expo.plugins`.
+- Confirm `ios.bundleIdentifier` is set. The plugin requires it to derive the NSE bundle identifier.
+- Run a clean prebuild if the native folders were generated before adding the plugin:
+
+  ```bash
+  npx expo prebuild --clean --platform ios
+  ```
+
+- Inspect `ios/NotifyKitNSE/`, the Xcode project target list, and `extra.eas.build.experimental.ios.appExtensions` in the resolved Expo config.
+
 ### iOS notification not appearing in background
 
-- **Check the Notification Service Extension is installed.** In Xcode, look for the `NotifyKitNSE` target. If missing, run `npx react-native-notify-kit init-nse`.
+- **Check the Notification Service Extension is installed.** In Xcode, look for the `NotifyKitNSE` target. If missing, use the Expo config plugin and rerun prebuild for Expo, or run `npx react-native-notify-kit init-nse` for bare React Native.
 - **Check NSE signing.** Targets → `NotifyKitNSE` → Signing & Capabilities. Team must match the main app; provisioning profile must cover `<your-bundle-id>.NotifyKitNSE`.
 - **Check `aps-push-type: alert` and `mutable-content: 1` are present.** Both are emitted automatically by `buildNotifyKitPayload`; if they're missing, a middleware / proxy is stripping them.
 - **Attach to the NSE process in Xcode** (Debug → Attach to Process → `NotifyKitNSE`) and confirm `didReceive` fires. If nothing fires, APNs isn't routing to your NSE.
@@ -914,6 +1076,7 @@ If you see two notifications per push on Android, the FCM SDK is auto-displaying
 - Run the app on a **real iOS device** (NSEs don't run on the simulator for remote pushes — local notifications only).
 - Check `aps-push-type` is `alert` and `mutable-content` is `1`. The server SDK always sets both.
 - Attach to the NSE process in Xcode and send a test push via `node scripts/send-test-fcm.ts` (requires `GOOGLE_APPLICATION_CREDENTIALS` + device token). If `didReceive` never fires, the NSE isn't linked — verify Xcode → General → Frameworks, Libraries, and Embedded Content lists `RNNotifeeCore.framework` (or the CocoaPods static-library equivalent).
+- For Expo, run a clean prebuild after changing plugin options and verify the generated `.appex` is embedded in the host app's `PlugIns` directory after build.
 
 ### Custom sound not playing
 
@@ -924,20 +1087,29 @@ Custom sounds have platform-specific requirements that don't go through the Noti
 
 See the main README's [custom sounds section](../README.md#custom-sounds-for-push-notifications-in-background-or-killed-state) for the full background.
 
-### `pod install` fails after `init-nse`
+### `pod install` fails after NSE generation
 
 If `pod install` errors with "Unable to find a specification for `RNNotifeeCore`" or similar:
 
 - Verify `node_modules/react-native-notify-kit/` exists and includes a `RNNotifeeCore.podspec`.
 - Run `pod install --repo-update` from `ios/`.
-- If you use `use_frameworks! :linkage => :static`, the 9.1.22 duplicate-symbol fix is in effect — no extra config needed.
-- If it still fails, inspect the generated Podfile diff — the NSE block should be nested inside the main app target with `inherit! :search_paths`. If it's at the top level, your Podfile has a shape the patcher didn't recognize — run `npx react-native-notify-kit init-nse --force` on a clean Podfile, or patch manually using the [legacy guide](../apps/smoke/NOTIFICATION_SERVICE_EXTENSION.md).
+- If you use Firebase with static frameworks, confirm the NSE target uses compatible `use_frameworks! :linkage => :static` linkage. The Expo plugin mirrors the detected Expo/Firebase static-framework setup when needed.
+- For bare React Native CLI output, the NSE block is normally nested inside the main app target with `inherit! :search_paths`.
+- For Expo plugin output, the NSE block is a top-level target and should not inherit the Expo host target module graph.
+- If it still fails, rerun a clean Expo prebuild or rerun `npx react-native-notify-kit init-nse --force` for bare React Native on a clean Podfile, then inspect the generated Podfile before applying local customizations.
 
 ### Xcode reports `Cycle inside <AppName>` after adding the NSE
 
-This can happen when the host app embeds `NotifyKitNSE.appex` and React Native Firebase adds its `[RNFB] Core Configuration` build phase. Current `init-nse` versions add a Podfile `post_install` patch that removes the problematic RNFB input path after each `pod install`.
+This can happen when the host app embeds `NotifyKitNSE.appex` and React Native Firebase adds its `[RNFB] Core Configuration` build phase. Current Expo plugin and `init-nse` versions add a Podfile `post_install` patch that removes the problematic RNFB input path after each `pod install`.
 
-If the cycle persists, update Notify Kit, rerun `npx react-native-notify-kit init-nse`, then run `pod install` again from `ios/`. Avoid editing React Native Firebase build phases manually unless your project has additional custom build-phase inputs that still create a cycle.
+If the cycle persists, update Notify Kit. For Expo, run a clean prebuild. For bare React Native, rerun `npx react-native-notify-kit init-nse`, then run `pod install` again from `ios/`. Avoid editing React Native Firebase build phases manually unless your project has additional custom build-phase inputs that still create a cycle.
+
+### iOS attachment metadata exists but the attachment is not visible
+
+- Confirm every attachment URL is HTTPS. The server SDK rejects non-HTTPS iOS attachment URLs.
+- Confirm the URL is reachable by the device without app authentication.
+- Check NSE logs in Console.app by filtering for process `NotifyKitNSE`.
+- Inspect `getDisplayedNotifications()` for `ios.attachments` metadata. Metadata proves the NotifyKit payload path ran, but visual lock-screen/banner rendering still depends on iOS attachment download and presentation rules.
 
 ### `handleFcmMessage` returns `null`
 
@@ -975,7 +1147,9 @@ The server SDK warns at ~3500 bytes. Common fixes:
 - **iOS background `DELIVERED` event gap.** When a push arrives while your app is in background/killed on iOS, `EventType.DELIVERED` is **not** emitted to `onBackgroundEvent` — the NSE draws the notification and the main app process never wakes. This is a platform limitation (no `UNUserNotificationCenterDelegate` callback fires for NSE-drawn notifications until the user taps). Android emits `DELIVERED` unconditionally. To detect background delivery on iOS, check `getDisplayedNotifications()` when the app returns to foreground, or have the NSE write to a shared App Group container.
 - **No deep validation of nested `android` / `ios` config.** The server SDK validates the top-level shape (routing, data value types, iOS attachment URLs, ttl, etc.) but trusts TypeScript structural typing for the nested `NotifyKitAndroidConfig` / `NotifyKitIosConfig`. JavaScript callers that bypass TypeScript should validate themselves. Deep runtime validation is planned.
 - **Style types limited to `BIG_TEXT` / `BIG_PICTURE`.** `MESSAGING`, `INBOX`, and `CALL` styles are available via `displayNotification` but aren't wired through the server SDK yet — their schemas need versioning (person avatars, reply actions) before the wire contract is frozen.
-- **Expo managed workflow not supported.** The CLI writes directly to `ios/` and assumes a bare React Native project. An Expo config plugin (`expo-notify-kit-config`) is on the roadmap. In the meantime, prebuild (`npx expo prebuild`) and run the CLI against the generated `ios/` directory.
+- **Expo Go not supported.** Expo CNG / prebuild development builds are supported for iOS FCM Mode via the config plugin. Expo Go cannot load the required native target or embedded NSE.
+- **Android Expo advanced automation is future work.** Android Expo base runtime has been validated, but 10.4.0 does not add Android config plugin automation for foreground services, exact alarms, full-screen intent, or related advanced permissions.
+- **10.4.0 validation scope.** The Expo release gate covered real tarball install, prebuild, `pod install`, `xcodebuild`, `.appex` generation/embedding, Expo iOS/Android runtime smoke, and foreground iOS FCM Mode delivery on a physical iPhone with logical attachment metadata. It did not complete tap, killed state, visual lock-screen/banner attachment rendering, textual NSE log capture, or data-only RNFirebase client-handler validation.
 - **The CLI creates the NSE target once.** Re-running `init-nse` without `--force` is a no-op. Re-running with `--force` will overwrite `NotificationService.swift` — back it up first if you've customized the file.
 
 ## Comparison with other libraries
@@ -984,7 +1158,7 @@ The server SDK warns at ~3500 bytes. Common fixes:
 | --------------------------------- | ------------------------------------------------------------------ | -------------------------- | -------------------------- | ------------------------------------- |
 | Android display                   | `displayNotification` from headless task                           | Same                       | OneSignal SDK              | `expo-notifications`                  |
 | iOS background reliability        | APNs alert (~99%) via NSE                                          | Data-only silent (~40-70%) | APNs alert (proprietary)   | APNs alert (Expo-managed)             |
-| iOS NSE setup                     | One CLI command                                                    | Manual Xcode steps         | Bundled, closed-source     | Managed (no NSE needed)               |
+| iOS NSE setup                     | Expo config plugin or bare RN CLI                                  | Manual Xcode steps         | Bundled, closed-source     | Managed (no NotifyKit NSE)            |
 | Backend SDK                       | `react-native-notify-kit/server` (zero deps)                       | Hand-rolled FCM v1         | OneSignal REST API         | Expo push REST API                    |
 | Backend runs on                   | Any Node.js (CFns, Lambda, self-hosted)                            | Any Node.js                | OneSignal (vendor lock)    | Expo servers (vendor lock-ish)        |
 | Notification styling              | BIG_TEXT, BIG_PICTURE, actions, attachments, categories, thread-id | Full Notify Kit surface    | OneSignal-specific         | Limited (no custom styles on Android) |

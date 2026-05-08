@@ -5,7 +5,7 @@
 
 # react-native-notify-kit
 
-Maintained Notifee-compatible fork: a feature-rich React Native notification library (Android & iOS).
+Maintained Notifee-compatible fork: a feature-rich React Native notification library for Android, iOS, FCM Mode, and Expo CNG development builds.
 
 <p align="center">
   <a href="https://www.npmjs.com/package/react-native-notify-kit"><img src="https://img.shields.io/npm/v/react-native-notify-kit.svg" alt="npm version"></a>
@@ -17,7 +17,7 @@ Maintained Notifee-compatible fork: a feature-rich React Native notification lib
 
 <hr/>
 
-> 📘 **Full documentation:** [docs.page/marcocrupi/react-native-notify-kit](https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview) — public API reference, platform guides, FCM Mode, server SDK, and the `init-nse` CLI.
+> 📘 **Full documentation:** [docs.page/marcocrupi/react-native-notify-kit](https://docs.page/marcocrupi/react-native-notify-kit/react-native/overview) - public API reference, platform guides, FCM Mode, Expo CNG setup, server SDK, config plugin, and the `init-nse` CLI.
 
 An actively maintained fork of Notifee for React Native notifications, continued and improved by Marco Crupi.
 
@@ -35,7 +35,7 @@ However, `expo-notifications` does not cover several advanced capabilities that 
 - **Full-screen intent notifications** (alarm/call screens)
 - **Ongoing / persistent notifications**
 
-This fork fills the gap: it preserves all of Notifee's advanced features, migrates the bridge to React Native's **New Architecture** (TurboModules), and actively fixes the critical bugs left unresolved upstream — see the [bug fix table](#bugs-fixed-from-upstream-notifee) below.
+This fork fills the gap: it preserves all of Notifee's advanced features, migrates the bridge to React Native's **New Architecture** (TurboModules), and actively fixes the critical bugs left unresolved upstream. See the [bug fix table](#bugs-fixed-from-upstream-notifee) below. It also supports Expo CNG / prebuild development builds for iOS FCM Mode through an official config plugin. Expo Go is not supported.
 
 ## Project Status
 
@@ -44,6 +44,7 @@ This fork fills the gap: it preserves all of Notifee's advanced features, migrat
 - Officially recommended by Invertase as the community-maintained fork (April 2026)
 - Maintained fork of Notifee — actively developed and published as `react-native-notify-kit`
 - New Architecture only (TurboModules)
+- Expo CNG / prebuild support for iOS FCM Mode via config plugin. Expo Go is not supported; use Expo development builds.
 - Minimum supported React Native: `0.73`
 - Development target: React Native `0.84`
 - License: `Apache-2.0`
@@ -150,9 +151,9 @@ useEffect(() => {
 >
 > Register **both** handlers if you need to react to taps in every app state. Resolves the confusion reported in upstream [invertase/notifee#1155](https://github.com/invertase/notifee/issues/1155).
 
-## Notifee FCM Mode (NEW in 10.0.0)
+## Notifee FCM Mode (NEW in 10.0.0, Expo CNG in 10.4.0)
 
-**Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS** — one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and scaffold the iOS Notification Service Extension with a single CLI command:
+**Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS**: one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and set up the iOS Notification Service Extension with the Expo config plugin or, for bare React Native, the `init-nse` CLI:
 
 ```bash
 # server: build the payload
@@ -162,9 +163,37 @@ await admin.messaging().send(buildNotifyKitPayload({ token, notification: { titl
 # client (Android + iOS): one line in setBackgroundMessageHandler / onMessage
 await notifee.handleFcmMessage(remoteMessage);
 
-# iOS NSE scaffold
+# iOS NSE setup for bare React Native
 npx react-native-notify-kit init-nse && cd ios && pod install
 ```
+
+### Expo CNG / development builds
+
+Expo CNG / development builds are supported for iOS FCM Mode. Add the config plugin to your Expo config and run prebuild; the plugin generates and wires the Notification Service Extension used by NotifyKit FCM Mode. Expo Go is not supported because this feature requires native targets.
+
+```ts
+export default {
+  expo: {
+    name: 'MyApp',
+    slug: 'my-app',
+    ios: {
+      bundleIdentifier: 'com.example.myapp',
+    },
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          ios: {
+            notificationServiceExtension: true,
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+Android Expo base runtime has been validated. Advanced Android config plugin automation for foreground service declarations, exact alarms, full-screen intent, and related permissions is not part of 10.4.0.
 
 See the full guide: **[docs/fcm-mode.mdx](docs/fcm-mode.mdx)** — covers architecture, server SDK reference, client API, NSE setup, payload schema, migration, troubleshooting, and known limitations.
 
@@ -231,9 +260,37 @@ messaging().onMessage(async remoteMessage => {
 
 ## iOS Notification Service Extension
 
-To modify push notification content before display (e.g., attach images), create a Notification Service Extension.
+To modify push notification content before display (e.g., attach images), create a Notification Service Extension. FCM Mode supports two automated setup paths: Expo CNG uses the config plugin, while bare React Native uses the `init-nse` CLI.
 
-### Automated setup (recommended)
+### Expo CNG automated setup
+
+Use this for Expo prebuild / development builds:
+
+```ts
+export default {
+  expo: {
+    name: 'MyApp',
+    slug: 'my-app',
+    ios: {
+      bundleIdentifier: 'com.example.myapp',
+    },
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          ios: {
+            notificationServiceExtension: true,
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+Run Expo prebuild or an EAS development build after adding the plugin. The plugin adds the EAS `appExtensions` entry and generates the Swift service, `Info.plist`, entitlements, Xcode target, `.appex` embed phase, and Podfile target. Expo Go is not supported.
+
+### Bare React Native automated setup
 
 From your project root, with `react-native-notify-kit` installed:
 
@@ -242,11 +299,11 @@ npx react-native-notify-kit init-nse
 cd ios && pod install
 ```
 
-The CLI scaffolds a Swift NSE target (default name: `NotifyKitNSE`), patches your Podfile, and wires `.pbxproj`. Open your `.xcworkspace` in Xcode, verify the NSE target's signing, and build. See [docs/fcm-mode.mdx#ios-nse-setup](docs/fcm-mode.mdx#ios-nse-setup) for the full CLI reference (target name, bundle suffix, `--dry-run`, `--force`).
+The CLI scaffolds a Swift NSE target (default name: `NotifyKitNSE`), patches your Podfile, and wires `.pbxproj`. Open your `.xcworkspace` in Xcode, verify the NSE target's signing, and build. Expo users should use the config plugin instead of running `init-nse` against generated native folders. See [docs/fcm-mode.mdx#ios-nse-setup](docs/fcm-mode.mdx#ios-nse-setup) for the full CLI reference (target name, bundle suffix, `--dry-run`, `--force`).
 
 ### Manual setup
 
-For Expo, monorepos with non-standard iOS paths, or heavily-customized Xcode configurations where the CLI can't patch the project cleanly:
+For bare React Native projects with non-standard iOS paths or heavily-customized Xcode configurations where automation cannot patch the project cleanly:
 
 1. In Xcode: **File > New > Target > Notification Service Extension**
 2. Add to your Podfile:
@@ -315,6 +372,8 @@ Full reference: [docs/fcm-mode.mdx#server-sdk-reference](docs/fcm-mode.mdx#serve
 The library ships a small CLI at `npx react-native-notify-kit`. Currently one command is available:
 
 - `npx react-native-notify-kit init-nse` — scaffolds an iOS Notification Service Extension (Swift), patches the Podfile, and wires `.pbxproj`. See [docs/fcm-mode.mdx#ios-nse-setup](docs/fcm-mode.mdx#ios-nse-setup) for options.
+
+Expo CNG users should use the config plugin for NSE setup instead of the CLI.
 
 The CLI is prepacked into the main package at publish time, so `npx react-native-notify-kit` works immediately after `yarn add react-native-notify-kit` — no separate install.
 
@@ -772,8 +831,8 @@ distribution model in 9.2.0 — the core compiles from source as part of the bri
 module, so there is no Maven coordinate to resolve, no `extraMavenRepos` to configure
 on Expo, and no `FAIL_ON_PROJECT_REPOS` conflict on RN 0.74+. Migrating from
 `@notifee/react-native` to `react-native-notify-kit` removes the error with no
-additional `build.gradle` patching, no config plugin, and no Expo `extraMavenRepos`
-entry.
+additional `build.gradle` patching, no Android config plugin for this Maven issue,
+and no Expo `extraMavenRepos` entry.
 
 References: upstream issues [#1079](https://github.com/invertase/notifee/issues/1079),
 [#1226](https://github.com/invertase/notifee/issues/1226),

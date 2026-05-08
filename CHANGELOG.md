@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.4.0] - 2026-05-08
+
+### Added
+
+- **Expo**: added Expo CNG / prebuild support for iOS FCM Mode via the official config plugin. Expo development builds can generate and wire the `NotifyKitNSE` Notification Service Extension during prebuild. Expo Go is not supported because this path requires native targets.
+- **Expo smoke app**: added `apps/expo-smoke` fixture coverage for development build validation with Expo SDK 55, React Native 0.83.6, `expo-dev-client`, and `react-native-notify-kit` resolved from the workspace or a packed tarball.
+
+### Fixed
+
+- **iOS / Expo**: fixed NSE Podfile integration for Expo prebuild by isolating the generated `NotifyKitNSE` target as a top-level target instead of inheriting the Expo host target module graph.
+- **iOS / Expo / Firebase**: aligned the generated NSE Podfile linkage with Firebase static frameworks and `use_frameworks!` configurations used by Expo development builds.
+- **iOS / NSE**: fixed a static-framework header import issue involving `NotifeeExtensionHelper` and `NotifeeCore` when `RNNotifeeCore` compiles inside a Notification Service Extension.
+
+### Tests
+
+- **Packaging / Expo**: validated real npm tarball install from a scratch fixture, plugin resolution from `node_modules`, Expo config, iOS prebuild, `pod install`, `xcodebuild`, `NotifyKitNSE.appex` generation, and embedding in the app bundle.
+- **Expo smoke app**: validated development build runtime smoke on iOS and Android, including TurboModule startup and basic notification display/read paths.
+- **FCM Mode / iOS**: validated foreground delivery on a physical iPhone with real FCM payloads and a generated NSE, including logical iOS attachment metadata in `getDisplayedNotifications()`. Tap, killed state, visual lock-screen/banner attachment rendering, textual NSE logs, and data-only RNFirebase client-handler paths are not claimed as verified in this release.
+
 ## [10.3.3] - 2026-05-07
 
 ### Fixed

@@ -5,6 +5,31 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.4.0] (2026-05-08)
+
+Release focused on the first official Expo CNG integration for FCM Mode on iOS. This is support for Expo prebuild and development builds, not Expo Go.
+
+### Expo CNG
+
+- Added an official config plugin entry for `react-native-notify-kit`.
+- The plugin can generate and wire the `NotifyKitNSE` Notification Service Extension during Expo prebuild, so Expo development builds can use the iOS FCM Mode attachment/rich-notification path without manually creating the NSE in Xcode.
+- The plugin supports `ios.notificationServiceExtension: true` and an object form with `enabled`, `targetName`, and `bundleSuffix`.
+- Expo Go is not supported because the feature requires native iOS targets.
+
+### iOS
+
+- The Expo prebuild path now creates the NSE files, Xcode target, host app dependency, `.appex` embed phase, bundle identifier, entitlements, and Podfile target.
+- The generated NSE Podfile target is isolated from the Expo host target to avoid inheriting host modules that do not belong in the extension.
+- Static framework alignment was fixed for Expo projects using Firebase and `use_frameworks!`.
+- `NotifeeExtensionHelper` header imports were adjusted so `RNNotifeeCore` can compile inside the generated NSE under static-framework/header-map constraints.
+
+### Validation
+
+- Validated a real npm tarball install from a scratch fixture, plugin resolution from `node_modules`, Expo config, iOS prebuild, `pod install`, `xcodebuild`, `NotifyKitNSE.appex` generation, and app embedding.
+- Validated Expo development build runtime smoke on iOS and Android.
+- Validated iOS FCM Mode foreground delivery on a physical iPhone with a real generated NSE and logical attachment metadata visible through `getDisplayedNotifications()`.
+- Tap handling, killed-state delivery, visual lock-screen/banner attachment rendering, textual NSE logs, and data-only RNFirebase client-handler paths were not completed as release gates for 10.4.0.
+
 ## [10.3.3] (2026-05-07)
 
 Patch release focused on iOS notification delegate reliability and generated iOS core packaging. It does not add a public API, change JavaScript payloads, or introduce a breaking change.
