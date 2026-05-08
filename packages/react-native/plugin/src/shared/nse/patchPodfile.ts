@@ -7,6 +7,7 @@ export interface NotifyKitNsePodfilePatchOptions {
   targetName: string;
   packagePathFromIos?: string;
   placement?: 'nested' | 'topLevel';
+  useFrameworks?: false | true | 'static' | 'dynamic';
 }
 
 export interface NotifyKitNsePodfilePatchResult {
@@ -22,6 +23,7 @@ export function patchPodfileForNotifyKitNse(
   let changed = false;
   const packagePathFromIos = options.packagePathFromIos ?? DEFAULT_PACKAGE_PATH_FROM_IOS;
   const placement = options.placement ?? 'nested';
+  const useFrameworks = options.useFrameworks ?? false;
 
   if (!hasUncommentedTarget(patched, options.targetName)) {
     const withNseTarget = insertNseTarget(
@@ -29,6 +31,7 @@ export function patchPodfileForNotifyKitNse(
       options.targetName,
       packagePathFromIos,
       placement,
+      useFrameworks,
     );
     if (withNseTarget === null) {
       return { contents: patched, didChange: changed };
@@ -51,8 +54,9 @@ function insertNseTarget(
   targetName: string,
   packagePathFromIos: string,
   placement: 'nested' | 'topLevel',
+  useFrameworks: false | true | 'static' | 'dynamic',
 ): string | null {
-  const block = buildNseTargetBlock(targetName, packagePathFromIos, placement);
+  const block = buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrameworks);
 
   const targetMatch = content.match(/^target\s+['"][^'"]+['"]\s+do/m);
   if (!targetMatch || targetMatch.index === undefined) {
@@ -83,10 +87,14 @@ function buildNseTargetBlock(
   targetName: string,
   packagePathFromIos: string,
   placement: 'nested' | 'topLevel',
+  useFrameworks: false | true | 'static' | 'dynamic',
 ): string {
   if (placement === 'topLevel') {
+    const useFrameworksLine = buildUseFrameworksLine(useFrameworks);
+
     return (
       `target '${targetName}' do\n` +
+      useFrameworksLine +
       `  pod 'RNNotifeeCore', :path => '${packagePathFromIos}'\n` +
       `end\n`
     );
@@ -98,6 +106,22 @@ function buildNseTargetBlock(
     `    pod 'RNNotifeeCore', :path => '${packagePathFromIos}'\n` +
     `  end\n`
   );
+}
+
+function buildUseFrameworksLine(useFrameworks: false | true | 'static' | 'dynamic'): string {
+  if (useFrameworks === 'static') {
+    return `  use_frameworks! :linkage => :static\n`;
+  }
+
+  if (useFrameworks === 'dynamic') {
+    return `  use_frameworks! :linkage => :dynamic\n`;
+  }
+
+  if (useFrameworks === true) {
+    return `  use_frameworks!\n`;
+  }
+
+  return '';
 }
 
 function appendNseTarget(

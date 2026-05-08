@@ -285,6 +285,7 @@ describe('plugin shared NSE Podfile patcher', () => {
     expect(first.contents).toContain("  target 'NotifyKitNSE' do");
     expect(first.contents).not.toMatch(/^target 'NotifyKitNSE' do/m);
     expect(first.contents).toContain('    inherit! :search_paths');
+    expect(first.contents).not.toContain('use_frameworks!');
     expect(first.contents).toContain(
       "pod 'RNNotifeeCore', :path => '../node_modules/react-native-notify-kit'",
     );
@@ -330,6 +331,7 @@ describe('plugin shared NSE Podfile patcher', () => {
     expect(first.contents).not.toMatch(/^  target 'NotifyKitNSE' do/m);
     expect(hostTargetBlock).not.toContain("target 'NotifyKitNSE' do");
     expect(nseTargetBlock).not.toContain('inherit! :search_paths');
+    expect(nseTargetBlock).not.toContain('use_frameworks!');
     expect(nseTargetBlock).toContain(
       "pod 'RNNotifeeCore', :path => '../../../packages/react-native'",
     );
@@ -342,6 +344,33 @@ describe('plugin shared NSE Podfile patcher', () => {
     expect(customTargetBlock).toContain(
       "pod 'RNNotifeeCore', :path => '../../custom/react-native-notify-kit'",
     );
+  });
+
+  it('supports top-level placement with static use_frameworks', () => {
+    const first = patchPluginPodfileForNotifyKitNse(BASIC_PODFILE, {
+      targetName: 'NotifyKitNSE',
+      packagePathFromIos: '../../../packages/react-native',
+      placement: 'topLevel',
+      useFrameworks: 'static',
+    });
+    const second = patchPluginPodfileForNotifyKitNse(first.contents, {
+      targetName: 'NotifyKitNSE',
+      packagePathFromIos: '../../../packages/react-native',
+      placement: 'topLevel',
+      useFrameworks: 'static',
+    });
+    const nseTargetBlock = getTopLevelTargetBlock(first.contents, 'NotifyKitNSE');
+
+    expect(first.didChange).toBe(true);
+    expect(nseTargetBlock).toContain('  use_frameworks! :linkage => :static');
+    expect(nseTargetBlock).toContain(
+      "pod 'RNNotifeeCore', :path => '../../../packages/react-native'",
+    );
+    expect(nseTargetBlock).not.toContain('inherit! :search_paths');
+    expect(countOccurrences(nseTargetBlock, 'use_frameworks!')).toBe(1);
+    expect(countOccurrences(first.contents, "target 'NotifyKitNSE' do")).toBe(1);
+    expect(countOccurrences(first.contents, RNFB_POST_INSTALL_MARKER)).toBe(1);
+    expect(second).toEqual({ contents: first.contents, didChange: false });
   });
 });
 

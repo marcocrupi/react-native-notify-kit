@@ -10,6 +10,7 @@ function patchPodfileForNotifyKitNse(podfileText, options) {
   let changed = false;
   const packagePathFromIos = options.packagePathFromIos ?? DEFAULT_PACKAGE_PATH_FROM_IOS;
   const placement = options.placement ?? 'nested';
+  const useFrameworks = options.useFrameworks ?? false;
 
   if (!hasUncommentedTarget(patched, options.targetName)) {
     const withNseTarget = insertNseTarget(
@@ -17,6 +18,7 @@ function patchPodfileForNotifyKitNse(podfileText, options) {
       options.targetName,
       packagePathFromIos,
       placement,
+      useFrameworks,
     );
     if (withNseTarget === null) {
       return { contents: patched, didChange: changed };
@@ -34,8 +36,8 @@ function patchPodfileForNotifyKitNse(podfileText, options) {
   return { contents: patched, didChange: changed };
 }
 
-function insertNseTarget(content, targetName, packagePathFromIos, placement) {
-  const block = buildNseTargetBlock(targetName, packagePathFromIos, placement);
+function insertNseTarget(content, targetName, packagePathFromIos, placement, useFrameworks) {
+  const block = buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrameworks);
 
   const targetMatch = content.match(/^target\s+['"][^'"]+['"]\s+do/m);
   if (!targetMatch || targetMatch.index === undefined) {
@@ -62,10 +64,13 @@ function insertNseTarget(content, targetName, packagePathFromIos, placement) {
   return content.slice(0, insertIndex) + block + content.slice(insertIndex);
 }
 
-function buildNseTargetBlock(targetName, packagePathFromIos, placement) {
+function buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrameworks) {
   if (placement === 'topLevel') {
+    const useFrameworksLine = buildUseFrameworksLine(useFrameworks);
+
     return (
       `target '${targetName}' do\n` +
+      useFrameworksLine +
       `  pod 'RNNotifeeCore', :path => '${packagePathFromIos}'\n` +
       `end\n`
     );
@@ -77,6 +82,22 @@ function buildNseTargetBlock(targetName, packagePathFromIos, placement) {
     `    pod 'RNNotifeeCore', :path => '${packagePathFromIos}'\n` +
     `  end\n`
   );
+}
+
+function buildUseFrameworksLine(useFrameworks) {
+  if (useFrameworks === 'static') {
+    return `  use_frameworks! :linkage => :static\n`;
+  }
+
+  if (useFrameworks === 'dynamic') {
+    return `  use_frameworks! :linkage => :dynamic\n`;
+  }
+
+  if (useFrameworks === true) {
+    return `  use_frameworks!\n`;
+  }
+
+  return '';
 }
 
 function appendNseTarget(content, block, placement) {
