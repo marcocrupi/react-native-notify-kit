@@ -37,15 +37,20 @@ Release focused on the first official Expo CNG integration for development build
 - Validated a real npm tarball install from a scratch fixture, plugin resolution from `node_modules`, Expo config, iOS prebuild, `pod install`, `xcodebuild`, `NotifyKitNSE.appex` generation, and app embedding.
 - Validated Expo development build runtime smoke on iOS and Android.
 - Validated iOS FCM Mode foreground delivery on a physical iPhone with a generated NSE and logical attachment metadata visible through `getDisplayedNotifications()`.
+- Validated iOS visible FCM background tap with a NotifyKit background press event. The smoke marker correlated the tap through the notification id.
 - Validated Android Expo config, Android prebuild, `expo run:android`, base runtime, FCM token registration, foreground `android-expo-smoke`, background `android-expo-smoke`, visible notification display, and killed-state best-effort delivery without force-stop on a Pixel 9 Pro XL running Android 16 / SDK 36.
 - Validated Android RNFirebase data-only foreground and background paths through `SMOKE:FCM_ON_MESSAGE`, `SMOKE:FCM_FOREGROUND_HANDLE_OK`, `SMOKE:FOREGROUND_EVENT_DELIVERED`, `SMOKE:FCM_BACKGROUND_MESSAGE`, and `SMOKE:FCM_BACKGROUND_HANDLE_OK`.
+- Validated Android foreground/background delivery and tap routing in the Expo smoke app on a Pixel 9 Pro XL, including background `SMOKE:BACKGROUND_EVENT_PRESS` and optional foreground `SMOKE:FOREGROUND_EVENT_PRESS`.
+- Validated the Android Expo foreground service config plugin with a real prebuild and a runtime `shortService` smoke on a Pixel 9 Pro XL.
 
 ### Limits
 
 - Expo Go remains unsupported.
 - Android background and killed-state data-only delivery depends on FCM priority, device state, Doze, and OEM policy. Force-stop is excluded.
-- Android tap reopened the app during executor validation, but `SMOKE:BACKGROUND_EVENT_PRESS` was not observed and remains a follow-up.
-- iOS tap, iOS killed state, visual lock-screen/banner attachment rendering, textual NSE log capture, and iOS RNFirebase data-only/client-handler validation were not completed as release gates for 10.4.0.
+- Android tap validation covers the Expo smoke app on a Pixel 9 Pro XL only. It is not a guarantee for every device, OEM state, or force-stop path.
+- iOS tap validation covers visible FCM background notification tap only. iOS killed state, visual lock-screen/banner attachment rendering, textual NSE log capture, and iOS RNFirebase data-only/client-handler validation were not completed as release gates for 10.4.0.
+- Android foreground service runtime validation covers `shortService` only. Other foreground service types were not runtime-validated, and Google Play foreground service policy compliance remains the app developer's responsibility.
+- RNFirebase modular API warning cleanup remains a follow-up.
 
 ## [10.3.3] (2026-05-07)
 

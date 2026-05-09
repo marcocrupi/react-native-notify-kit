@@ -10,7 +10,7 @@ This app is intentionally separate from `apps/smoke`, which remains the full Rea
 - Local workspace dependency: `react-native-notify-kit: workspace:*`.
 - Manual runtime checks for `getNotificationSettings`, `requestPermission`, Android channel creation/readback, `displayNotification`, `getDisplayedNotifications`, foreground `DELIVERED`/`PRESS`, `cancelNotification`, and `cancelAllNotifications`.
 - Config plugin resolution with iOS Notification Service Extension config validation and EAS `appExtensions` metadata.
-- Opt-in iOS and Android FCM runtime checks with RNFirebase, local Firebase config files, token capture, foreground FCM handling, and background message handling.
+- Opt-in iOS and Android FCM runtime checks with RNFirebase, local Firebase config files, token capture, foreground FCM handling, background message handling, and tap marker validation.
 - No deep links, callback HTTP server, trigger stress, exact alarms, reboot recovery, Android killed-state guarantee, or advanced Android action suite.
 
 ## Commands
@@ -78,6 +78,8 @@ IOS_FCM_TOKEN=<token> yarn send:test:fcm minimal
 IOS_FCM_TOKEN=<token> yarn send:test:fcm ios-attachment
 ```
 
+For visible iOS background tap validation, background the app, send a visible FCM payload, tap the delivered notification, and confirm `SMOKE:BACKGROUND_EVENT_PRESS`. The validated smoke run correlated the tap through the notification id.
+
 Run the FCM Android flow from the repository root:
 
 ```sh
@@ -101,6 +103,7 @@ Foreground Android checks:
 - Send `android-expo-smoke`.
 - Confirm `SMOKE:FCM_ON_MESSAGE`, `SMOKE:FCM_ANDROID_CHANNEL_READY`, `SMOKE:FCM_FOREGROUND_HANDLE_OK`, and `SMOKE:FOREGROUND_EVENT_DELIVERED`.
 - Confirm a notification is shown through `notifee.handleFcmMessage(remoteMessage)`.
+- Optional tap check: tap the foreground notification and confirm `SMOKE:FOREGROUND_EVENT_PRESS`.
 
 Background Android checks:
 
@@ -108,7 +111,7 @@ Background Android checks:
 - Send `android-expo-smoke`, which uses Android data-only and high priority.
 - Confirm `SMOKE:FCM_BACKGROUND_MESSAGE`, `SMOKE:FCM_ANDROID_CHANNEL_READY`, and `SMOKE:FCM_BACKGROUND_HANDLE_OK`.
 - Confirm the notification is visible.
-- Tap validation is not a 10.4.0 release gate for this fixture. During executor validation, tapping reopened the app and removed the notification, but `SMOKE:BACKGROUND_EVENT_PRESS` was not observed.
+- Tap the notification and confirm the app opens, the notification is removed, and `SMOKE:BACKGROUND_EVENT_PRESS` includes the expected `correlationId` and `pressActionId=default`.
 
 Killed-state Android is best-effort only. A normally killed process can be tested after the app has been launched at least once, for example with `adb shell am kill`. `adb shell am force-stop` is not covered because Android and FCM do not guarantee wake from force-stop.
 
@@ -141,9 +144,16 @@ The app writes short `SMOKE:*` markers to the Metro/device console and a readabl
 - `SMOKE:FCM_BACKGROUND_HANDLE_OK`
 - `SMOKE:FCM_BACKGROUND_HANDLE_ERROR`
 - `SMOKE:FCM_TOKEN_REFRESH`
+- `SMOKE:INITIAL_NOTIFICATION_PRESS`
 - `SMOKE:BACKGROUND_EVENT_PRESS`
 - `SMOKE:FCM_ERROR`
 - `SMOKE:ERROR`
+
+The 10.4.0 temporary Android `shortService` runtime gate also used these markers:
+
+- `SMOKE:FGS_SHORT_DISPLAY_OK`
+- `SMOKE:FGS_SHORT_STOP_OK`
+- `SMOKE:FGS_SHORT_CANCEL_OK`
 
 ## Manual iOS Check
 

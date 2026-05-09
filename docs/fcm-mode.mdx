@@ -482,6 +482,8 @@ export default {
 
 When enabled, the plugin writes `app.notifee.core.ForegroundService`, `android:foregroundServiceType`, the base `FOREGROUND_SERVICE` permission, type-specific `FOREGROUND_SERVICE_*` permissions where Android defines them, and `android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE` when `specialUse` is used.
 
+For 10.4.0, the Android Expo foreground service config plugin was validated with a real prebuild and a runtime `shortService` smoke on a Pixel 9 Pro XL. The runtime gate covered `displayNotification` with `asForegroundService`, `registerForegroundService`, `stopForegroundService`, `cancelNotification`, and `dumpsys` confirmation of `types=0x00000800` / `isShortFgs=true`.
+
 The plugin does not add `USE_EXACT_ALARM`, does not add `USE_FULL_SCREEN_INTENT`, does not configure Firebase, and does not add Maven repositories or Gradle workarounds. Runtime permissions such as camera, location, microphone, media projection, and notification permission remain the app's responsibility. Google Play foreground service policy compliance is also the app developer's responsibility.
 
 ## Server SDK reference
@@ -1283,9 +1285,10 @@ The server SDK warns at ~3500 bytes. Common fixes:
 - **Firebase/RNFirebase setup is not owned by NotifyKit.** The NotifyKit config plugin does not create Firebase apps, install RNFirebase, copy `google-services.json`, configure `GoogleService-Info.plist`, or patch Gradle for Firebase.
 - **Android data-only delivery is conditional.** Background and killed-state data-only delivery depends on FCM priority, device state, Doze, and OEM policy. Use high priority for user-visible background validation, but do not treat delivery on every OEM as guaranteed.
 - **Android force-stop is excluded.** FCM and Android do not guarantee delivery after `adb shell am force-stop` or a user force-stop. Killed-state validation in 10.4.0 was best-effort only and did not include force-stop.
-- **Android Expo tap marker remains open.** During 10.4.0 executor validation, tapping the Android notification reopened the app and removed the notification, but `SMOKE:BACKGROUND_EVENT_PRESS` was not observed. Do not claim Android Expo FCM tap handling fully verified from this cycle.
-- **iOS Expo validation scope.** The 10.4.0 Expo gate verified runtime base behavior, foreground FCM delivery on a physical iPhone, logical `ios.attachments` metadata, and the `NotifyKitNSE` process. It did not verify iOS tap end-to-end, iOS killed state, visual lock-screen/banner attachment rendering, textual NSE log capture, or iOS RNFirebase data-only/client-handler behavior.
-- **Android foreground service plugin scope.** The plugin configures NotifyKit foreground service manifest requirements only when explicitly opted in. It does not add exact-alarm automation, full-screen intent automation, Firebase setup, or Maven/Gradle repository workarounds.
+- **Android Expo tap validation scope.** Android foreground/background delivery and tap routing were validated in the Expo smoke app on a Pixel 9 Pro XL, including `SMOKE:BACKGROUND_EVENT_PRESS` and optional `SMOKE:FOREGROUND_EVENT_PRESS`. This is not a guarantee for every device, OEM state, Doze state, or force-stop path.
+- **iOS Expo validation scope.** The 10.4.0 Expo gate verified runtime base behavior, foreground FCM delivery on a physical iPhone, logical `ios.attachments` metadata, the `NotifyKitNSE` process, and visible FCM background tap with a NotifyKit background press event. The smoke marker correlated the tap through the notification id. It did not verify iOS killed state, visual lock-screen/banner attachment rendering, textual NSE log capture, or iOS RNFirebase data-only/client-handler behavior.
+- **Android foreground service plugin scope.** The plugin configures NotifyKit foreground service manifest requirements only when explicitly opted in. The 10.4.0 runtime gate validated `shortService` on a Pixel 9 Pro XL, but other foreground service types were not runtime-validated. It does not add exact-alarm automation, full-screen intent automation, Firebase setup, Maven/Gradle repository workarounds, or Google Play policy approval.
+- **RNFirebase modular API warning cleanup remains a follow-up.** The Expo fixture may still surface non-fatal RNFirebase modular API warnings until that cleanup is addressed.
 - **The CLI creates the NSE target once.** Re-running `init-nse` without `--force` is a no-op. Re-running with `--force` will overwrite `NotificationService.swift` — back it up first if you've customized the file.
 
 ## Comparison with other libraries
