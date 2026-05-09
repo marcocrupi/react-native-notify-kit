@@ -38,7 +38,15 @@ type SmokeAction = {
   disabled?: boolean;
 };
 
-type MessagingModule = typeof import('@react-native-firebase/messaging');
+type MessagingModule = Pick<
+  typeof import('@react-native-firebase/messaging'),
+  | 'getMessaging'
+  | 'getToken'
+  | 'onMessage'
+  | 'onTokenRefresh'
+  | 'registerDeviceForRemoteMessages'
+  | 'requestPermission'
+>;
 type NotifyKitFcmMessage = Parameters<typeof notifee.handleFcmMessage>[0];
 
 type PressMarkerDetailSource = {
@@ -221,10 +229,9 @@ export default function App(): React.JSX.Element {
     [addLog],
   );
 
-  const getMessaging = useCallback((): FirebaseMessagingTypes.Module => {
+  const loadMessagingModule = useCallback((): MessagingModule => {
     require('@react-native-firebase/app');
-    const messagingModule = require('@react-native-firebase/messaging') as MessagingModule;
-    return messagingModule.default();
+    return require('@react-native-firebase/messaging') as MessagingModule;
   }, []);
 
   const logAndroidFcmChannelReady = useCallback(
@@ -339,6 +346,7 @@ export default function App(): React.JSX.Element {
     }
 
     try {
+      const { getMessaging, onMessage, onTokenRefresh } = loadMessagingModule();
       const messaging = getMessaging();
 
       void prepareNotifyKitFcm()
@@ -352,7 +360,7 @@ export default function App(): React.JSX.Element {
         markerDetail: Platform.OS,
       });
 
-      const unsubscribeMessage = messaging.onMessage(async remoteMessage => {
+      const unsubscribeMessage = onMessage(messaging, async remoteMessage => {
         addLog('FCM foreground message', {
           marker: 'SMOKE:FCM_ON_MESSAGE',
           markerDetail: getRemoteMessageMarkerDetail(remoteMessage),
@@ -387,7 +395,7 @@ export default function App(): React.JSX.Element {
         }
       });
 
-      const unsubscribeToken = messaging.onTokenRefresh(token => {
+      const unsubscribeToken = onTokenRefresh(messaging, token => {
         fcmTokenRef.current = token;
         addLog('FCM token refreshed', {
           marker: 'SMOKE:FCM_TOKEN_REFRESH',
@@ -404,7 +412,7 @@ export default function App(): React.JSX.Element {
       logFcmError('listener', error);
       return undefined;
     }
-  }, [addLog, getMessaging, isFcmRuntimeEnabled, logAndroidFcmChannelReady, logFcmError]);
+  }, [addLog, loadMessagingModule, isFcmRuntimeEnabled, logAndroidFcmChannelReady, logFcmError]);
 
   const getNotificationSettings = useCallback(async () => {
     try {
@@ -559,14 +567,20 @@ export default function App(): React.JSX.Element {
     }
 
     try {
+      const {
+        getMessaging,
+        getToken,
+        registerDeviceForRemoteMessages,
+        requestPermission: requestMessagingPermission,
+      } = loadMessagingModule();
       const messaging = getMessaging();
       const channelId = await prepareNotifyKitFcm();
       logAndroidFcmChannelReady(channelId);
-      const authorizationStatus = await messaging.requestPermission();
+      const authorizationStatus = await requestMessagingPermission(messaging);
 
-      await messaging.registerDeviceForRemoteMessages();
+      await registerDeviceForRemoteMessages(messaging);
 
-      const token = await messaging.getToken();
+      const token = await getToken(messaging);
       fcmTokenRef.current = token;
 
       addLog('FCM token', {
@@ -585,7 +599,7 @@ export default function App(): React.JSX.Element {
     } catch (error) {
       logFcmError('register', error);
     }
-  }, [addLog, getMessaging, isFcmRuntimeEnabled, logAndroidFcmChannelReady, logFcmError]);
+  }, [addLog, loadMessagingModule, isFcmRuntimeEnabled, logAndroidFcmChannelReady, logFcmError]);
 
   const clearLog = useCallback(() => {
     setLogs([]);

@@ -15,7 +15,10 @@ import {
 
 const isFcmModeEnabled = FCM_SMOKE_ENABLED && isFcmSmokeRuntimePlatform();
 
-type MessagingModule = typeof import('@react-native-firebase/messaging');
+type MessagingModule = Pick<
+  typeof import('@react-native-firebase/messaging'),
+  'getMessaging' | 'setBackgroundMessageHandler'
+>;
 type NotifyKitFcmMessage = Parameters<typeof notifee.handleFcmMessage>[0];
 
 type PressMarkerDetailSource = {
@@ -68,10 +71,9 @@ const getPressMarkerDetail = ({
   return fields.filter(Boolean).join(' ');
 };
 
-const getMessaging = (): FirebaseMessagingTypes.Module => {
+const loadMessagingModule = (): MessagingModule => {
   require('@react-native-firebase/app');
-  const messagingModule = require('@react-native-firebase/messaging') as MessagingModule;
-  return messagingModule.default();
+  return require('@react-native-firebase/messaging') as MessagingModule;
 };
 
 const getMessageMarkerDetail = (remoteMessage: FirebaseMessagingTypes.RemoteMessage): string =>
@@ -100,9 +102,10 @@ const configureFcmMode = (): void => {
         console.log(`SMOKE:FCM_ERROR channel ${trimMarkerDetail(getErrorMessage(error))}`);
       });
 
+    const { getMessaging, setBackgroundMessageHandler } = loadMessagingModule();
     const messaging = getMessaging();
 
-    messaging.setBackgroundMessageHandler(async remoteMessage => {
+    setBackgroundMessageHandler(messaging, async remoteMessage => {
       console.log(`SMOKE:FCM_BACKGROUND_MESSAGE ${getMessageMarkerDetail(remoteMessage)}`);
 
       try {
