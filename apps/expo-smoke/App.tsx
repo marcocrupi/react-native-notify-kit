@@ -41,6 +41,17 @@ type SmokeAction = {
 type MessagingModule = typeof import('@react-native-firebase/messaging');
 type NotifyKitFcmMessage = Parameters<typeof notifee.handleFcmMessage>[0];
 
+type PressMarkerDetailSource = {
+  typeName?: string;
+  notification?: {
+    id?: string;
+    data?: Record<string, string | number | object>;
+  };
+  pressAction?: {
+    id?: string;
+  };
+};
+
 const formatValue = (value: unknown): string => {
   if (typeof value === 'string') {
     return value;
@@ -90,6 +101,32 @@ const getMarkerLine = (marker: string, markerDetail?: string | number): string =
 
 const trimMarkerDetail = (value: string): string => value.replace(/\s+/g, ' ').trim().slice(0, 160);
 
+const formatMarkerField = (value: unknown): string => {
+  if (value === undefined || value === null || value === '') {
+    return 'none';
+  }
+
+  return trimMarkerDetail(formatValue(value));
+};
+
+const getPressMarkerDetail = ({
+  typeName,
+  notification,
+  pressAction,
+}: PressMarkerDetailSource): string => {
+  const data = notification?.data;
+  const fields = [
+    typeName ? `type=${formatMarkerField(typeName)}` : undefined,
+    `notificationId=${formatMarkerField(notification?.id)}`,
+    `pressActionId=${formatMarkerField(pressAction?.id)}`,
+    `scenario=${formatMarkerField(data?.scenario)}`,
+    `correlationId=${formatMarkerField(data?.correlationId)}`,
+    `smokeNotificationId=${formatMarkerField(data?.smokeNotificationId)}`,
+  ];
+
+  return fields.filter(Boolean).join(' ');
+};
+
 const getLocalNotificationId = (): string => `expo-smoke-local-${Date.now()}`;
 
 const hasGetChannels = (): boolean => typeof notifee.getChannels === 'function';
@@ -121,6 +158,15 @@ const getForegroundLogValue = (eventName: string, notificationId: string | undef
   notificationId: notificationId ?? 'none',
 });
 
+const getPressLogValue = ({ typeName, notification, pressAction }: PressMarkerDetailSource): unknown => ({
+  type: typeName,
+  notificationId: notification?.id ?? 'none',
+  pressActionId: pressAction?.id ?? 'none',
+  scenario: notification?.data?.scenario ?? 'none',
+  correlationId: notification?.data?.correlationId ?? 'none',
+  smokeNotificationId: notification?.data?.smokeNotificationId ?? 'none',
+});
+
 const getRemoteMessageMarkerDetail = (
   remoteMessage: FirebaseMessagingTypes.RemoteMessage,
 ): string => remoteMessage.messageId ?? remoteMessage.from ?? 'unknown';
@@ -130,6 +176,7 @@ export default function App(): React.JSX.Element {
   const [lastNotificationId, setLastNotificationId] = useState<string | undefined>();
   const fcmTokenRef = useRef<string | undefined>(undefined);
   const nextLogIdRef = useRef(0);
+  const didCheckInitialNotificationRef = useRef(false);
   const isFcmRuntimeEnabled = FCM_SMOKE_ENABLED && isFcmSmokeRuntimePlatform();
 
   const addLog = useCallback((message: string, options: LogOptions = {}) => {
@@ -221,11 +268,17 @@ export default function App(): React.JSX.Element {
           return;
         }
 
-        if (event.type === EventType.PRESS) {
+        if (event.type === EventType.PRESS || event.type === EventType.ACTION_PRESS) {
+          const pressDetail = {
+            typeName: eventName,
+            notification: event.detail.notification,
+            pressAction: event.detail.pressAction,
+          };
+
           addLog('Foreground event press', {
             marker: 'SMOKE:FOREGROUND_EVENT_PRESS',
-            markerDetail: notificationId,
-            value,
+            markerDetail: getPressMarkerDetail(pressDetail),
+            value: getPressLogValue(pressDetail),
           });
           return;
         }
@@ -240,6 +293,40 @@ export default function App(): React.JSX.Element {
 
     return unsubscribe;
   }, [addLog, logError]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || didCheckInitialNotificationRef.current) {
+      return;
+    }
+
+    didCheckInitialNotificationRef.current = true;
+
+    void notifee
+      .getInitialNotification()
+      .then(initialNotification => {
+        if (!initialNotification) {
+          return;
+        }
+
+        const pressDetail = {
+          notification: initialNotification.notification,
+          pressAction: initialNotification.pressAction,
+        };
+
+        addLog('Initial notification press', {
+          marker: 'SMOKE:INITIAL_NOTIFICATION_PRESS',
+          markerDetail: getPressMarkerDetail(pressDetail),
+          value: getPressLogValue(pressDetail),
+        });
+      })
+      .catch(error => {
+        addLog('Initial notification check failed', {
+          marker: 'SMOKE:INITIAL_NOTIFICATION_ERROR',
+          markerDetail: getErrorMarkerDetail('initial-notification', error),
+          value: getErrorMessage(error),
+        });
+      });
+  }, [addLog]);
 
   useEffect(() => {
     if (!FCM_SMOKE_ENABLED) {

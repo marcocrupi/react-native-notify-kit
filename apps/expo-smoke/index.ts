@@ -18,6 +18,17 @@ const isFcmModeEnabled = FCM_SMOKE_ENABLED && isFcmSmokeRuntimePlatform();
 type MessagingModule = typeof import('@react-native-firebase/messaging');
 type NotifyKitFcmMessage = Parameters<typeof notifee.handleFcmMessage>[0];
 
+type PressMarkerDetailSource = {
+  typeName?: string;
+  notification?: {
+    id?: string;
+    data?: Record<string, string | number | object>;
+  };
+  pressAction?: {
+    id?: string;
+  };
+};
+
 const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     return error.message;
@@ -27,6 +38,35 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 const trimMarkerDetail = (value: string): string => value.replace(/\s+/g, ' ').trim().slice(0, 160);
+
+const formatMarkerField = (value: unknown): string => {
+  if (value === undefined || value === null || value === '') {
+    return 'none';
+  }
+
+  return trimMarkerDetail(typeof value === 'string' ? value : JSON.stringify(value));
+};
+
+const getEventTypeName = (eventType: EventType): string =>
+  (EventType as Record<number, string>)[eventType] ?? String(eventType);
+
+const getPressMarkerDetail = ({
+  typeName,
+  notification,
+  pressAction,
+}: PressMarkerDetailSource): string => {
+  const data = notification?.data;
+  const fields = [
+    typeName ? `type=${formatMarkerField(typeName)}` : undefined,
+    `notificationId=${formatMarkerField(notification?.id)}`,
+    `pressActionId=${formatMarkerField(pressAction?.id)}`,
+    `scenario=${formatMarkerField(data?.scenario)}`,
+    `correlationId=${formatMarkerField(data?.correlationId)}`,
+    `smokeNotificationId=${formatMarkerField(data?.smokeNotificationId)}`,
+  ];
+
+  return fields.filter(Boolean).join(' ');
+};
 
 const getMessaging = (): FirebaseMessagingTypes.Module => {
   require('@react-native-firebase/app');
@@ -86,9 +126,11 @@ const configureFcmMode = (): void => {
     notifee.onBackgroundEvent(async ({ type, detail }) => {
       if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
         console.log(
-          `SMOKE:BACKGROUND_EVENT_PRESS ${
-            detail.pressAction?.id ?? detail.notification?.id ?? 'unknown'
-          }`,
+          `SMOKE:BACKGROUND_EVENT_PRESS ${getPressMarkerDetail({
+            typeName: getEventTypeName(type),
+            notification: detail.notification,
+            pressAction: detail.pressAction,
+          })}`,
         );
       }
     });
