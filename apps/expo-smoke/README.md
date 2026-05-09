@@ -10,7 +10,7 @@ This app is intentionally separate from `apps/smoke`, which remains the full Rea
 - Local workspace dependency: `react-native-notify-kit: workspace:*`.
 - Manual runtime checks for `getNotificationSettings`, `requestPermission`, Android channel creation/readback, `displayNotification`, `getDisplayedNotifications`, foreground `DELIVERED`/`PRESS`, `cancelNotification`, and `cancelAllNotifications`.
 - Config plugin resolution with iOS Notification Service Extension config validation and EAS `appExtensions` metadata.
-- Opt-in iOS and Android FCM runtime checks with RNFirebase, local Firebase config files, token capture, foreground FCM handling, background message handling, and tap marker validation.
+- Opt-in iOS and Android FCM runtime checks with RNFirebase, local Firebase config files, token capture, foreground FCM handling, background message handling, Android tap marker validation, and iOS tap-to-open observation.
 - No deep links, callback HTTP server, trigger stress, exact alarms, reboot recovery, Android killed-state guarantee, or advanced Android action suite.
 
 ## Commands
@@ -78,7 +78,7 @@ IOS_FCM_TOKEN=<token> yarn send:test:fcm minimal
 IOS_FCM_TOKEN=<token> yarn send:test:fcm ios-attachment
 ```
 
-For visible iOS background tap validation, background the app, send a visible FCM payload, tap the delivered notification, and confirm `SMOKE:BACKGROUND_EVENT_PRESS`. The validated smoke run correlated the tap through the notification id.
+For iOS, foreground visible FCM is validated through `SMOKE:FOREGROUND_EVENT_DELIVERED`. In background, visible FCM notifications can be received and tapped to open the app, but `SMOKE:BACKGROUND_EVENT_PRESS` observation is currently not reliable in this smoke fixture. Treat iOS background tap JS `PRESS` marker validation as a follow-up.
 
 Run the FCM Android flow from the repository root:
 
