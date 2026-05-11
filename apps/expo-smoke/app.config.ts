@@ -78,6 +78,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         }
       : {}),
   },
+  extra: {
+    ...(config.extra ?? {}),
+    eas: {
+      ...(config.extra?.eas ?? {}),
+      projectId: '003d3e36-87e4-4f68-a8d5-5a9ad0622473',
+    },
+  },
   plugins: [
     ...(config.plugins ?? []),
     ...getFcmPlugins(),
