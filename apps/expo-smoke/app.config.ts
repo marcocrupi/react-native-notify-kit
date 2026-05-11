@@ -1,12 +1,7 @@
-import { existsSync, statSync } from 'node:fs';
-import path from 'node:path';
-import type { ConfigContext, ExpoConfig } from 'expo/config';
+// @ts-nocheck
 
-type ExpoPlugin = NonNullable<ExpoConfig['plugins']>[number];
-type FcmGoogleServicesFiles = {
-  android: string;
-  ios: string;
-};
+const { existsSync, statSync } = require('fs');
+const path = require('path');
 
 const FCM_ENV = 'EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM';
 const GOOGLE_SERVICE_INFO_PLIST_ENV = 'GOOGLE_SERVICE_INFO_PLIST';
@@ -15,15 +10,15 @@ const LOCAL_IOS_GOOGLE_SERVICES_FILE = './firebase/GoogleService-Info.plist';
 const LOCAL_ANDROID_GOOGLE_SERVICES_FILE = './firebase/google-services.json';
 const isFcmModeEnabled = process.env[FCM_ENV] === '1';
 
-const resolveConfigFilePath = (candidate: string): string =>
+const resolveConfigFilePath = (candidate) =>
   path.isAbsolute(candidate) ? candidate : path.join(__dirname, candidate);
 
 const createGoogleServicesFileError = (
-  localGoogleServicesFile: string,
-  envName: string,
-  platformName: string,
-  reason: string,
-): Error =>
+  localGoogleServicesFile,
+  envName,
+  platformName,
+  reason,
+) =>
   new Error(
     `apps/expo-smoke FCM mode requires the Firebase ${platformName} config file. ${reason} ` +
       `Set ${envName} as an EAS file environment variable, place ${localGoogleServicesFile} locally, ` +
@@ -31,10 +26,10 @@ const createGoogleServicesFileError = (
   );
 
 const requireGoogleServicesFile = (
-  localGoogleServicesFile: string,
-  envName: string,
-  platformName: string,
-): string => {
+  localGoogleServicesFile,
+  envName,
+  platformName,
+) => {
   const rawEnvValue = process.env[envName];
   const googleServicesFile =
     rawEnvValue === undefined ? localGoogleServicesFile : rawEnvValue.trim();
@@ -71,7 +66,7 @@ const requireGoogleServicesFile = (
   return googleServicesFile;
 };
 
-const getFcmGoogleServicesFiles = (): FcmGoogleServicesFiles | undefined => {
+const getFcmGoogleServicesFiles = () => {
   if (!isFcmModeEnabled) {
     return undefined;
   }
@@ -92,7 +87,7 @@ const getFcmGoogleServicesFiles = (): FcmGoogleServicesFiles | undefined => {
 
 const fcmGoogleServicesFiles = getFcmGoogleServicesFiles();
 
-const getFcmPlugins = (): ExpoPlugin[] => {
+const getFcmPlugins = () => {
   if (!fcmGoogleServicesFiles) {
     return [];
   }
@@ -113,7 +108,7 @@ const getFcmPlugins = (): ExpoPlugin[] => {
   ];
 };
 
-export default ({ config }: ConfigContext): ExpoConfig => ({
+module.exports = ({ config }) => ({
   ...config,
   name: 'NotifyKit Expo Smoke',
   slug: 'notify-kit-expo-smoke',
