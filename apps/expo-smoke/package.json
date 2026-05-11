@@ -1,6 +1,6 @@
 {
   "name": "react-native-notify-kit-expo-smoke",
-  "version": "10.4.1",
+  "version": "10.4.2",
   "private": true,
   "main": "index.ts",
   "scripts": {
