@@ -18,8 +18,7 @@
 #import <Foundation/Foundation.h>
 #import <NotifeeSpec/NotifeeSpec.h>
 #import <React/RCTEventEmitter.h>
-#import "NotifeeCore.h"
 
-@interface NotifeeApiModule : RCTEventEmitter <NativeNotifeeModuleSpec, NotifeeCoreDelegate>
+@interface NotifeeApiModule : RCTEventEmitter <NativeNotifeeModuleSpec>
 
 @end
