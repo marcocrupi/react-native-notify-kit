@@ -5,6 +5,24 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.4.2] (2026-05-11)
+
+This 10.4.2 patch hardens Expo CNG iOS `NotifyKitNSE` generation. It does not change the public JavaScript API and does not change runtime notification behavior.
+
+If your app uses Expo CNG and a generated `NotifyKitNSE`, upgrading to 10.4.2 avoids stale `1.0` extension version metadata and CocoaPods host/extension `use_frameworks!` mismatches.
+
+### Expo iOS
+
+- Fixed generated `NotifyKitNSE` version/build metadata so the extension mirrors the parent Expo app version/build in `Info.plist` and Xcode build settings.
+- Existing generated `NotifyKitNSE` targets are normalized for version/build metadata and Podfile linkage instead of requiring manual deletion/regeneration.
+- Fixed `NotifyKitNSE` Podfile `use_frameworks!` inheritance so the extension matches the host target linkage, including static and dynamic frameworks.
+- Expo conditional `use_frameworks!` Podfile lines are evaluated against `Podfile.properties.json` and `USE_FRAMEWORKS` instead of being treated as always active.
+
+### Validation
+
+- Validated the Expo smoke app iOS prebuild and CocoaPods install with RNFirebase, NotifyKit NSE enabled, `ios.useFrameworks` static, correct NSE metadata, and static-frameworks Podfile linkage.
+- EAS iOS cloud build was not part of this validation and remains a separate gate requiring Apple credentials/provisioning.
+
 ## [10.4.1] (2026-05-11)
 
 This 10.4.1 patch fixes an iOS static-frameworks header visibility issue and records the latest Expo smoke fixture EAS validation work. It does not change the public JavaScript API.

@@ -82,6 +82,10 @@ When `EXPO_PUBLIC_NOTIFYKIT_EXPO_SMOKE_FCM=1` is active, both file env variables
 
 ### Validation status
 
+The 10.4.2 iOS validation covered a clean Expo iOS prebuild and CocoaPods install with `NotifyKitNSE` enabled.
+
+The iOS Expo smoke fixture uses `expo-build-properties` with `ios.useFrameworks: "static"` because RNFirebase is installed in the fixture. The generated `NotifyKitNSE` Podfile target is expected to inherit static-framework linkage from the host target.
+
 Android EAS Build was validated for this smoke fixture with the `development` profile. The remote build resolved Firebase file environment variables, enabled Corepack/Yarn 4, loaded the dynamic Expo config through the EAS config reader, resolved the NotifyKit config plugin from the workspace archive, ran prebuild/Gradle, and produced an APK artifact.
 
 The APK artifact was not used for a full runtime FCM smoke in that validation pass.

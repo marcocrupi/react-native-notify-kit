@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.4.2] - 2026-05-11
+
+### Fixed
+
+- **Expo / iOS**: fixed generated `NotifyKitNSE` version/build metadata so the extension mirrors the parent Expo app version/build in `Info.plist` and Xcode build settings.
+- **Expo / iOS**: fixed `NotifyKitNSE` Podfile `use_frameworks!` inheritance so the extension matches the host target linkage, including static/dynamic frameworks and Expo conditional Podfile properties.
+- **Expo / iOS**: existing generated `NotifyKitNSE` targets are normalized for version/build metadata and Podfile linkage instead of requiring manual deletion/regeneration.
+
+### Tests
+
+- **Expo smoke app / iOS**: validated clean Expo iOS prebuild and CocoaPods install with RNFirebase, NotifyKit NSE enabled, `ios.useFrameworks` static, correct NSE metadata, and static-frameworks Podfile linkage.
+
 ## [10.4.1] - 2026-05-11
 
 ### Fixed
