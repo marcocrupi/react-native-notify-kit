@@ -144,6 +144,7 @@ module.exports = ({ config }) => ({
       {
         ios: {
           useFrameworks: 'static',
+          forceStaticLinking: ['RNFBApp', 'RNFBMessaging'],
         },
       },
     ],
