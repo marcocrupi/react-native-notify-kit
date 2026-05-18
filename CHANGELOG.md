@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.4.3] - 2026-05-18
+
 ### Changed
 
 - **React Native**: updated the library and bare smoke app development target to React Native 0.85.3.
