@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Notes
 
 - **Expo smoke app**: remains on Expo SDK 55 / React Native 0.83.x and was intentionally not updated in this step.
-- **Expo / React Native 0.85**: Expo validation for React Native 0.85 should be handled separately with Expo SDK 56 or later.
+- **Expo / React Native 0.85**: Expo React Native 0.85 validation remains a separate future track and was not part of this maintenance step.
 - **Validation limits**: FCM, headless/background flows, EAS, and Expo smoke were not validated as part of this step.
 
 ## [10.4.2] - 2026-05-11
