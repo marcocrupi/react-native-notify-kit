@@ -5,23 +5,30 @@ description: Understand how the package integrates with the various development 
 
 ## Support Table
 
-The table below lists the current tested and supported environments for `react-native-notify-kit`:
+The table below lists the current supported environments for `react-native-notify-kit` and the repository's current development target:
 
-| Environment                                           | Supported             | Notes                                                           |
-| ----------------------------------------------------- | --------------------- | --------------------------------------------------------------- |
-| React Native                                          | >= 0.73               | **New Architecture required.** The old bridge is not supported. |
-| Android APIs                                          | Android 7.0+ (API 24) | `minSdk = 24`, `compileSdk = 35`, `targetSdk = 35`.             |
-| iOS version                                           | 15.1+                 | Matches the `RNNotifee.podspec` platform target.                |
-| [Hermes Support](https://reactnative.dev/docs/hermes) | Yes                   | Default on modern React Native.                                 |
-| Packagers                                             | Metro                 | Untested on non-standard packagers.                             |
+| Environment                                           | Supported             | Notes                                                                        |
+| ----------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| React Native                                          | >= 0.73.0             | **New Architecture required.** Current development target: 0.85.3.           |
+| Android APIs                                          | Android 7.0+ (API 24) | Library module baseline: `minSdk = 24`, `compileSdk = 35`, `targetSdk = 35`. |
+| iOS version                                           | 15.1+                 | Matches the `RNNotifee.podspec` platform target.                             |
+| [Hermes Support](https://reactnative.dev/docs/hermes) | Yes                   | Default on modern React Native.                                              |
+| Packagers                                             | Metro                 | Untested on non-standard packagers.                                          |
 
 ## Additional Requirements
 
 - **Xcode**: 14.3 or higher (required by iOS 15.1 deployment target + modern React Native).
 - **Java**: JDK 17 (LTS) or JDK 21 (LTS) to build on Android. JDK 8 and 11 are **not** supported.
-- **Android Gradle Plugin**: 8.2.2 or higher.
-- **Gradle**: 8.x.
+- **Android Gradle Plugin**: 8.2.2 or higher for the library/module baseline.
+- **Gradle**: 8.x for the library/module baseline.
 - **Node**: >= 22 (matches the repository's toolchain).
+- **Yarn**: 4.6.0 (matches the repository's package manager).
+
+## Android Baselines and Validation Targets
+
+- **Library/module baseline**: `minSdk = 24`, `compileSdk = 35`, `targetSdk = 35`, Android Gradle Plugin 8.2.2 or higher, and Gradle 8.x.
+- **Current bare smoke validation target**: the React Native 0.85.3 bare smoke app currently uses `compileSdk = 36`, `targetSdk = 36`, and Gradle wrapper 9.3.1.
+- **Consumer app guidance**: do not treat the bare smoke app's SDK 36 or Gradle 9.3.1 values as universal NotifyKit installation requirements. Follow the React Native app template, Android Gradle Plugin compatibility, and Android platform requirements for the features your app enables.
 
 ## Platforms
 

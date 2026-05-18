@@ -19,7 +19,7 @@ yarn add react-native-notify-kit
 
 ### 2a. Android API versions
 
-The library requires modern Android SDK levels. Update your `android/build.gradle` so that:
+The library Android module is built against modern Android SDK levels. Consumer apps should follow the SDK values required by their React Native app template and any Android platform APIs they enable. As the current library baseline, do not use values lower than:
 
 - `compileSdkVersion` = **35**
 - `targetSdkVersion` = **35**
@@ -37,14 +37,16 @@ buildscript {
 }
 ```
 
-Your Android project will fail to build with missing symbols if you use older values, because the library is compiled against API 35.
+Your Android project may fail to build with missing symbols if you use older values, because the library is compiled against API 35.
+
+The repository's current bare smoke app validation for React Native 0.85.3 uses `compileSdkVersion = 36`, `targetSdkVersion = 36`, and Gradle wrapper 9.3.1. Those values describe the fixture target and are not declared here as universal installation requirements for every consumer app.
 
 ### 2b. Gradle versions
 
-- **Android Gradle Plugin**: 8.2.2 or higher
-- **Gradle**: 8.x
+- **Android Gradle Plugin**: 8.2.2 or higher for the library/module baseline
+- **Gradle**: 8.x for the library/module baseline
 
-These match the versions the library is built with (see [packages/react-native/android/build.gradle](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/android/build.gradle)). Older Gradle/AGP combinations will fail with resource-packaging errors.
+These match the versions the library is built with (see [packages/react-native/android/build.gradle](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/android/build.gradle)). Consumer apps should also follow the Gradle and Android Gradle Plugin versions expected by their React Native app template. Older Gradle/AGP combinations can fail with resource-packaging errors.
 
 ### 2c. Java version
 
@@ -54,6 +56,7 @@ The library is compiled with Java 17 (`sourceCompatibility = VERSION_17`, `targe
 
 - **React Native**: `>=0.73` (peer dependency).
 - **New Architecture**: required. The bridge is a TurboModule; the library does not support the old bridge. Ensure `newArchEnabled=true` in `android/gradle.properties` and `RCT_NEW_ARCH_ENABLED=1` in your iOS build environment (enabled by default in RN 0.76+).
+- **Current development target**: React Native 0.85.3.
 
 ### 2e. iOS deployment target
 
@@ -90,13 +93,13 @@ This patches your `.pbxproj` and `Podfile` automatically and generates a `Notify
 
 The library works with Expo via the bare workflow or custom-dev-client (not Expo Go — notifications require native code).
 
-Override the Android SDK versions through `expo-build-properties`:
+Override the Android SDK versions through `expo-build-properties` when your Expo SDK and React Native template require it:
 
 ```bash
 npx expo install expo-build-properties
 ```
 
-Then in your `app.json` / `app.config.js`:
+Then in your `app.json` / `app.config.js`, keep values at or above the library baseline and use newer values when required by your Expo SDK:
 
 ```js
 {

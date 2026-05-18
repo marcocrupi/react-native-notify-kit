@@ -48,8 +48,8 @@ This fork fills the gap: it preserves all of Notifee's advanced features, migrat
 - iOS FCM Mode Notification Service Extension automation via config plugin.
 - Android foreground service manifest configuration via config plugin, with explicit opt-in for foreground service types.
 - Android Expo FCM smoke validation using RNFirebase data-only messages and `notifee.handleFcmMessage`.
-- Minimum supported React Native: `0.73`
-- Development target: React Native `0.84`
+- Minimum supported React Native: `>=0.73`
+- Development target: React Native `0.85.3`
 - License: `Apache-2.0`
 - Full changelog: [CHANGELOG.md](CHANGELOG.md)
 
@@ -432,8 +432,8 @@ This fork is a complete migration to React Native's **New Architecture**:
 - **TurboModules only** — no legacy Bridge support (`NativeModules` replaced with `TurboModuleRegistry`)
 - **Android bridge rewritten in Kotlin** (original was Java)
 - **iOS bridge uses Objective-C++** with `NativeNotifeeModuleSpecJSI` TurboModule conformance
-- **Minimum React Native 0.73**, development target **0.84**
-- **Toolchain**: Yarn 4, Node 22+, Java 17, compileSdk/targetSdk 35
+- **Minimum React Native >=0.73**, development target **0.85.3**
+- **Toolchain**: Yarn 4, Node 22+, Java 17, library Android module compileSdk/targetSdk 35
 - **Single Android module** — the original Notifee shipped a pre-compiled AAR bundled inside the npm tarball under a frozen Maven coordinate; this fork compiles the core from source as part of the React Native bridge module on every consumer build. Eliminates the `FAIL_ON_PROJECT_REPOS` issue on RN 0.74+ and the Gradle cache staleness bug that could serve outdated bytecode after `yarn upgrade`.
 - **Expo CNG development builds** — iOS FCM Mode NSE automation and Android foreground service manifest configuration are available through the config plugin. Android Expo FCM smoke validation uses RNFirebase data-only messages plus `notifee.handleFcmMessage`.
 - **Core notification logic (NotifeeCore) is unchanged** — the public API is fully compatible with the original Notifee

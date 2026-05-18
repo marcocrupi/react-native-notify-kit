@@ -4,6 +4,8 @@ Manual Expo CNG fixture for validating `react-native-notify-kit` package resolut
 
 This app is intentionally separate from `apps/smoke`, which remains the full React Native bare smoke app. This fixture is for Expo CNG, prebuild, and development builds; it is not intended for Expo Go.
 
+Scope note: this fixture currently tracks Expo SDK 55 and React Native 0.83.6. It was not updated as part of the React Native 0.85.3 bare-smoke/library maintenance step. React Native 0.85 validation for Expo should be handled separately with Expo SDK 56 or later.
+
 ## Scope
 
 - Expo SDK 55 development build flow.

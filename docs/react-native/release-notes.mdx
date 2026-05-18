@@ -5,6 +5,29 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+This unreleased maintenance update realigns the library development target and bare React Native smoke app with React Native 0.85.3. It keeps the minimum supported React Native version at >=0.73.0 and remains New Architecture only.
+
+### React Native 0.85.3 Maintenance
+
+- Updated the current development target to React Native 0.85.3 for the library and bare smoke app.
+- Aligned bare smoke tooling with React Native 0.85.3, including `@react-native/*` tooling and `@react-native/jest-preset`.
+- Aligned the bare smoke Android Gradle wrapper with the React Native 0.85.3 template.
+- Refreshed the bare smoke iOS `Podfile.lock` to React Native 0.85.3 pods, Hermes 250829098.0.10, and RNNotifee 10.4.2.
+
+### Validation
+
+- Validated TypeScript checks, React Native Jest tests, server Jest tests, Android unit tests, iOS core generation verification, bare Android `assembleDebug`, iOS pod install, and physical iPhone build/install.
+- Confirmed visible local notification display on a physical iPhone.
+- Public JS API unchanged.
+- Runtime notification behavior unchanged.
+
+### Limits
+
+- Expo smoke remains on Expo SDK 55 / React Native 0.83.x and was not updated as part of this step.
+- Expo validation for React Native 0.85 should be handled separately with Expo SDK 56 or later.
+- FCM, headless/background flows, EAS, and Expo smoke were not validated as part of this step.
+- iOS tap/background/killed press flow is not claimed as fully validated by this step.
+
 ## [10.4.2] (2026-05-11)
 
 This 10.4.2 patch hardens Expo CNG iOS `NotifyKitNSE` generation and fixes an iOS precompiled-modules header visibility issue in `RNNotifee`. It does not change the public JavaScript API and does not change runtime notification behavior.

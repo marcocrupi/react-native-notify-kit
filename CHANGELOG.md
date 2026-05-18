@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **React Native**: updated the library and bare smoke app development target to React Native 0.85.3.
+- **Smoke app**: aligned the bare smoke app tooling with React Native 0.85.3, including React 19.2.3 and `@react-native/*` packages.
+- **Jest**: migrated React Native Jest configuration to `@react-native/jest-preset` for the React Native 0.85 toolchain.
+- **Smoke app / Android**: aligned the bare smoke Android Gradle wrapper with the React Native 0.85.3 template.
+- **Smoke app / iOS**: refreshed the bare smoke `Podfile.lock` to React Native 0.85.3 pods, Hermes 250829098.0.10, and RNNotifee 10.4.2.
+
+### Tests
+
+- **Validation**: validated TypeScript checks, React Native Jest tests, server Jest tests, Android unit tests, iOS core generation verification, bare Android `assembleDebug`, iOS pod install, and physical iPhone build/install.
+- **Smoke app / iOS**: confirmed visible local notification display on a physical iPhone.
+- **API**: public JavaScript API and runtime notification behavior are unchanged by this maintenance update.
+
+### Notes
+
+- **Expo smoke app**: remains on Expo SDK 55 / React Native 0.83.x and was intentionally not updated in this step.
+- **Expo / React Native 0.85**: Expo validation for React Native 0.85 should be handled separately with Expo SDK 56 or later.
+- **Validation limits**: FCM, headless/background flows, EAS, and Expo smoke were not validated as part of this step.
+
 ## [10.4.2] - 2026-05-11
 
 ### Fixed
