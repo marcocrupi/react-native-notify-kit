@@ -25,16 +25,30 @@ plugins {
 
 ext {
   jvmVersion = Jvm.current().javaVersion.majorVersion
-  if (jvmVersion != "8" && jvmVersion != "11" && jvmVersion != "17" && jvmVersion != "21") {
+  jvmMajorVersion = jvmVersion.toInteger()
+  if (jvmMajorVersion < 17) {
     println "\n\n\n"
     println "**************************************************************************************************************"
     println "\n\n\n"
-    println "ERROR: Notifee builds with JVM LTS and current releases (currently major version 11, 17, or 21)."
+    println "ERROR: Notifee requires JDK 17 or newer to build on Android."
+    println "  Obsolete Java versions such as 8 and 11 are not supported."
     println "  Incompatible major version detected: '" + jvmVersion + "'"
     println "\n\n\n"
     println "**************************************************************************************************************"
     println "\n\n\n"
-    System.exit(1)
+    throw new GradleException("Notifee requires JDK 17 or newer to build on Android. Detected Java major version '" + jvmVersion + "'.")
+  }
+  if (jvmMajorVersion != 17 && jvmMajorVersion != 21) {
+    println "\n\n\n"
+    println "**************************************************************************************************************"
+    println "\n\n\n"
+    println "WARNING: Notifee Android builds are validated with JDK 17 and JDK 21."
+    println "  Detected Java major version: '" + jvmVersion + "'."
+    println "  The build will continue, but compatibility depends on the consumer Gradle, AGP, Kotlin, and React Native toolchain."
+    println "  Use JDK 17 or JDK 21 for a stable build baseline."
+    println "\n\n\n"
+    println "**************************************************************************************************************"
+    println "\n\n\n"
   }
 }
 
