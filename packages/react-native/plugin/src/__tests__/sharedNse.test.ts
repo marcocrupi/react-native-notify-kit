@@ -1,3 +1,7 @@
+/**
+ * @jest-environment node
+ */
+
 import * as path from 'path';
 import xcode from 'xcode';
 
