@@ -18,6 +18,7 @@ import notifee, {
   AlarmType,
   RepeatFrequency,
 } from 'react-native-notify-kit';
+import type { FcmRemoteMessage } from 'react-native-notify-kit';
 import {
   getMessaging,
   getToken,
@@ -34,6 +35,7 @@ import {
   setSmokeResultCallbackUrl,
   smokeErrorReason,
 } from './smokeAutomation';
+import { executeRebootSmokeDeepLink, extractRebootSmokeDeepLink } from './rebootSmokeHarness';
 
 // VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
 // When true, the app launches directly into the race-test screen and auto-runs
@@ -225,7 +227,7 @@ function extractFeature15Scenario(url: string): string | null {
 
 function extractForegroundFcmTitle(remoteMessage: {
   notification?: { title?: string | null } | null;
-  data?: Record<string, string> | null;
+  data?: Record<string, unknown> | null;
 }): string {
   const serializedOptions = remoteMessage.data?.notifee_options;
 
@@ -240,7 +242,10 @@ function extractForegroundFcmTitle(remoteMessage: {
     }
   }
 
-  return remoteMessage.notification?.title ?? remoteMessage.data?.title ?? '(no title)';
+  const dataTitle = remoteMessage.data?.title;
+  return (
+    remoteMessage.notification?.title ?? (typeof dataTitle === 'string' ? dataTitle : '(no title)')
+  );
 }
 
 function App() {
@@ -276,6 +281,58 @@ function App() {
       .catch((e: unknown) => {
         const message = e instanceof Error ? e.message : String(e);
         log(`Feature15 initial URL error: ${message}`);
+      });
+
+    const subscription = Linking.addEventListener('url', event => {
+      handleUrl(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [log]);
+
+  // Android reboot trigger smoke harness deep links:
+  // notifykit://reboot-smoke/schedule?count=1&delaySeconds=300&alarmType=setExactAndAllowWhileIdle
+  // notifykit://reboot-smoke/dump
+  // notifykit://reboot-smoke/cancel
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const request = extractRebootSmokeDeepLink(url);
+      if (request == null) {
+        return;
+      }
+
+      log(`Reboot smoke deep link action: ${request.action}`);
+      executeRebootSmokeDeepLink(request).catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        console.log(
+          `REBOOT-SMOKE:ERROR ${JSON.stringify({
+            loggedAt: Date.now(),
+            status: 'FAIL',
+            action: 'deep-link',
+            reason: message,
+          })}`,
+        );
+      });
+    };
+
+    Linking.getInitialURL()
+      .then(url => {
+        if (url) {
+          handleUrl(url);
+        }
+      })
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        console.log(
+          `REBOOT-SMOKE:ERROR ${JSON.stringify({
+            loggedAt: Date.now(),
+            status: 'FAIL',
+            action: 'initial-url',
+            reason: message,
+          })}`,
+        );
       });
 
     const subscription = Linking.addEventListener('url', event => {
@@ -342,7 +399,7 @@ function App() {
       const unsubscribe = onMessage(messagingInstance, async remoteMessage => {
         log(`FCM foreground: ${extractForegroundFcmTitle(remoteMessage)}`);
         try {
-          const result = await notifee.handleFcmMessage(remoteMessage);
+          const result = await notifee.handleFcmMessage(remoteMessage as FcmRemoteMessage);
           log(`handleFcmMessage result: ${result ?? 'null'}`);
         } catch (e: unknown) {
           const message = e instanceof Error ? e.message : String(e);
@@ -1200,7 +1257,10 @@ function App() {
       title: 'Android Event Dispatch',
       buttons: [
         { label: 'Android Event: Action no launch', onPress: displayAndroidEventActionNoLaunch },
-        { label: 'Android Event: Action with launch', onPress: displayAndroidEventActionWithLaunch },
+        {
+          label: 'Android Event: Action with launch',
+          onPress: displayAndroidEventActionWithLaunch,
+        },
         {
           label: 'Android Event: PressAction null immediate',
           onPress: displayAndroidEventPressActionNull,
