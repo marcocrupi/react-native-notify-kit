@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Docs
+
+- **Docs**: clarified Android scheduled trigger reboot recovery, exact-alarm fallback behavior, and Expo CNG/prebuild manifest-merge behavior for local scheduled triggers.
+
 ## [10.4.4] - 2026-05-29
 
 ### Fixed
