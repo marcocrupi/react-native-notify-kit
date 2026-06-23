@@ -451,23 +451,27 @@ class NotificationManager {
                     PendingIntent pendingIntent = null;
                     int targetSdkVersion =
                         ContextHolder.getApplicationContext().getApplicationInfo().targetSdkVersion;
+                    NotificationAndroidPressActionModel pressAction = actionBundle.getPressAction();
+                    boolean shouldCreateLaunchActivityIntent =
+                        NotificationPendingIntent.shouldCreateLaunchActivityIntent(pressAction);
                     if (targetSdkVersion >= Build.VERSION_CODES.S
-                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                        && shouldCreateLaunchActivityIntent) {
                       pendingIntent =
                           NotificationPendingIntent.createIntent(
                               notificationModel.getHashCode(),
-                              actionBundle.getPressAction().toBundle(),
+                              pressAction.toBundle(),
                               TYPE_ACTION_PRESS,
                               new String[] {"notification", "pressAction"},
                               notificationModel.toBundle(),
-                              actionBundle.getPressAction().toBundle());
+                              pressAction.toBundle());
                     } else {
                       pendingIntent =
                           ReceiverService.createIntent(
                               ACTION_PRESS_INTENT,
                               new String[] {"notification", "pressAction"},
                               notificationModel.toBundle(),
-                              actionBundle.getPressAction().toBundle());
+                              pressAction.toBundle());
                     }
 
                     String icon = actionBundle.getIcon();

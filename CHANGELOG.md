@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: kept Android 12+ notification actions without `launchActivity` or `mainComponent` on the `ReceiverService` path instead of always routing them through the launch-activity `PendingIntent`.
+
 ## [10.4.4] - 2026-05-29
 
 ### Fixed
