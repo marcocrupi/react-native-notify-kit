@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: removed two stale warmup class names so automatic foreground-service warmup no longer emits harmless `Warmup class not found` debug lines for `NotificationManager` and `ChannelModel`.
+
 ## [10.4.4] - 2026-05-29
 
 ### Fixed

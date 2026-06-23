@@ -39,10 +39,8 @@ public final class WarmupHelper {
 
   static final String[] WARMUP_CLASSES = {
     "app.notifee.core.ForegroundService",
-    "app.notifee.core.NotificationManager",
     "app.notifee.core.model.NotificationModel",
     "app.notifee.core.model.NotificationAndroidModel",
-    "app.notifee.core.model.ChannelModel",
     "androidx.core.app.NotificationCompat$Builder",
     "androidx.core.app.NotificationManagerCompat",
   };
