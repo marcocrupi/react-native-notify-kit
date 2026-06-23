@@ -96,10 +96,22 @@ class HeadlessTask {
             mTaskQueue.add(taskConfig)
         }
 
-        if (!mIsReactContextInitialized.get()) {
+        val reactContext = getReactContext(context)
+        if (!mIsReactContextInitialized.get() || reactContext == null) {
+            if (mIsReactContextInitialized.get() && reactContext == null) {
+                Log.w(
+                    HEADLESS_TASK_NAME,
+                    "ReactContext was marked initialized but is no longer available; " +
+                        "reinitializing before starting task ${taskConfig.taskId}",
+                )
+                mIsReactContextInitialized.set(false)
+                mIsInitializingReactContext.set(false)
+                mWillDrainTaskQueue.set(false)
+                mIsHeadlessJsTaskListenerRegistered.set(false)
+            }
             createReactContextAndScheduleTask(context)
         } else {
-            invokeStartTask(getReactContext(context)!!, taskConfig)
+            invokeStartTask(reactContext, taskConfig)
         }
     }
 
@@ -143,6 +155,7 @@ class HeadlessTask {
         val reactContext = getReactContext(context)
         if (reactContext != null && !mIsInitializingReactContext.get()) {
             mIsReactContextInitialized.set(true)
+            mWillDrainTaskQueue.set(false)
             drainTaskQueue(reactContext)
             return
         }
@@ -152,6 +165,8 @@ class HeadlessTask {
             val callback = object : ReactInstanceEventListener {
                 override fun onReactContextInitialized(reactCtx: ReactContext) {
                     mIsReactContextInitialized.set(true)
+                    mIsInitializingReactContext.set(false)
+                    mWillDrainTaskQueue.set(false)
                     drainTaskQueue(reactCtx)
                     try {
                         val removeMethod = reactHost!!.javaClass.getMethod(
@@ -186,6 +201,7 @@ class HeadlessTask {
                         for (taskConfig in mTaskQueue) {
                             invokeStartTask(reactContext, taskConfig)
                         }
+                        mWillDrainTaskQueue.set(false)
                     }
                 },
                 500,

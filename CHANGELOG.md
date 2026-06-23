@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: reinitialized the headless React host when `HeadlessTask` still thought React was initialized but `getCurrentReactContext()` had already become `null`, so queued background tasks could still reach JS.
+
 ## [10.4.4] - 2026-05-29
 
 ### Fixed
