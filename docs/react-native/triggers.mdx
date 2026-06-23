@@ -287,7 +287,13 @@ try {
 
 ### DST and reboot recovery
 
-Repeating triggers (`HOURLY` / `DAILY` / `WEEKLY` / `MONTHLY`) honor wall-clock time across DST transitions on Android by using calendar-aware scheduling. Scheduled alarms also self-heal after reboot: since v9.6.0 the library detects boot deltas via `Settings.Global.BOOT_COUNT` and reschedules persisted alarms on OEM devices that suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). Stale non-repeating triggers (timestamp already in the past at recovery time) fire once within a 24-hour grace period and are then deleted; beyond the grace period they're deleted silently.
+Repeating triggers (`HOURLY` / `DAILY` / `WEEKLY` / `MONTHLY`) honor wall-clock time across DST transitions on Android by using calendar-aware scheduling.
+
+Android clears `AlarmManager` registrations when the device reboots, so the OS alarm entry is not enough on its own. NotifyKit persists trigger notifications and re-arms them after a normal reboot through its `RebootBroadcastReceiver`. Future one-shot `TriggerType.TIMESTAMP` triggers are part of this recovery path; you do not need to make a trigger recurring or daily only to survive reboot, and push notifications are not required for this local scheduling path.
+
+Since v9.6.0 the library also detects boot deltas via `Settings.Global.BOOT_COUNT` and reschedules persisted alarms on app cold start. This protects OEM devices that delay or suppress `BOOT_COMPLETED` (Xiaomi MIUI, Oppo ColorOS, Huawei EMUI, Vivo FuntouchOS). If an OEM suppresses the boot broadcast, opening the app after reboot can exercise this cold-start recovery path, but delivery is still subject to vendor autostart and background restrictions. Stale non-repeating triggers (timestamp already in the past at recovery time) fire once within a 24-hour grace period and are then deleted; beyond the grace period they're deleted silently.
+
+Reboot recovery and exact fire timing are separate concerns. Recovery means the persisted trigger is re-armed after reboot. Exact timing depends on the Android alarm primitive and permission state described below.
 
 #### Maximum TimestampTrigger Count
 
@@ -302,20 +308,21 @@ The rolling window is finite because iOS limits how many local notifications can
 
 #### Android 12 Limitations
 
-Starting from Android 12, timestamp triggers cannot be created unless user specfically allow the [exact alarm permission](https://developer.android.com/reference/android/Manifest.permission#SCHEDULE_EXACT_ALARM). Before you create a timestamp trigger, check whether `SCHEDULE_EXACT_ALARM` permission is allowed by making a call to `getNotificationSettings`. If ` alarm` is `DISABLED`, you should educate the user on this permission and ask to enable scheduling alarms. You can then use `openAlarmPermissionSettings` function to display the Alarms & Reminder settings of your app.
+Starting from Android 12, the exact `AlarmManager` APIs used by `AlarmType.SET_EXACT`, `AlarmType.SET_EXACT_AND_ALLOW_WHILE_IDLE`, and `AlarmType.SET_ALARM_CLOCK` require exact-alarm access through [`SCHEDULE_EXACT_ALARM`](https://developer.android.com/reference/android/Manifest.permission#SCHEDULE_EXACT_ALARM) or `USE_EXACT_ALARM`. If exact-alarm access is not granted, NotifyKit still persists the timestamp trigger and falls back to an inexact `setAndAllowWhileIdle` alarm instead of failing the schedule request. The trigger is not lost because of this fallback, but exact fire timing is not guaranteed without permission.
 
-```js
+If your app needs exact fire timing, check the alarm setting before scheduling exact alarms, explain why the permission matters, and send the user to the system Alarms & Reminders screen when needed:
+
+```ts
+import notifee, { AndroidNotificationSetting } from 'react-native-notify-kit';
+
 const settings = await notifee.getNotificationSettings();
-if (settings.android.alarm == AndroidNotificationSetting.ENABLED) {
-  //Create timestamp trigger
-} else {
-  // Show some user information to educate them on what exact alarm permission is,
-  // and why it is necessary for your app functionality, then send them to system preferences:
+
+if (settings.android.alarm !== AndroidNotificationSetting.ENABLED) {
   await notifee.openAlarmPermissionSettings();
 }
 ```
 
-Please note that if the user revokes the permission via system preferences, all of the timestamp triggers will be deleted by the system. However, if you check for the permission, notice it is missing, educate the user and they grant permission again, Notify Kit will automatically reschedule the triggers when the user allows the alarm permission again with no need for additional code.
+When the user changes exact-alarm permission, Android notifies the app and NotifyKit reschedules persisted triggers with the best available alarm primitive. If permission remains denied, recovered triggers continue on the inexact fallback path. For alarm-clock or timer-like use cases where exact visible alarm behavior is core to the app, consider `AlarmType.SET_ALARM_CLOCK` within Android and Google Play policy constraints.
 
 ### Interval Trigger
 

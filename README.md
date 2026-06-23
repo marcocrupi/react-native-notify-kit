@@ -499,7 +499,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 
 <!-- markdownlint-disable-line MD028 -->
 
-> **Note for apps requiring guaranteed exact alarms (alarm clocks, timers, calendars):**
+> **Note for policy-eligible apps requiring exact alarm APIs (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's
 > `AndroidManifest.xml`. This permission is auto-granted and not revocable, but Google Play
 > restricts its use to apps whose core function requires exact timing.
@@ -659,6 +659,13 @@ The original Notifee used WorkManager by default, which is battery-friendly but 
 for time-sensitive notifications — Android may defer or drop WorkManager tasks based on
 battery optimization, Doze mode, and OEM power management.
 
+This path also handles normal reboot recovery. Android clears `AlarmManager` registrations
+during reboot, but NotifyKit persists local trigger notifications and re-arms them after boot.
+Future one-shot `TriggerType.TIMESTAMP` triggers are supported by this recovery path; a trigger
+does not need to be recurring or daily only to survive reboot, and push notifications are not
+required for local scheduled trigger recovery. If exact-alarm access is missing, NotifyKit falls
+back to an inexact alarm so the trigger is retained, but exact fire timing is not guaranteed.
+
 If you need battery-friendly scheduling where exact timing is not critical (e.g., daily digest
 notifications), you can opt out:
 
@@ -719,12 +726,14 @@ await notifee.createTriggerNotification(
 );
 ```
 
-**Required permissions on Android 12+.** `SET_EXACT`, `SET_EXACT_AND_ALLOW_WHILE_IDLE`, and
-`SET_ALARM_CLOCK` all require the `SCHEDULE_EXACT_ALARM` or `USE_EXACT_ALARM` permission.
-If the permission is not granted, Notifee falls back to `setAndAllowWhileIdle` (inexact)
-instead of crashing — see the `SecurityException` handling in `NotifeeAlarmManager`.
-For use cases that must be exact on first install, declare `USE_EXACT_ALARM` in your manifest
-and consider prompting the user with `openAlarmPermissionSettings()`.
+**Exact-alarm permission on Android 12+.** `SET_EXACT`, `SET_EXACT_AND_ALLOW_WHILE_IDLE`,
+and `SET_ALARM_CLOCK` all require exact-alarm access through `SCHEDULE_EXACT_ALARM` or
+`USE_EXACT_ALARM`. This affects exact fire timing, not trigger persistence. If permission is
+not granted, Notifee falls back to `setAndAllowWhileIdle` (inexact) instead of crashing or
+dropping the trigger. Apps that require exact timing should check
+`getNotificationSettings().android.alarm`, explain the permission, and guide users with
+`openAlarmPermissionSettings()`. `SET_ALARM_CLOCK` can be considered for alarm-clock or
+timer-like use cases within Android and Google Play policy constraints.
 
 ### Timers: foreground service or `SET_ALARM_CLOCK`?
 
@@ -809,6 +818,33 @@ Default is `true` (backward compatible — Notifee handles everything, same as o
 ## Advanced
 
 ### Troubleshooting
+
+#### Scheduled Android trigger notifications do not fire after reboot
+
+Android removes `AlarmManager` registrations during reboot. NotifyKit persists local trigger
+notifications and re-arms them through `app.notifee.core.RebootBroadcastReceiver` after a
+normal reboot, with a cold-start `BOOT_COUNT` recovery path for devices that delay or suppress
+`BOOT_COMPLETED`. If triggers do not return after reboot, check the generated app rather than
+only the source manifest:
+
+- Verify the final merged manifest contains `android.permission.RECEIVE_BOOT_COMPLETED`,
+  `android.permission.SCHEDULE_EXACT_ALARM`, `app.notifee.core.RebootBroadcastReceiver` with
+  `android.intent.action.BOOT_COMPLETED`, `app.notifee.core.NotificationAlarmReceiver`, and
+  `io.invertase.notifee.NotifeeInitProvider`.
+- For Expo CNG/prebuild apps, these entries normally arrive from the NotifyKit library manifest
+  through manifest merge. A custom boot-receiver config plugin is usually unnecessary and can
+  break recovery if it replaces the receiver declaration or intent filters.
+- Use package-specific logcat output. Do not rely only on `adb logcat -s NOTIFEE`; reboot
+  recovery logs use native tags such as `RebootReceiver`, `NotifeeAlarmManager`, `InitProvider`,
+  and `AlarmPermissionReceiver`, while Android broadcast logs include your real application ID.
+- Compare `adb shell dumpsys alarm` before and after reboot, filtered by your real package name,
+  to confirm the pending alarm disappears during reboot and is re-armed afterward.
+- Check exact-alarm permission if timing is late. Without permission, NotifyKit falls back to an
+  inexact alarm: the trigger is retained, but exact fire timing is not guaranteed.
+- Check OEM autostart and background restrictions, especially on Xiaomi/Redmi, Oppo/Realme,
+  Huawei/Honor, Vivo/iQOO, and Samsung devices.
+- Validate with 1-5 future one-shot `TriggerType.TIMESTAMP` triggers before scaling up to large
+  batches such as 50 active triggers.
 
 #### Small icon not showing in Android release builds (falls back to launcher icon)
 
