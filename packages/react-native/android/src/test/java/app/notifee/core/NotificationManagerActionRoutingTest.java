@@ -123,11 +123,7 @@ public class NotificationManagerActionRoutingTest {
                     buildPressAction("open-main", null, "CustomMainComponent"))));
 
     assertLaunchActivityActionIntent(
-        shadowPendingIntent,
-        DefaultLaunchActivity.class,
-        "open-main",
-        null,
-        "CustomMainComponent");
+        shadowPendingIntent, DefaultLaunchActivity.class, "open-main", null, "CustomMainComponent");
   }
 
   @Test
@@ -177,7 +173,8 @@ public class NotificationManagerActionRoutingTest {
   }
 
   private Notification displayNotification(NotificationModel notificationModel) throws Exception {
-    ListenableFuture<Void> future = NotificationManager.displayNotification(notificationModel, null);
+    ListenableFuture<Void> future =
+        NotificationManager.displayNotification(notificationModel, null);
     future.get(5, TimeUnit.SECONDS);
 
     android.app.NotificationManager notificationManager =
@@ -261,9 +258,7 @@ public class NotificationManagerActionRoutingTest {
     if (notificationManager.getNotificationChannel(CHANNEL_ID) == null) {
       NotificationChannel channel =
           new NotificationChannel(
-              CHANNEL_ID,
-              "Action routing test",
-              android.app.NotificationManager.IMPORTANCE_LOW);
+              CHANNEL_ID, "Action routing test", android.app.NotificationManager.IMPORTANCE_LOW);
       notificationManager.createNotificationChannel(channel);
     }
   }

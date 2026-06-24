@@ -101,7 +101,8 @@ public class HeadlessTaskReactHostTest {
   }
 
   @Test
-  public void startTask_whenInitializedContextDisappears_reinitializesReactHostAndDrainsQueuedTasks() {
+  public void
+      startTask_whenInitializedContextDisappears_reinitializesReactHostAndDrainsQueuedTasks() {
     HeadlessTask headlessTask = new HeadlessTask();
     AppRegistry firstAppRegistry = mock(AppRegistry.class);
     AppRegistry secondAppRegistry = mock(AppRegistry.class);
@@ -124,7 +125,8 @@ public class HeadlessTaskReactHostTest {
 
     application.reactHost.currentReactContext = firstReactContext;
     application.reactHost.listeners.get(0).onReactContextInitialized(firstReactContext);
-    Shadows.shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Shadows.shadowOf(Looper.getMainLooper())
+        .idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
 
     verify(firstAppRegistry)
         .startHeadlessTask(anyInt(), eq("first-headless-task"), same(firstCopiedParams));
@@ -133,7 +135,10 @@ public class HeadlessTaskReactHostTest {
 
     headlessTask.startTask(application, secondTaskConfig);
 
-    assertEquals("ReactHost should be started again for stale ReactContext", 2, application.reactHost.startCalls);
+    assertEquals(
+        "ReactHost should be started again for stale ReactContext",
+        2,
+        application.reactHost.startCalls);
     assertEquals(1, application.reactHost.listeners.size());
     verify(secondAppRegistry, never())
         .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
@@ -185,10 +190,14 @@ public class HeadlessTaskReactHostTest {
     application.reactHost.currentReactContext = null;
     headlessTask.startTask(application, secondTaskConfig);
 
-    assertEquals("ReactHost should be restarted when the pending context disappears", 2, application.reactHost.startCalls);
+    assertEquals(
+        "ReactHost should be restarted when the pending context disappears",
+        2,
+        application.reactHost.startCalls);
     assertEquals(1, application.reactHost.listeners.size());
 
-    Shadows.shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Shadows.shadowOf(Looper.getMainLooper())
+        .idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
     verify(staleAppRegistry, never())
         .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
     verify(recoveredAppRegistry, never())
@@ -196,7 +205,8 @@ public class HeadlessTaskReactHostTest {
 
     application.reactHost.currentReactContext = recoveredReactContext;
     application.reactHost.listeners.get(0).onReactContextInitialized(recoveredReactContext);
-    Shadows.shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+    Shadows.shadowOf(Looper.getMainLooper())
+        .idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
 
     verify(staleAppRegistry, never())
         .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
