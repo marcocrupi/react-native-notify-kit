@@ -98,9 +98,21 @@ class HeadlessTask {
 
         if (!mIsReactContextInitialized.get()) {
             createReactContextAndScheduleTask(context)
-        } else {
-            invokeStartTask(getReactContext(context)!!, taskConfig)
+            return
         }
+
+        val reactContext = getReactContext(context)
+        if (reactContext == null) {
+            Log.w(HEADLESS_TASK_NAME, "ReactContext is stale, reinitializing ReactHost")
+            mIsReactContextInitialized.set(false)
+            mWillDrainTaskQueue.set(false)
+            mIsInitializingReactContext.set(false)
+            mIsHeadlessJsTaskListenerRegistered.set(false)
+            createReactContextAndScheduleTask(context, reactContext)
+            return
+        }
+
+        invokeStartTask(reactContext, taskConfig)
     }
 
     @Synchronized
@@ -139,11 +151,13 @@ class HeadlessTask {
         }
     }
 
-    private fun createReactContextAndScheduleTask(context: Context) {
-        val reactContext = getReactContext(context)
+    private fun createReactContextAndScheduleTask(
+        context: Context,
+        reactContext: ReactContext? = getReactContext(context),
+    ) {
         if (reactContext != null && !mIsInitializingReactContext.get()) {
             mIsReactContextInitialized.set(true)
-            drainTaskQueue(reactContext)
+            drainTaskQueue(context, reactContext)
             return
         }
         if (mIsInitializingReactContext.compareAndSet(false, true)) {
@@ -152,7 +166,7 @@ class HeadlessTask {
             val callback = object : ReactInstanceEventListener {
                 override fun onReactContextInitialized(reactCtx: ReactContext) {
                     mIsReactContextInitialized.set(true)
-                    drainTaskQueue(reactCtx)
+                    drainTaskQueue(context, reactCtx)
                     try {
                         val removeMethod = reactHost!!.javaClass.getMethod(
                             "removeReactInstanceEventListener",
@@ -178,10 +192,12 @@ class HeadlessTask {
         }
     }
 
-    private fun drainTaskQueue(reactContext: ReactContext) {
+    private fun drainTaskQueue(context: Context, reactContext: ReactContext) {
         if (mWillDrainTaskQueue.compareAndSet(false, true)) {
             Handler(Looper.getMainLooper()).postDelayed(
                 {
+                    if (getReactContext(context) !== reactContext) return@postDelayed
+
                     synchronized(mTaskQueue) {
                         for (taskConfig in mTaskQueue) {
                             invokeStartTask(reactContext, taskConfig)

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -54,11 +55,8 @@ public class HeadlessTaskReactHostTest {
     HeadlessTask headlessTask = new HeadlessTask();
     HeadlessTask.TaskConfig taskConfig =
         new HeadlessTask.TaskConfig("test-headless-task", 60000L, params, null);
-    ReactContext reactContext = mock(ReactContext.class);
     AppRegistry appRegistry = mock(AppRegistry.class);
-    when(reactContext.getLifecycleState()).thenReturn(LifecycleState.BEFORE_RESUME);
-    when(reactContext.hasActiveReactInstance()).thenReturn(true);
-    when(reactContext.getJSModule(AppRegistry.class)).thenReturn(appRegistry);
+    ReactContext reactContext = createReactContext(appRegistry);
 
     WritableMap copiedParams = taskConfig.getTaskConfig().getData();
 
@@ -73,6 +71,7 @@ public class HeadlessTaskReactHostTest {
     verify(appRegistry, never())
         .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
 
+    application.reactHost.currentReactContext = reactContext;
     ReactInstanceEventListener listener = application.reactHost.listeners.get(0);
     listener.onReactContextInitialized(reactContext);
 
@@ -101,6 +100,126 @@ public class HeadlessTaskReactHostTest {
         copiedParams.getInt("taskId"));
   }
 
+  @Test
+  public void startTask_whenInitializedContextDisappears_reinitializesReactHostAndDrainsQueuedTasks() {
+    HeadlessTask headlessTask = new HeadlessTask();
+    AppRegistry firstAppRegistry = mock(AppRegistry.class);
+    AppRegistry secondAppRegistry = mock(AppRegistry.class);
+    ReactContext firstReactContext = createReactContext(firstAppRegistry);
+    ReactContext secondReactContext = createReactContext(secondAppRegistry);
+    HeadlessTask.TaskConfig firstTaskConfig =
+        new HeadlessTask.TaskConfig("first-headless-task", 60000L, params("first"), null);
+    HeadlessTask.TaskConfig secondTaskConfig =
+        new HeadlessTask.TaskConfig("second-headless-task", 60000L, params("second"), null);
+    HeadlessTask.TaskConfig thirdTaskConfig =
+        new HeadlessTask.TaskConfig("third-headless-task", 60000L, params("third"), null);
+    WritableMap firstCopiedParams = firstTaskConfig.getTaskConfig().getData();
+    WritableMap secondCopiedParams = secondTaskConfig.getTaskConfig().getData();
+    WritableMap thirdCopiedParams = thirdTaskConfig.getTaskConfig().getData();
+
+    headlessTask.startTask(application, firstTaskConfig);
+
+    assertEquals(1, application.reactHost.startCalls);
+    assertEquals(1, application.reactHost.listeners.size());
+
+    application.reactHost.currentReactContext = firstReactContext;
+    application.reactHost.listeners.get(0).onReactContextInitialized(firstReactContext);
+    Shadows.shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+    verify(firstAppRegistry)
+        .startHeadlessTask(anyInt(), eq("first-headless-task"), same(firstCopiedParams));
+
+    application.reactHost.currentReactContext = null;
+
+    headlessTask.startTask(application, secondTaskConfig);
+
+    assertEquals("ReactHost should be started again for stale ReactContext", 2, application.reactHost.startCalls);
+    assertEquals(1, application.reactHost.listeners.size());
+    verify(secondAppRegistry, never())
+        .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
+
+    headlessTask.startTask(application, thirdTaskConfig);
+
+    assertEquals(
+        "ReactHost should not be started again while reinitialization is pending",
+        2,
+        application.reactHost.startCalls);
+    verify(secondAppRegistry, never())
+        .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
+
+    application.reactHost.currentReactContext = secondReactContext;
+    application.reactHost.listeners.get(0).onReactContextInitialized(secondReactContext);
+    Shadows.shadowOf(Looper.getMainLooper())
+        .idleFor(499, java.util.concurrent.TimeUnit.MILLISECONDS);
+    verify(secondAppRegistry, never())
+        .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
+
+    Shadows.shadowOf(Looper.getMainLooper()).idleFor(1, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+    verify(firstAppRegistry, times(1))
+        .startHeadlessTask(anyInt(), eq("first-headless-task"), same(firstCopiedParams));
+    verify(secondAppRegistry)
+        .startHeadlessTask(anyInt(), eq("second-headless-task"), same(secondCopiedParams));
+    verify(secondAppRegistry)
+        .startHeadlessTask(anyInt(), eq("third-headless-task"), same(thirdCopiedParams));
+  }
+
+  @Test
+  public void startTask_whenContextDisappearsBeforeInitialDrain_waitsForRecoveredReactContext() {
+    HeadlessTask headlessTask = new HeadlessTask();
+    AppRegistry staleAppRegistry = mock(AppRegistry.class);
+    AppRegistry recoveredAppRegistry = mock(AppRegistry.class);
+    ReactContext staleReactContext = createReactContext(staleAppRegistry);
+    ReactContext recoveredReactContext = createReactContext(recoveredAppRegistry);
+    HeadlessTask.TaskConfig firstTaskConfig =
+        new HeadlessTask.TaskConfig("pending-first-headless-task", 60000L, params("first"), null);
+    HeadlessTask.TaskConfig secondTaskConfig =
+        new HeadlessTask.TaskConfig("pending-second-headless-task", 60000L, params("second"), null);
+    WritableMap firstCopiedParams = firstTaskConfig.getTaskConfig().getData();
+    WritableMap secondCopiedParams = secondTaskConfig.getTaskConfig().getData();
+
+    headlessTask.startTask(application, firstTaskConfig);
+    application.reactHost.currentReactContext = staleReactContext;
+    application.reactHost.listeners.get(0).onReactContextInitialized(staleReactContext);
+
+    application.reactHost.currentReactContext = null;
+    headlessTask.startTask(application, secondTaskConfig);
+
+    assertEquals("ReactHost should be restarted when the pending context disappears", 2, application.reactHost.startCalls);
+    assertEquals(1, application.reactHost.listeners.size());
+
+    Shadows.shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+    verify(staleAppRegistry, never())
+        .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
+    verify(recoveredAppRegistry, never())
+        .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
+
+    application.reactHost.currentReactContext = recoveredReactContext;
+    application.reactHost.listeners.get(0).onReactContextInitialized(recoveredReactContext);
+    Shadows.shadowOf(Looper.getMainLooper()).idleFor(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+
+    verify(staleAppRegistry, never())
+        .startHeadlessTask(anyInt(), any(String.class), any(WritableMap.class));
+    verify(recoveredAppRegistry)
+        .startHeadlessTask(anyInt(), eq("pending-first-headless-task"), same(firstCopiedParams));
+    verify(recoveredAppRegistry)
+        .startHeadlessTask(anyInt(), eq("pending-second-headless-task"), same(secondCopiedParams));
+  }
+
+  private static JavaOnlyMap params(String source) {
+    JavaOnlyMap params = new JavaOnlyMap();
+    params.putString("source", source);
+    return params;
+  }
+
+  private static ReactContext createReactContext(AppRegistry appRegistry) {
+    ReactContext reactContext = mock(ReactContext.class);
+    when(reactContext.getLifecycleState()).thenReturn(LifecycleState.BEFORE_RESUME);
+    when(reactContext.hasActiveReactInstance()).thenReturn(true);
+    when(reactContext.getJSModule(AppRegistry.class)).thenReturn(appRegistry);
+    return reactContext;
+  }
+
   public static class TestApplication extends Application {
     final TestReactHost reactHost = new TestReactHost();
 
@@ -111,10 +230,11 @@ public class HeadlessTaskReactHostTest {
 
   public static class TestReactHost {
     int startCalls;
+    ReactContext currentReactContext;
     final List<ReactInstanceEventListener> listeners = new ArrayList<>();
 
     public ReactContext getCurrentReactContext() {
-      return null;
+      return currentReactContext;
     }
 
     public void addReactInstanceEventListener(ReactInstanceEventListener listener) {
@@ -131,6 +251,7 @@ public class HeadlessTaskReactHostTest {
 
     void reset() {
       startCalls = 0;
+      currentReactContext = null;
       listeners.clear();
     }
   }
