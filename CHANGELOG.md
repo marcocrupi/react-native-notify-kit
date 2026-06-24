@@ -10,10 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - **Android**: kept Android 12+ notification actions without `launchActivity` or `mainComponent` on the `ReceiverService` path instead of always routing them through the launch-activity `PendingIntent`.
+- **Android**: fixed a `HeadlessTask` stale `ReactContext` edge case where the cached initialized state could remain true while the current `ReactContext` was null. Background tasks now treat that state as stale, restart the ReactHost initialization path, and drain queued tasks only after a valid `ReactContext` is available.
 
 ### Docs
 
 - **Docs**: clarified Android scheduled trigger reboot recovery, exact-alarm fallback behavior, and Expo CNG/prebuild manifest-merge behavior for local scheduled triggers.
+
+### Tests
+
+- **Android**: added targeted `HeadlessTask` regression coverage for stale/null `ReactContext` recovery and validated the no-launch notification action background path on a physical Pixel 9 Pro XL running Android 16.
 
 ## [10.4.4] - 2026-05-29
 
