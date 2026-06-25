@@ -28,7 +28,10 @@ const DEFAULT_TOKEN_ENV_KEYS = ['IOS_FCM_TOKEN', 'ANDROID_FCM_TOKEN', 'FCM_TOKEN
 
 function loadFirebaseAdmin() {
   try {
-    return require('firebase-admin');
+    const { cert, getApps, initializeApp } = require('firebase-admin/app');
+    const { getMessaging } = require('firebase-admin/messaging');
+
+    return { cert, getApps, getMessaging, initializeApp };
   } catch {
     console.error('Missing dependency `firebase-admin`.');
     console.error('Run `yarn install` from the repo root, then retry.');
@@ -385,8 +388,8 @@ async function main() {
   try {
     const serviceAccount = require(SERVICE_ACCOUNT_PATH);
 
-    if (admin.apps.length === 0) {
-      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    if (admin.getApps().length === 0) {
+      admin.initializeApp({ credential: admin.cert(serviceAccount) });
     }
   } catch {
     console.error(`Could not load service account from ${SERVICE_ACCOUNT_PATH}`);
@@ -408,7 +411,7 @@ async function main() {
   console.log('  Payload size:', payload.sizeBytes, 'bytes');
 
   try {
-    const messageId = await admin.messaging().send(sendPayload);
+    const messageId = await admin.getMessaging().send(sendPayload);
     console.log('Successfully sent. Message ID:', messageId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -69,7 +69,7 @@
     "eslint-plugin-react": "^7.29.3",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-native": "^4.1.0",
-    "firebase-admin": "^13.8.0",
+    "firebase-admin": "^14.1.0",
     "google-java-format": "^1.4.0",
     "lerna": "^9.0.7",
     "prettier": "^3.8.1",
