@@ -64,10 +64,16 @@ type SmokeDeepLinkCallback = {
   callbackUrl?: string;
 };
 
+type SmokeGlobal = typeof globalThis & {
+  __NOTIFEE_SMOKE_BACKGROUND_HANDLER_REGISTERED__?: boolean;
+  __NOTIFEE_SMOKE_HANDLE_URL__?: (url: string) => Promise<void> | null;
+};
+
 type SmokeDeepLinkRequest = SmokeDeepLinkCallback &
   (
     | { scenario: 'fcm-token' }
     | { scenario: 'displayed' }
+    | { scenario: 'listener-only' }
     | { scenario: 'local-display'; id?: string }
     | { scenario: 'verify-displayed'; id?: string }
     | { scenario: 'deep-link'; status: 'FAIL'; reason: string; path?: string }
@@ -134,6 +140,8 @@ function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
         return { scenario: 'fcm-token', callbackUrl };
       case 'displayed':
         return { scenario: 'displayed', callbackUrl };
+      case 'listener-only':
+        return { scenario: 'listener-only', callbackUrl };
       case 'local-display':
         return { scenario: 'local-display', id: query.id, callbackUrl };
       default:
@@ -182,6 +190,10 @@ function displayedNotificationIds(notifications: DisplayedSmokeNotification[]): 
   return notifications
     .map(displayedNotificationId)
     .filter((id): id is string => typeof id === 'string');
+}
+
+function smokeBackgroundHandlerRegistered(): boolean {
+  return (globalThis as SmokeGlobal).__NOTIFEE_SMOKE_BACKGROUND_HANDLER_REGISTERED__ === true;
 }
 
 function notificationMatchesSmokeCorrelation(
@@ -856,6 +868,58 @@ function App() {
     [readDisplayedNotificationsForSmoke],
   );
 
+  const runSmokeListenerOnly = useCallback(async () => {
+    let unsubscribeForeground: (() => void) | undefined;
+
+    try {
+      unsubscribeForeground = notifee.onForegroundEvent(() => undefined);
+      const foregroundListenerRegistered = typeof unsubscribeForeground === 'function';
+      const backgroundHandlerRegistered = smokeBackgroundHandlerRegistered();
+      const listenerDetails = {
+        foregroundListenerRegistered,
+        backgroundHandlerRegistered,
+        backgroundHandlerSource: 'apps/smoke/index.js:notifee.onBackgroundEvent',
+        nativeCallIntentionallyAvoided: true,
+        avoidedApis: [
+          'displayNotification',
+          'getDisplayedNotifications',
+          'createChannel',
+          'requestPermission',
+          'FCM',
+        ],
+      };
+
+      if (foregroundListenerRegistered && backgroundHandlerRegistered) {
+        logSmokeResult({
+          scenario: 'listener-only',
+          status: 'PASS',
+          details: listenerDetails,
+        });
+        return;
+      }
+
+      logSmokeResult({
+        scenario: 'listener-only',
+        status: 'FAIL',
+        reason: 'listener_registration_incomplete',
+        details: listenerDetails,
+      });
+    } catch (e: unknown) {
+      logSmokeResult({
+        scenario: 'listener-only',
+        status: 'FAIL',
+        reason: smokeErrorReason(e),
+        details: {
+          foregroundListenerRegistered: false,
+          backgroundHandlerRegistered: smokeBackgroundHandlerRegistered(),
+          nativeCallIntentionallyAvoided: true,
+        },
+      });
+    } finally {
+      unsubscribeForeground?.();
+    }
+  }, []);
+
   const executeSmokeDeepLink = useCallback(
     async (request: SmokeDeepLinkRequest) => {
       setSmokeResultCallbackUrl(request.callbackUrl);
@@ -867,6 +931,9 @@ function App() {
             break;
           case 'displayed':
             await runSmokeDisplayed();
+            break;
+          case 'listener-only':
+            await runSmokeListenerOnly();
             break;
           case 'local-display':
             await runSmokeLocalDisplay(request.id);
@@ -887,23 +954,31 @@ function App() {
         setSmokeResultCallbackUrl(null);
       }
     },
-    [runSmokeDisplayed, runSmokeFcmToken, runSmokeLocalDisplay, runSmokeVerifyDisplayed],
+    [
+      runSmokeDisplayed,
+      runSmokeFcmToken,
+      runSmokeListenerOnly,
+      runSmokeLocalDisplay,
+      runSmokeVerifyDisplayed,
+    ],
   );
 
   // General smoke automation deep links:
   // notifykit://smoke/run/fcm-token
   // notifykit://smoke/run/displayed
+  // notifykit://smoke/run/listener-only
   // notifykit://smoke/run/local-display?id=<correlationId>&callback=<encoded-url>
   // notifykit://smoke/verify/displayed?id=<correlationId>&callback=<encoded-url>
   useEffect(() => {
-    const handleUrl = (url: string) => {
+    const smokeGlobal = globalThis as SmokeGlobal;
+    const handleUrl = (url: string): Promise<void> | null => {
       const request = extractSmokeDeepLink(url);
       if (request == null) {
-        return;
+        return null;
       }
 
       log(`Smoke deep link scenario: ${request.scenario}`);
-      executeSmokeDeepLink(request).catch((e: unknown) => {
+      return executeSmokeDeepLink(request).catch((e: unknown) => {
         logSmokeResult({
           scenario: 'deep-link',
           status: 'FAIL',
@@ -912,10 +987,12 @@ function App() {
       });
     };
 
+    smokeGlobal.__NOTIFEE_SMOKE_HANDLE_URL__ = handleUrl;
+
     Linking.getInitialURL()
       .then(url => {
         if (url) {
-          handleUrl(url);
+          void handleUrl(url);
         }
       })
       .catch((e: unknown) => {
@@ -923,10 +1000,13 @@ function App() {
       });
 
     const subscription = Linking.addEventListener('url', event => {
-      handleUrl(event.url);
+      void handleUrl(event.url);
     });
 
     return () => {
+      if (smokeGlobal.__NOTIFEE_SMOKE_HANDLE_URL__ === handleUrl) {
+        delete smokeGlobal.__NOTIFEE_SMOKE_HANDLE_URL__;
+      }
       subscription.remove();
     };
   }, [executeSmokeDeepLink, log]);

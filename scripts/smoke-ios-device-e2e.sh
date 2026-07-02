@@ -15,6 +15,7 @@ SMOKE_FCM_ATTACHMENT_WAIT_SECONDS_ENV="${SMOKE_FCM_ATTACHMENT_WAIT_SECONDS:-}"
 SMOKE_FCM_WAIT_SECONDS="${SMOKE_FCM_WAIT_SECONDS:-8}"
 SMOKE_CALLBACK_HOST="${SMOKE_CALLBACK_HOST:-}"
 SMOKE_CALLBACK_PORT="${SMOKE_CALLBACK_PORT:-}"
+SMOKE_TERMINATE_EXISTING="${SMOKE_TERMINATE_EXISTING:-1}"
 XCRUN="${XCRUN:-xcrun}"
 
 EXIT_SMOKE_FAIL=1
@@ -38,21 +39,28 @@ usage() {
 iOS smoke device automation wrapper
 
 Usage:
-  scripts/smoke-ios-device-e2e.sh help
-  scripts/smoke-ios-device-e2e.sh list-devices
-  scripts/smoke-ios-device-e2e.sh launch-url <url>
-  scripts/smoke-ios-device-e2e.sh parse-result-test
-  scripts/smoke-ios-device-e2e.sh callback-test
-  scripts/smoke-ios-device-e2e.sh fcm-token
-  scripts/smoke-ios-device-e2e.sh displayed
-  scripts/smoke-ios-device-e2e.sh local-display <id>
-  scripts/smoke-ios-device-e2e.sh verify-displayed <id>
-  scripts/smoke-ios-device-e2e.sh fcm-minimal <id>
-  scripts/smoke-ios-device-e2e.sh fcm-ios-attachment <id>
+  scripts/smoke-ios-device-e2e.sh [options] help
+  scripts/smoke-ios-device-e2e.sh [options] list-devices
+  scripts/smoke-ios-device-e2e.sh [options] launch-url <url>
+  scripts/smoke-ios-device-e2e.sh [options] parse-result-test
+  scripts/smoke-ios-device-e2e.sh [options] callback-test
+  scripts/smoke-ios-device-e2e.sh [options] fcm-token
+  scripts/smoke-ios-device-e2e.sh [options] displayed
+  scripts/smoke-ios-device-e2e.sh [options] listener-only
+  scripts/smoke-ios-device-e2e.sh [options] local-display <id>
+  scripts/smoke-ios-device-e2e.sh [options] verify-displayed <id>
+  scripts/smoke-ios-device-e2e.sh [options] fcm-minimal <id>
+  scripts/smoke-ios-device-e2e.sh [options] fcm-ios-attachment <id>
+
+Options:
+  --no-terminate-existing  Do not pass devicectl --terminate-existing for scenario commands.
+                           Use when the app is already running from Xcode and must be preserved.
+  --terminate-existing     Pass devicectl --terminate-existing for scenario commands (default).
 
 Deep links:
   notifykit://smoke/run/fcm-token
   notifykit://smoke/run/displayed
+  notifykit://smoke/run/listener-only
   notifykit://smoke/run/local-display?id=<id>
   notifykit://smoke/verify/displayed?id=<id>
 
@@ -66,6 +74,7 @@ Environment:
   SMOKE_FCM_ATTACHMENT_WAIT_SECONDS=$attachment_wait_help
   SMOKE_CALLBACK_HOST=${SMOKE_CALLBACK_HOST:-<auto-detect en0/en1>}
   SMOKE_CALLBACK_PORT=${SMOKE_CALLBACK_PORT:-<auto; default 49152>}
+  SMOKE_TERMINATE_EXISTING=$SMOKE_TERMINATE_EXISTING
   IOS_FCM_TOKEN=${IOS_FCM_TOKEN:+<set>}
   FCM_TOKEN=${FCM_TOKEN:+<set>}
   XCRUN=$XCRUN
@@ -82,6 +91,8 @@ Notes:
   - Only fcm-minimal and fcm-ios-attachment send real FCM messages; all other commands are local/deep-link flows.
   - The smoke app must already be installed on the selected physical device.
   - Scenario commands launch the deep link and wait for a matching HTTP callback.
+  - Scenario commands use devicectl --terminate-existing by default; pass
+    --no-terminate-existing to preserve an app process already started by Xcode.
   - fcm-minimal sends, waits SMOKE_FCM_WAIT_SECONDS, then verifies via displayed-notification callback.
   - fcm-ios-attachment: Sends a real FCM ios-attachment push, waits, then verifies displayed notification by id.
   - fcm-ios-attachment: Does not visually verify the attachment.
@@ -243,6 +254,7 @@ resolve_callback_host() {
   local detected
 
   if [[ -n "$SMOKE_CALLBACK_HOST" ]]; then
+    echo "[smoke-ios-device-e2e] callback host: $SMOKE_CALLBACK_HOST"
     return
   fi
 
@@ -282,7 +294,10 @@ launch_url() {
 run_smoke_node() {
   node - "$@" <<'NODE'
 const { spawn } = require('child_process');
+const crypto = require('crypto');
 const http = require('http');
+const net = require('net');
+const tls = require('tls');
 
 const EXIT_SMOKE_FAIL = 1;
 const EXIT_TIMEOUT = 2;
@@ -290,6 +305,8 @@ const EXIT_LAUNCH_FAILURE = 3;
 const EXIT_CONFIG = 4;
 const MARKER = 'SMOKE:RESULT';
 const DEFAULT_CALLBACK_PORT = 49152;
+const INSPECTOR_ORIGIN = 'http://localhost:8081';
+const WEBSOCKET_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
 function stringValue(value) {
   return typeof value === 'string' ? value : '';
@@ -351,6 +368,18 @@ function parsePositiveInteger(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseBooleanFlag(value, fallback) {
+  if (value === '1' || value === 'true') {
+    return true;
+  }
+
+  if (value === '0' || value === 'false') {
+    return false;
+  }
+
+  return fallback;
+}
+
 function parseCallbackPort(value) {
   if (!value) {
     return { port: DEFAULT_CALLBACK_PORT, fixed: false };
@@ -362,6 +391,23 @@ function parseCallbackPort(value) {
   }
 
   return { port: parsed, fixed: true };
+}
+
+function describeCallbackPort(portConfig) {
+  if (portConfig.fixed) {
+    return String(portConfig.port);
+  }
+
+  return `${portConfig.port}..${Math.min(65535, portConfig.port + 99)} (auto fallback)`;
+}
+
+function describeCallbackListenError(error, portConfig) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (portConfig.fixed && error?.code === 'EADDRINUSE') {
+    return `callback port ${portConfig.port} is already in use; unset SMOKE_CALLBACK_PORT to allow fallback ports or choose a free port`;
+  }
+
+  return message;
 }
 
 function hostForCallbackUrl(host) {
@@ -489,9 +535,342 @@ function closeServerAndExit(server, code) {
   server.close(() => process.exit(code));
 }
 
+function buildDevicectlLaunchArgs({
+  launchTimeoutSeconds,
+  deviceId,
+  bundleId,
+  launchUrl,
+  terminateExisting,
+}) {
+  const launchArgs = [
+    'devicectl',
+    'device',
+    'process',
+    'launch',
+    '--timeout',
+    String(launchTimeoutSeconds),
+    '--device',
+    deviceId,
+  ];
+
+  if (terminateExisting) {
+    launchArgs.push('--terminate-existing');
+  }
+
+  launchArgs.push(
+    bundleId,
+    '--payload-url',
+    launchUrl,
+  );
+
+  return launchArgs;
+}
+
+function metroPageLabel(page) {
+  return [
+    page?.appId,
+    page?.description,
+    page?.title,
+    page?.id,
+  ]
+    .map(value => (typeof value === 'string' && value.length > 0 ? value : null))
+    .filter(Boolean)
+    .join(' ');
+}
+
+function selectMetroInspectorPage(pages, bundleId) {
+  const candidates = (Array.isArray(pages) ? pages : []).filter(
+    page => typeof page?.webSocketDebuggerUrl === 'string' && page.webSocketDebuggerUrl.length > 0,
+  );
+
+  const exact = candidates.find(page => page?.appId === bundleId);
+  if (exact) {
+    return { page: exact, reason: 'appId' };
+  }
+
+  const descriptive = candidates.find(page => metroPageLabel(page).includes(bundleId));
+  if (descriptive) {
+    return { page: descriptive, reason: 'description' };
+  }
+
+  if (candidates.length === 1) {
+    return { page: candidates[0], reason: 'single_inspector_page' };
+  }
+
+  const available = candidates.map(page => metroPageLabel(page) || page.webSocketDebuggerUrl).join('; ');
+  return {
+    page: null,
+    reason: available.length > 0 ? `available_pages=${available}` : 'no_inspector_pages',
+  };
+}
+
+function createWebSocketUpgradeRequest(target, key, origin) {
+  const path = `${target.pathname || '/'}${target.search || ''}`;
+  return [
+    `GET ${path} HTTP/1.1`,
+    `Host: ${target.host}`,
+    'Upgrade: websocket',
+    'Connection: Upgrade',
+    `Sec-WebSocket-Key: ${key}`,
+    'Sec-WebSocket-Version: 13',
+    `Origin: ${origin}`,
+    '',
+    '',
+  ].join('\r\n');
+}
+
+function expectedWebSocketAccept(key) {
+  return crypto.createHash('sha1').update(`${key}${WEBSOCKET_GUID}`).digest('base64');
+}
+
+function createClientWebSocketFrame(opcode, payload) {
+  const payloadBuffer = Buffer.isBuffer(payload) ? payload : Buffer.from(payload);
+  const length = payloadBuffer.length;
+  const lengthBytes = length < 126 ? 0 : length <= 0xffff ? 2 : 8;
+  const frame = Buffer.alloc(2 + lengthBytes + 4 + length);
+  let offset = 0;
+
+  frame[offset++] = 0x80 | opcode;
+  if (length < 126) {
+    frame[offset++] = 0x80 | length;
+  } else if (length <= 0xffff) {
+    frame[offset++] = 0x80 | 126;
+    frame.writeUInt16BE(length, offset);
+    offset += 2;
+  } else {
+    frame[offset++] = 0x80 | 127;
+    frame.writeUInt32BE(Math.floor(length / 0x100000000), offset);
+    frame.writeUInt32BE(length >>> 0, offset + 4);
+    offset += 8;
+  }
+
+  const mask = crypto.randomBytes(4);
+  mask.copy(frame, offset);
+  offset += 4;
+
+  for (let index = 0; index < length; index += 1) {
+    frame[offset + index] = payloadBuffer[index] ^ mask[index % 4];
+  }
+
+  return frame;
+}
+
+function readWebSocketFrame(buffer) {
+  if (buffer.length < 2) {
+    return null;
+  }
+
+  const first = buffer[0];
+  const second = buffer[1];
+  const fin = (first & 0x80) !== 0;
+  const opcode = first & 0x0f;
+  const masked = (second & 0x80) !== 0;
+  let length = second & 0x7f;
+  let offset = 2;
+
+  if (length === 126) {
+    if (buffer.length < offset + 2) {
+      return null;
+    }
+    length = buffer.readUInt16BE(offset);
+    offset += 2;
+  } else if (length === 127) {
+    if (buffer.length < offset + 8) {
+      return null;
+    }
+    const high = buffer.readUInt32BE(offset);
+    const low = buffer.readUInt32BE(offset + 4);
+    length = high * 0x100000000 + low;
+    offset += 8;
+  }
+
+  const maskLength = masked ? 4 : 0;
+  if (buffer.length < offset + maskLength + length) {
+    return null;
+  }
+
+  let payload = buffer.subarray(offset + maskLength, offset + maskLength + length);
+  if (masked) {
+    const mask = buffer.subarray(offset, offset + 4);
+    payload = Buffer.from(payload);
+    for (let index = 0; index < payload.length; index += 1) {
+      payload[index] ^= mask[index % 4];
+    }
+  }
+
+  return {
+    frame: { fin, opcode, payload },
+    remaining: buffer.subarray(offset + maskLength + length),
+  };
+}
+
+function parseHandshakeHeaders(rawHeaders) {
+  return rawHeaders
+    .split('\r\n')
+    .slice(1)
+    .reduce((headers, line) => {
+      const separator = line.indexOf(':');
+      if (separator === -1) {
+        return headers;
+      }
+
+      headers[line.slice(0, separator).trim().toLowerCase()] = line.slice(separator + 1).trim();
+      return headers;
+    }, {});
+}
+
+function sendInspectorMessage(wsUrl, message, isExpectedMessage) {
+  return new Promise((resolve, reject) => {
+    const target = new URL(wsUrl);
+    const secure = target.protocol === 'wss:';
+    if (!secure && target.protocol !== 'ws:') {
+      reject(new Error(`unsupported Metro inspector WebSocket protocol ${target.protocol}`));
+      return;
+    }
+
+    const key = crypto.randomBytes(16).toString('base64');
+    const port = Number.parseInt(target.port || (secure ? '443' : '80'), 10);
+    const connectOptions = {
+      host: target.hostname,
+      port,
+      servername: target.hostname,
+    };
+    const socket = secure ? tls.connect(connectOptions) : net.connect(connectOptions);
+    let buffer = Buffer.alloc(0);
+    let handshakeComplete = false;
+    let settled = false;
+    let fragments = [];
+
+    const timer = setTimeout(() => {
+      fail(new Error('Metro inspector openURL dispatch timed out'));
+    }, 5000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      socket.removeAllListeners();
+    }
+
+    function fail(error) {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      socket.destroy();
+      reject(error);
+    }
+
+    function succeed(value) {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      try {
+        socket.write(createClientWebSocketFrame(0x8, Buffer.alloc(0)));
+      } catch {
+        // Ignore close-frame failures; the inspector command already completed.
+      }
+      cleanup();
+      socket.end();
+      resolve(value);
+    }
+
+    function handleTextMessage(text) {
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        return;
+      }
+
+      if (isExpectedMessage(parsed)) {
+        succeed(parsed);
+      }
+    }
+
+    socket.on(secure ? 'secureConnect' : 'connect', () => {
+      socket.write(createWebSocketUpgradeRequest(target, key, INSPECTOR_ORIGIN));
+    });
+
+    socket.on('data', chunk => {
+      buffer = Buffer.concat([buffer, chunk]);
+
+      if (!handshakeComplete) {
+        const headerEnd = buffer.indexOf('\r\n\r\n');
+        if (headerEnd === -1) {
+          return;
+        }
+
+        const rawHeaders = buffer.subarray(0, headerEnd).toString('utf8');
+        const statusLine = rawHeaders.split('\r\n')[0] || '';
+        if (!/^HTTP\/1\.[01] 101\b/.test(statusLine)) {
+          fail(new Error(`Metro inspector websocket handshake failed: ${statusLine || '<empty>'}`));
+          return;
+        }
+
+        const headers = parseHandshakeHeaders(rawHeaders);
+        if (headers['sec-websocket-accept'] !== expectedWebSocketAccept(key)) {
+          fail(new Error('Metro inspector websocket handshake failed: invalid Sec-WebSocket-Accept'));
+          return;
+        }
+
+        handshakeComplete = true;
+        buffer = buffer.subarray(headerEnd + 4);
+        socket.write(createClientWebSocketFrame(0x1, JSON.stringify(message)));
+      }
+
+      while (buffer.length > 0) {
+        let parsedFrame;
+        try {
+          parsedFrame = readWebSocketFrame(buffer);
+        } catch (error) {
+          fail(error instanceof Error ? error : new Error(String(error)));
+          return;
+        }
+
+        if (parsedFrame == null) {
+          return;
+        }
+
+        buffer = parsedFrame.remaining;
+        const { frame } = parsedFrame;
+
+        if (frame.opcode === 0x8) {
+          fail(new Error('Metro inspector websocket closed before Runtime.evaluate response'));
+          return;
+        }
+
+        if (frame.opcode === 0x9) {
+          socket.write(createClientWebSocketFrame(0xA, frame.payload));
+          continue;
+        }
+
+        if (frame.opcode === 0x1 || frame.opcode === 0x0) {
+          fragments.push(frame.payload);
+          if (frame.fin) {
+            const text = Buffer.concat(fragments).toString('utf8');
+            fragments = [];
+            handleTextMessage(text);
+            if (settled) {
+              return;
+            }
+          }
+        }
+      }
+    });
+
+    socket.on('error', fail);
+    socket.on('end', () => {
+      fail(new Error('Metro inspector websocket ended before Runtime.evaluate response'));
+    });
+  });
+}
+
 async function dispatchDeepLinkViaInspector(launchUrl, bundleId) {
-  if (typeof fetch !== 'function' || typeof WebSocket !== 'function') {
-    throw new Error('Node.js fetch/WebSocket globals are unavailable');
+  if (typeof fetch !== 'function') {
+    throw new Error('Node.js fetch global is unavailable');
   }
 
   const response = await fetch('http://localhost:8081/json/list');
@@ -500,13 +879,18 @@ async function dispatchDeepLinkViaInspector(launchUrl, bundleId) {
   }
 
   const pages = await response.json();
-  const page = (Array.isArray(pages) ? pages : []).find(item => item?.appId === bundleId);
+  const selection = selectMetroInspectorPage(pages, bundleId);
+  const page = selection.page;
   if (!page?.webSocketDebuggerUrl) {
-    throw new Error(`Metro inspector page not found for ${bundleId}`);
+    throw new Error(`Metro inspector page not found for ${bundleId}; ${selection.reason}`);
   }
 
   const wsUrl = page.webSocketDebuggerUrl.replace('localhost', '127.0.0.1');
   const expression = `(() => {
+    const smokeHandler = globalThis.__NOTIFEE_SMOKE_HANDLE_URL__;
+    if (typeof smokeHandler === 'function') {
+      return smokeHandler(${JSON.stringify(launchUrl)});
+    }
     const modules = Array.from(globalThis.__r?.getModules?.() ?? []);
     const entry = modules.find(([, module]) => {
       const name = String(module?.verboseName || module?.path || '');
@@ -519,54 +903,58 @@ async function dispatchDeepLinkViaInspector(launchUrl, bundleId) {
     return reactNative.Linking.openURL(${JSON.stringify(launchUrl)});
   })()`;
 
-  await new Promise((resolve, reject) => {
-    const ws = new WebSocket(wsUrl);
-    const timer = setTimeout(() => {
-      ws.close();
-      reject(new Error('Metro inspector openURL dispatch timed out'));
-    }, 5000);
+  const messageId = 1;
+  const message = await sendInspectorMessage(
+    wsUrl,
+    {
+      id: messageId,
+      method: 'Runtime.evaluate',
+      params: {
+        expression,
+        awaitPromise: true,
+        returnByValue: true,
+      },
+    },
+    candidate => candidate?.id === messageId,
+  );
 
-    ws.addEventListener('open', () => {
-      ws.send(
-        JSON.stringify({
-          id: 1,
-          method: 'Runtime.evaluate',
-          params: {
-            expression,
-            awaitPromise: true,
-            returnByValue: true,
-          },
-        }),
-      );
-    });
+  if (message.error || message.result?.exceptionDetails) {
+    throw new Error(JSON.stringify(message.error || message.result.exceptionDetails));
+  }
 
-    ws.addEventListener('message', event => {
-      const message = JSON.parse(event.data);
-      if (message.id !== 1) {
-        return;
-      }
+  console.log(
+    `[smoke-ios-device-e2e] deep link fallback: Metro inspector dispatched via ${selection.reason}`,
+  );
+}
 
-      clearTimeout(timer);
+async function preflightMetroInspector(bundleId) {
+  if (typeof fetch !== 'function') {
+    return { available: false, reason: 'Node.js fetch global is unavailable' };
+  }
 
-      if (message.error || message.result?.exceptionDetails) {
-        ws.close();
-        reject(new Error(JSON.stringify(message.error || message.result.exceptionDetails)));
-        return;
-      }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1000);
+  try {
+    const response = await fetch('http://localhost:8081/json/list', { signal: controller.signal });
+    if (!response.ok) {
+      return { available: false, reason: `HTTP ${response.status}` };
+    }
 
-      setTimeout(() => {
-        ws.close();
-        resolve();
-      }, 1000);
-    });
-
-    ws.addEventListener('error', error => {
-      clearTimeout(timer);
-      reject(new Error(error?.message || error?.type || String(error)));
-    });
-  });
-
-  console.log('[smoke-ios-device-e2e] deep link fallback: Metro inspector Linking.openURL dispatched');
+    const pages = await response.json();
+    const selection = selectMetroInspectorPage(pages, bundleId);
+    return {
+      available: true,
+      hasBundlePage: selection.page != null,
+      selectionReason: selection.reason,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function waitCallback(args) {
@@ -582,6 +970,7 @@ async function waitCallback(args) {
     callbackHost,
     callbackPortArg,
     launchTimeoutArg,
+    terminateExistingArg,
   ] = args;
 
   if (!scenario || !xcrun || !deviceId || !bundleId || !baseUrl || !callbackHost) {
@@ -591,18 +980,32 @@ async function waitCallback(args) {
 
   const timeoutSeconds = parsePositiveInteger(timeoutArg, 45);
   const launchTimeoutSeconds = parsePositiveInteger(launchTimeoutArg, 15);
+  const terminateExisting = parseBooleanFlag(terminateExistingArg, true);
   const expected = {
     scenario,
     id: expectedId || '',
     correlationId: expectedCorrelationId || expectedId || '',
   };
   const portConfig = parseCallbackPort(callbackPortArg);
+  const fallbackSeconds = parsePositiveInteger(process.env.SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS, 2);
 
   let finished = false;
   let launchClosed = false;
   let child = null;
   let timer = null;
   let inspectorFallbackTimer = null;
+
+  async function dispatchInspectorFallbackOrFail(server, reason) {
+    console.error(`[smoke-ios-device-e2e] WARNING: ${reason}`);
+    try {
+      await dispatchDeepLinkViaInspector(launchUrl, bundleId);
+    } catch (error) {
+      console.error(
+        `[smoke-ios-device-e2e] ERROR: non_terminating_deeplink_dispatch_failed ${error instanceof Error ? error.message : String(error)}`,
+      );
+      finish(server, EXIT_LAUNCH_FAILURE);
+    }
+  }
 
   function finish(server, code) {
     if (finished) {
@@ -641,33 +1044,47 @@ async function waitCallback(args) {
   try {
     actualPort = await listenCallbackServer(server, portConfig);
   } catch (error) {
-    console.error(`[smoke-ios-device-e2e] ERROR: callback_server_listen_failed ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[smoke-ios-device-e2e] ERROR: callback_server_listen_failed ${describeCallbackListenError(error, portConfig)}`);
     process.exit(EXIT_CONFIG);
   }
 
   const callbackUrl = `http://${hostForCallbackUrl(callbackHost)}:${actualPort}/result`;
   const launchUrl = appendCallbackParam(baseUrl, callbackUrl);
-  const launchArgs = [
-    'devicectl',
-    'device',
-    'process',
-    'launch',
-    '--timeout',
-    String(launchTimeoutSeconds),
-    '--device',
+  const launchArgs = buildDevicectlLaunchArgs({
+    launchTimeoutSeconds,
     deviceId,
-    '--terminate-existing',
     bundleId,
-    '--payload-url',
     launchUrl,
-  ];
+    terminateExisting,
+  });
 
   console.log(`[smoke-ios-device-e2e] device: ${deviceId}`);
   console.log(`[smoke-ios-device-e2e] bundle: ${bundleId}`);
+  console.log(`[smoke-ios-device-e2e] callback host: ${callbackHost}`);
+  console.log(`[smoke-ios-device-e2e] callback port: ${describeCallbackPort(portConfig)} selected=${actualPort}`);
   console.log(`[smoke-ios-device-e2e] callback: ${callbackUrl}`);
   console.log(`[smoke-ios-device-e2e] url: ${launchUrl}`);
+  console.log(
+    `[smoke-ios-device-e2e] launch mode: ${terminateExisting ? 'terminate existing app process before payload URL launch' : 'preserve existing app process; no devicectl --terminate-existing'}`,
+  );
+  if (!terminateExisting) {
+    console.log('[smoke-ios-device-e2e] non-terminating mode: keep the app running from Xcode if attached; Metro inspector may be used if devicectl cannot dispatch the URL.');
+  }
   console.log('[smoke-ios-device-e2e] result capture: HTTP callback POST /result');
   console.log(`[smoke-ios-device-e2e] waiting for callback result ${describeExpected(expected)} timeout=${timeoutSeconds}s`);
+
+  if (fallbackSeconds > 0) {
+    preflightMetroInspector(bundleId).then(status => {
+      if (status.available) {
+        console.log(
+          `[smoke-ios-device-e2e] Metro inspector fallback preflight: available${status.hasBundlePage ? ` with app page (${status.selectionReason})` : `; matching app page not found yet (${status.selectionReason})`}`,
+        );
+        return;
+      }
+
+      console.log(`[smoke-ios-device-e2e] Metro inspector fallback preflight: unavailable (${status.reason})`);
+    });
+  }
 
   timer = setTimeout(() => {
     console.error(
@@ -708,12 +1125,19 @@ async function waitCallback(args) {
     }
 
     if (code !== 0) {
+      if (!terminateExisting) {
+        console.error(`[smoke-ios-device-e2e] WARNING: launch_failed exit_code=${code}`);
+        void dispatchInspectorFallbackOrFail(
+          server,
+          'devicectl payload-url launch failed in non-terminating mode; trying Metro inspector fallback before failing',
+        );
+        return;
+      }
       console.error(`[smoke-ios-device-e2e] ERROR: launch_failed exit_code=${code}`);
       finish(server, EXIT_LAUNCH_FAILURE);
       return;
     }
 
-    const fallbackSeconds = parsePositiveInteger(process.env.SMOKE_INSPECTOR_DEEPLINK_FALLBACK_SECONDS, 2);
     inspectorFallbackTimer = setTimeout(() => {
       if (finished) {
         return;
@@ -922,6 +1346,21 @@ function runParserTest() {
       },
       expectedValidation: 'invalid',
     },
+    {
+      name: 'callback listener-only PASS valido',
+      expected: { scenario: 'listener-only', id: '', correlationId: '' },
+      payload: {
+        scenario: 'listener-only',
+        status: 'PASS',
+        timestamp: '2026-05-06T00:00:00.000Z',
+        details: {
+          foregroundListenerRegistered: true,
+          backgroundHandlerRegistered: true,
+          nativeCallIntentionallyAvoided: true,
+        },
+      },
+      expectedValidation: 'match',
+    },
   ];
 
   for (const testCase of callbackCases) {
@@ -932,8 +1371,76 @@ function runParserTest() {
     }
   }
 
+  const callbackUrl = 'http://192.0.2.10:49152/result';
+  const listenerLaunchUrl = appendCallbackParam('notifykit://smoke/run/listener-only', callbackUrl);
+  const parsedListenerUrl = new URL(listenerLaunchUrl);
+  if (
+    parsedListenerUrl.protocol !== 'notifykit:' ||
+    parsedListenerUrl.host !== 'smoke' ||
+    parsedListenerUrl.pathname !== '/run/listener-only' ||
+    parsedListenerUrl.searchParams.get('callback') !== callbackUrl
+  ) {
+    console.error(`[smoke-ios-device-e2e] listener-only URL static test failed: ${listenerLaunchUrl}`);
+    process.exit(1);
+  }
+
+  const localDisplayUrl = appendCallbackParam('notifykit://smoke/run/local-display?id=abc', callbackUrl);
+  const parsedLocalDisplayUrl = new URL(localDisplayUrl);
+  if (
+    parsedLocalDisplayUrl.host !== 'smoke' ||
+    parsedLocalDisplayUrl.pathname !== '/run/local-display' ||
+    parsedLocalDisplayUrl.searchParams.get('id') !== 'abc' ||
+    parsedLocalDisplayUrl.searchParams.get('callback') !== callbackUrl
+  ) {
+    console.error(`[smoke-ios-device-e2e] local-display URL static test failed: ${localDisplayUrl}`);
+    process.exit(1);
+  }
+
+  const nonTerminatingArgs = buildDevicectlLaunchArgs({
+    launchTimeoutSeconds: 15,
+    deviceId: 'device',
+    bundleId: 'bundle',
+    launchUrl: listenerLaunchUrl,
+    terminateExisting: false,
+  });
+  if (nonTerminatingArgs.includes('--terminate-existing')) {
+    console.error('[smoke-ios-device-e2e] no-terminate static test failed: unexpected --terminate-existing');
+    process.exit(1);
+  }
+
+  const terminatingArgs = buildDevicectlLaunchArgs({
+    launchTimeoutSeconds: 15,
+    deviceId: 'device',
+    bundleId: 'bundle',
+    launchUrl: listenerLaunchUrl,
+    terminateExisting: true,
+  });
+  if (!terminatingArgs.includes('--terminate-existing')) {
+    console.error('[smoke-ios-device-e2e] terminate static test failed: missing --terminate-existing');
+    process.exit(1);
+  }
+
+  const selectedPage = selectMetroInspectorPage(
+    [{ appId: 'org.reactjs.native.example.NotifeeExample', webSocketDebuggerUrl: 'ws://localhost:8081/inspector/debug?page=1' }],
+    'org.reactjs.native.example.NotifeeExample',
+  );
+  if (selectedPage.page == null || selectedPage.reason !== 'appId') {
+    console.error('[smoke-ios-device-e2e] Metro inspector page selection static test failed');
+    process.exit(1);
+  }
+
+  const upgradeRequest = createWebSocketUpgradeRequest(
+    new URL('ws://127.0.0.1:8081/inspector/debug?page=1'),
+    'dGhlIHNhbXBsZSBub25jZQ==',
+    INSPECTOR_ORIGIN,
+  );
+  if (!upgradeRequest.includes('\r\nOrigin: http://localhost:8081\r\n')) {
+    console.error('[smoke-ios-device-e2e] Metro inspector Origin static test failed');
+    process.exit(1);
+  }
+
   console.log(
-    `[smoke-ios-device-e2e] parser static test: PASS (${cases.length} log cases, ${callbackCases.length} callback cases)`,
+    `[smoke-ios-device-e2e] parser static test: PASS (${cases.length} log cases, ${callbackCases.length} callback cases, URL/launch/fallback cases)`,
   );
 }
 
@@ -982,7 +1489,8 @@ wait_for_smoke_result_via_callback() {
     "$url" \
     "$SMOKE_CALLBACK_HOST" \
     "$SMOKE_CALLBACK_PORT" \
-    "$SMOKE_LAUNCH_TIMEOUT_SECONDS"
+    "$SMOKE_LAUNCH_TIMEOUT_SECONDS" \
+    "$SMOKE_TERMINATE_EXISTING"
 }
 
 launch_smoke_run() {
@@ -990,6 +1498,10 @@ launch_smoke_run() {
   local url="notifykit://smoke/run/$scenario"
 
   wait_for_smoke_result_via_callback "$scenario" "" "" "$url"
+}
+
+listener_only() {
+  launch_smoke_run "listener-only"
 }
 
 local_display() {
@@ -1054,6 +1566,16 @@ require_callback_port_config() {
   if [[ ! "$port" =~ ^[0-9]+$ ]] || ((10#$port < 1 || 10#$port > 65535)); then
     fail_config "SMOKE_CALLBACK_PORT must be an integer from 1 to 65535."
   fi
+}
+
+validate_global_options() {
+  case "$SMOKE_TERMINATE_EXISTING" in
+    0 | 1 | true | false)
+      ;;
+    *)
+      fail_config "SMOKE_TERMINATE_EXISTING must be 1, 0, true, or false."
+      ;;
+  esac
 }
 
 require_fcm_verify_config() {
@@ -1154,7 +1676,52 @@ callback_test() {
 }
 
 main() {
-  local command="${1:-help}"
+  local command=""
+  local args=()
+
+  while (($# > 0)); do
+    case "$1" in
+      --no-terminate-existing)
+        SMOKE_TERMINATE_EXISTING=0
+        ;;
+      --terminate-existing)
+        SMOKE_TERMINATE_EXISTING=1
+        ;;
+      -h | --help)
+        if [[ -z "$command" ]]; then
+          command="help"
+        else
+          args+=("$1")
+        fi
+        ;;
+      --)
+        shift
+        if [[ -z "$command" && $# -gt 0 ]]; then
+          command="$1"
+          shift
+        fi
+        while (($# > 0)); do
+          args+=("$1")
+          shift
+        done
+        break
+        ;;
+      --*)
+        fail_config "Unknown option: $1"
+        ;;
+      *)
+        if [[ -z "$command" ]]; then
+          command="$1"
+        else
+          args+=("$1")
+        fi
+        ;;
+    esac
+    shift
+  done
+
+  command="${command:-help}"
+  validate_global_options
 
   case "$command" in
     "" | -h | --help | help)
@@ -1164,7 +1731,7 @@ main() {
       list_devices
       ;;
     launch-url)
-      launch_url "${2:-}"
+      launch_url "${args[0]:-}"
       ;;
     parse-result-test)
       parse_result_test
@@ -1178,17 +1745,20 @@ main() {
     displayed)
       launch_smoke_run "displayed"
       ;;
+    listener-only)
+      listener_only
+      ;;
     local-display)
-      local_display "${2:-}"
+      local_display "${args[0]:-}"
       ;;
     verify-displayed)
-      verify_displayed "${2:-}"
+      verify_displayed "${args[0]:-}"
       ;;
     fcm-minimal)
-      fcm_minimal "${2:-}"
+      fcm_minimal "${args[0]:-}"
       ;;
     fcm-ios-attachment)
-      fcm_ios_attachment "${2:-}"
+      fcm_ios_attachment "${args[0]:-}"
       ;;
     *)
       echo "Unknown command: $command" >&2

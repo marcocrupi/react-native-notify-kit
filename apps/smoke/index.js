@@ -54,6 +54,7 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
       `Data: ${JSON.stringify(detail.notification?.data)}`,
   );
 });
+globalThis.__NOTIFEE_SMOKE_BACKGROUND_HANDLER_REGISTERED__ = true;
 
 // Register a foreground service runner for notifications displayed with
 // android.asForegroundService = true. The runner receives the notification
