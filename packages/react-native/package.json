@@ -1,6 +1,6 @@
 {
   "name": "react-native-notify-kit",
-  "version": "10.4.5",
+  "version": "10.4.6",
   "author": "Marco Crupi",
   "description": "Maintained Notifee-compatible React Native notifications library for Android, iOS, FCM Mode, rich notifications, foreground services, and Expo CNG development builds.",
   "main": "dist/index.js",

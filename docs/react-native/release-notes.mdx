@@ -5,6 +5,21 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.4.6] (2026-07-02)
+
+This 10.4.6 maintenance update fixes a React Native New Architecture import-time crash in bridgeless apps by deferring `NotifeeApiModule` TurboModule resolution until the first native access. It also adds regression coverage and an iOS smoke scenario for early listener registration.
+
+### React Native New Architecture
+
+- Fixed an import-time crash in bridgeless apps by deferring `NotifeeApiModule` TurboModule resolution until the first native access.
+- Early imports, such as registering `notifee.onBackgroundEvent(...)` in `index.js`, no longer call `TurboModuleRegistry.getEnforcing(...)` during module evaluation.
+- Public APIs are unchanged.
+
+### Validation
+
+- Added targeted `NotifeeNativeModule` coverage for constructor-safe lazy TurboModule resolution, idempotent native event listener setup, error propagation, and retry behavior after native emitter/listener setup failures.
+- Added a `listener-only` iOS smoke scenario and non-terminating iOS device harness mode for validating early listener registration without invoking notification display APIs in the scenario.
+
 ## [10.4.5] (2026-06-25)
 
 This 10.4.5 maintenance update fixes Android background notification action routing and a stale React context recovery edge case in headless background tasks. It also clarifies Android scheduled trigger recovery and Expo CNG/prebuild behavior for local scheduled triggers.

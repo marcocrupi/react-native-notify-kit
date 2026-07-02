@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.4.6] - 2026-07-02
+
 ### Fixed
 
 - **React Native / New Architecture**: fixed an import-time crash in bridgeless apps by deferring `NotifeeApiModule` TurboModule resolution until the first native access. Early imports, such as registering `notifee.onBackgroundEvent(...)` in `index.js`, no longer call `TurboModuleRegistry.getEnforcing(...)` during module evaluation. Public APIs are unchanged.

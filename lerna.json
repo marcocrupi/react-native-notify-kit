@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
-  "version": "10.4.5",
+  "version": "10.4.6",
   "command": {
     "publish": {
       "ignoreChanges": [
