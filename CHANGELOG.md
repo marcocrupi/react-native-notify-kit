@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **React Native / New Architecture**: fixed an import-time crash in bridgeless apps by deferring `NotifeeApiModule` TurboModule resolution until the first native access. Early imports, such as registering `notifee.onBackgroundEvent(...)` in `index.js`, no longer call `TurboModuleRegistry.getEnforcing(...)` during module evaluation. Public APIs are unchanged.
+
+### Tests
+
+- **Tests**: added targeted `NotifeeNativeModule` coverage for constructor-safe lazy TurboModule resolution, idempotent native event listener setup, error propagation, and retry behavior after native emitter/listener setup failures.
+- **iOS smoke app**: added a `listener-only` smoke scenario and non-terminating iOS device harness mode for validating early listener registration without invoking notification display APIs in the scenario.
+
 ## [10.4.5] - 2026-06-25
 
 ### Fixed
