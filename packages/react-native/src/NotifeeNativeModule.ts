@@ -34,17 +34,31 @@ export default class NotifeeNativeModule {
   }
 
   public get native(): Spec {
-    if (!this._nativeModule) {
-      this._nativeModule = TurboModuleRegistry.getEnforcing<Spec>(this._config.nativeModuleName);
+    if (!this._nativeModule || !this._nativeEmitter) {
+      const nativeModule = TurboModuleRegistry.getEnforcing<Spec>(this._config.nativeModuleName);
 
       // @ts-ignore - change here needs resolution https://github.com/DefinitelyTyped/DefinitelyTyped/pull/49560/files
-      this._nativeEmitter = new NativeEventEmitter(this._nativeModule as EventSubscription['subscriber']);
-      for (let i = 0; i < this._config.nativeEvents.length; i++) {
-        const eventName = this._config.nativeEvents[i];
-        this._nativeEmitter.addListener(eventName, (payload: any) => {
-          this.emitter.emit(eventName, payload);
-        });
+      const nativeEmitter = new NativeEventEmitter(nativeModule as EventSubscription['subscriber']);
+      const subscriptions: EventSubscription[] = [];
+
+      try {
+        for (let i = 0; i < this._config.nativeEvents.length; i++) {
+          const eventName = this._config.nativeEvents[i];
+          subscriptions.push(
+            nativeEmitter.addListener(eventName, (payload: any) => {
+              this.emitter.emit(eventName, payload);
+            }),
+          );
+        }
+      } catch (error) {
+        for (let i = 0; i < subscriptions.length; i++) {
+          subscriptions[i].remove();
+        }
+        throw error;
       }
+
+      this._nativeModule = nativeModule;
+      this._nativeEmitter = nativeEmitter;
     }
     return this._nativeModule;
   }
