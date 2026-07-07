@@ -5,6 +5,21 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.4.7] (2026-07-07)
+
+This 10.4.7 maintenance update hardens the Android foreground-service STOP/null placeholder path on Android 14+ so defensive cleanup no longer reuses unsafe while-in-use foreground-service types when the app is backgrounded. Public APIs and the normal foreground-service START path are unchanged.
+
+### Android Foreground Services
+
+- Hardened the defensive foreground-service STOP/null placeholder on Android 14+ so it no longer reuses the full manifest-declared foreground-service type mask.
+- Avoided reusing while-in-use types such as `microphone` or `camera` for the defensive STOP/null placeholder when a safer declared type such as `shortService` or `dataSync` is available.
+- Treated a defensive `SecurityException` in this STOP/null path as non-fatal.
+
+### Validation
+
+- Added foreground-service regression coverage for the defensive STOP/null path, including Robolectric coverage for `microphone|dataSync`, `camera|dataSync`, `shortService|microphone`, `microphone`-only, and defensive `SecurityException` handling.
+- Added a smoke harness and script validated on a physical Pixel 9 Pro XL running Android 16/API 36 for the `microphone|dataSync` background STOP scenario.
+
 ## [10.4.6] (2026-07-02)
 
 This 10.4.6 maintenance update fixes a React Native New Architecture import-time crash in bridgeless apps by deferring `NotifeeApiModule` TurboModule resolution until the first native access. It also adds regression coverage and an iOS smoke scenario for early listener registration.
