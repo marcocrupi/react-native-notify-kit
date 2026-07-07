@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: hardened the defensive foreground-service STOP/null placeholder on Android 14+ so it no longer reuses the full manifest-declared foreground-service type mask, which could include while-in-use types such as `microphone` or `camera` and trigger a fatal `SecurityException` when the app is backgrounded. When available, the placeholder now prefers a safer declared type such as `shortService` or `dataSync`, and a defensive `SecurityException` in this STOP/null path is treated as non-fatal. Public APIs and the normal foreground-service START path are unchanged.
+
+### Tests
+
+- **Android**: added foreground-service regression coverage for the defensive STOP/null path, including Robolectric coverage for `microphone|dataSync`, `camera|dataSync`, `shortService|microphone`, `microphone`-only, and defensive `SecurityException` handling, plus a smoke harness and script validated on a physical Pixel 9 Pro XL running Android 16/API 36 for the `microphone|dataSync` background STOP scenario.
+
 ## [10.4.6] - 2026-07-02
 
 ### Fixed

@@ -10,13 +10,16 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Bundle;
 import androidx.core.app.NotificationCompat;
 import app.notifee.core.event.NotificationEvent;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import org.greenrobot.eventbus.Subscribe;
@@ -30,6 +33,9 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.android.controller.ServiceController;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.Implementation;
+import org.robolectric.annotation.Implements;
+import org.robolectric.shadows.ShadowService;
 
 @RunWith(RobolectricTestRunner.class)
 public class ForegroundServiceTest {
@@ -196,6 +202,89 @@ public class ForegroundServiceTest {
     // Second STOP — helper should be no-op since mStartForegroundCalled is now true
     int result = service.onStartCommand(stopIntent, 0, 2);
     assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+  }
+
+  @Test
+  @Config(sdk = 34)
+  public void onStartCommand_stopIntentApi34MicrophoneAndDataSync_usesDataSyncDefensiveType()
+      throws Exception {
+    declareForegroundServiceTypes(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            | ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    int result = service.onStartCommand(buildStopIntent(), 0, 1);
+
+    assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC, getLastForegroundServiceType(service));
+  }
+
+  @Test
+  @Config(sdk = 34)
+  public void onStartCommand_stopIntentApi34CameraAndDataSync_usesDataSyncDefensiveType()
+      throws Exception {
+    declareForegroundServiceTypes(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA | ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    int result = service.onStartCommand(buildStopIntent(), 0, 1);
+
+    assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC, getLastForegroundServiceType(service));
+  }
+
+  @Test
+  @Config(sdk = 34)
+  public void onStartCommand_stopIntentApi34ShortServiceAndMicrophone_usesShortServiceDefensiveType()
+      throws Exception {
+    declareForegroundServiceTypes(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
+            | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    int result = service.onStartCommand(buildStopIntent(), 0, 1);
+
+    assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE, getLastForegroundServiceType(service));
+  }
+
+  @Test
+  @Config(sdk = 34)
+  public void onStartCommand_stopIntentApi34MicrophoneOnly_doesNotUseUndeclaredShortService()
+      throws Exception {
+    declareForegroundServiceTypes(ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    int result = service.onStartCommand(buildStopIntent(), 0, 1);
+
+    assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE, getLastForegroundServiceType(service));
+  }
+
+  @Test
+  @Config(sdk = 34, shadows = ThrowingStartForegroundShadowService.class)
+  public void onStartCommand_stopIntentApi34SecurityException_doesNotCrash() throws Exception {
+    declareForegroundServiceTypes(ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+    ServiceController<ForegroundService> controller =
+        Robolectric.buildService(ForegroundService.class);
+    ForegroundService service = controller.create().get();
+
+    int result = service.onStartCommand(buildStopIntent(), 0, 1);
+
+    assertEquals(Service.START_STICKY_COMPATIBILITY, result);
+    assertTrue(org.robolectric.Shadows.shadowOf(service).isStoppedBySelf());
   }
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -391,6 +480,42 @@ public class ForegroundServiceTest {
     return intent;
   }
 
+  private static Intent buildStopIntent() {
+    Intent intent = new Intent();
+    intent.setAction(ForegroundService.STOP_FOREGROUND_SERVICE_ACTION);
+    return intent;
+  }
+
+  private static void declareForegroundServiceTypes(int foregroundServiceTypes) throws Exception {
+    Context context = RuntimeEnvironment.getApplication();
+    ComponentName component = new ComponentName(context, ForegroundService.class);
+    ServiceInfo serviceInfo;
+    try {
+      serviceInfo =
+          context.getPackageManager().getServiceInfo(component, PackageManager.GET_META_DATA);
+    } catch (PackageManager.NameNotFoundException e) {
+      serviceInfo = new ServiceInfo();
+    }
+    serviceInfo.packageName = component.getPackageName();
+    serviceInfo.name = component.getClassName();
+    setForegroundServiceType(serviceInfo, foregroundServiceTypes);
+    org.robolectric.Shadows.shadowOf(context.getPackageManager()).addOrUpdateService(serviceInfo);
+  }
+
+  private static void setForegroundServiceType(ServiceInfo serviceInfo, int foregroundServiceTypes)
+      throws Exception {
+    Field field = ServiceInfo.class.getDeclaredField("mForegroundServiceType");
+    field.setAccessible(true);
+    field.setInt(serviceInfo, foregroundServiceTypes);
+  }
+
+  private static int getLastForegroundServiceType(Service service) throws Exception {
+    Object shadowService = org.robolectric.Shadows.shadowOf(service);
+    Method method = ShadowService.class.getDeclaredMethod("getForegroundServiceType");
+    method.setAccessible(true);
+    return (int) method.invoke(shadowService);
+  }
+
   /**
    * Populates the service's private static tracking fields directly, simulating the post-START
    * state that onTimeout expects to observe. Using reflection here (rather than running a full
@@ -424,6 +549,14 @@ public class ForegroundServiceTest {
     @Subscribe(threadMode = ThreadMode.POSTING)
     public void onNotificationEvent(NotificationEvent event) {
       events.add(event);
+    }
+  }
+
+  @Implements(Service.class)
+  public static class ThrowingStartForegroundShadowService extends ShadowService {
+    @Implementation
+    protected void startForeground(int id, Notification notification, int foregroundServiceType) {
+      throw new SecurityException("while-in-use foreground service type denied");
     }
   }
 }

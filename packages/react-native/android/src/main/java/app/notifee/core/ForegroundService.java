@@ -429,6 +429,33 @@ public class ForegroundService extends Service {
     }
   }
 
+  @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+  private static int selectDefensiveForegroundServiceType(int declaredTypes) {
+    int[] preferredTypes = {
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE,
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+      ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING
+    };
+
+    for (int type : preferredTypes) {
+      if (isDeclared(declaredTypes, type)) {
+        return type;
+      }
+    }
+
+    return declaredTypes;
+  }
+
+  private static boolean isDeclared(int declaredTypes, int type) {
+    return (declaredTypes & type) == type;
+  }
+
+  private static boolean hasAnyForegroundServiceType(int foregroundServiceTypes) {
+    return foregroundServiceTypes != ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
+        && foregroundServiceTypes != ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST;
+  }
+
   /**
    * Ensures Android's 5-second {@code startForeground()} contract is satisfied before an early
    * return from {@link #onStartCommand(Intent, int, int)}.
@@ -448,9 +475,9 @@ public class ForegroundService extends Service {
    * required.
    *
    * @throws RuntimeException if the manifest is missing required {@code foregroundServiceType}
-   *     declarations on API 34+, or if the defensive {@code startForeground()} call fails for any
-   *     other reason. In both cases, the exception terminates the process with a crash report that
-   *     is more actionable than the ANR that would otherwise occur.
+   *     declarations on API 34+, or if the defensive {@code startForeground()} call fails for a
+   *     non-platform-permission reason. {@link SecurityException} is handled as a best-effort stop
+   *     because API 34+ can deny while-in-use types when the app is backgrounded.
    */
   @SuppressLint({"ForegroundServiceType", "MissingPermission"})
   private void ensureStartForegroundContractSatisfied() {
@@ -463,7 +490,7 @@ public class ForegroundService extends Service {
     int declaredTypes = 0;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
       declaredTypes = getDeclaredForegroundServiceType();
-      if (declaredTypes == 0) {
+      if (!hasAnyForegroundServiceType(declaredTypes)) {
         String msg =
             "react-native-notify-kit: ForegroundService cannot start — "
                 + "no foregroundServiceType declared in AndroidManifest.xml on API 34+. "
@@ -488,15 +515,22 @@ public class ForegroundService extends Service {
               .setSmallIcon(android.R.drawable.ic_dialog_info)
               .build();
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        // On API 34+, pass the manifest-declared type explicitly rather than relying on
-        // the 2-param startForeground() to resolve type 0 → manifest type. This avoids
-        // ambiguity about implicit type resolution behavior across OEM variants.
-        startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder, declaredTypes);
+        // The STOP/null defensive placeholder does not represent the real workload. Prefer a
+        // declared type without while-in-use runtime restrictions before falling back to the
+        // manifest-declared mask.
+        int defensiveTypes = selectDefensiveForegroundServiceType(declaredTypes);
+        startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder, defensiveTypes);
       } else {
         startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder);
       }
       mStartForegroundCalled = true;
       stopForegroundCompat();
+    } catch (SecurityException e) {
+      Logger.w(
+          TAG,
+          "Defensive startForeground() was denied by Android while stopping the service; "
+              + "continuing with stopSelf() to avoid a fatal app crash.",
+          e);
     } catch (Exception e) {
       String msg =
           "react-native-notify-kit: defensive startForeground() failed. "

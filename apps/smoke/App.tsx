@@ -35,6 +35,10 @@ import {
   setSmokeResultCallbackUrl,
   smokeErrorReason,
 } from './smokeAutomation';
+import {
+  executeIssue44FgsStopDeepLink,
+  extractIssue44FgsStopDeepLink,
+} from './issue44FgsStopHarness';
 import { executeRebootSmokeDeepLink, extractRebootSmokeDeepLink } from './rebootSmokeHarness';
 
 // VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
@@ -345,6 +349,44 @@ function App() {
             reason: message,
           })}`,
         );
+      });
+
+    const subscription = Linking.addEventListener('url', event => {
+      handleUrl(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [log]);
+
+  // Issue #44 Android FGS STOP background harness deep link:
+  // notifykit://issue44/fgs-stop?types=microphone,dataSync
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const request = extractIssue44FgsStopDeepLink(url);
+      if (request == null) {
+        return;
+      }
+
+      log(`Issue44 FGS stop deep link types: ${request.rawTypes}`);
+      executeIssue44FgsStopDeepLink(request).catch((e: unknown) => {
+        logSmokeResult({
+          scenario: 'issue44-fgs-stop',
+          status: 'FAIL',
+          reason: smokeErrorReason(e),
+        });
+      });
+    };
+
+    Linking.getInitialURL()
+      .then(url => {
+        if (url) {
+          handleUrl(url);
+        }
+      })
+      .catch((e: unknown) => {
+        log(`Issue44 initial URL error: ${smokeErrorReason(e)}`);
       });
 
     const subscription = Linking.addEventListener('url', event => {

@@ -79,6 +79,8 @@ def enableProguardInReleaseBuilds = false
  * this variant is about 6MiB larger per architecture than default.
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+def notifeeForegroundServiceType =
+        (project.findProperty("notifeeForegroundServiceType") ?: "shortService").toString()
 
 android {
     ndkVersion = rootProject.ext.ndkVersion
@@ -92,6 +94,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders += [
+            notifeeForegroundServiceType: notifeeForegroundServiceType,
+        ]
     }
     signingConfigs {
         debug {
