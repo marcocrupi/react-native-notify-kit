@@ -241,8 +241,9 @@ public class ForegroundServiceTest {
 
   @Test
   @Config(sdk = 34)
-  public void onStartCommand_stopIntentApi34ShortServiceAndMicrophone_usesShortServiceDefensiveType()
-      throws Exception {
+  public void
+      onStartCommand_stopIntentApi34ShortServiceAndMicrophone_usesShortServiceDefensiveType()
+          throws Exception {
     declareForegroundServiceTypes(
         ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE
             | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
