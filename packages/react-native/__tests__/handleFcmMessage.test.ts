@@ -1,6 +1,10 @@
 import { AppState } from 'react-native';
 import NotifeeApiModule from 'react-native-notify-kit/src/NotifeeApiModule';
 import * as Notifee from 'react-native-notify-kit/src';
+import {
+  /* @ts-ignore */
+  mockNotifeeNativeModule,
+} from 'react-native-notify-kit/src/NotifeeNativeModule';
 import { setPlatform } from './testSetup';
 import { parseFcmPayload } from 'react-native-notify-kit/src/fcm/parseFcmPayload';
 import { reconstructNotification } from 'react-native-notify-kit/src/fcm/reconstructNotification';
@@ -767,5 +771,298 @@ describe('Full-context bug hunt fixes', () => {
     expect(displaySpy).toHaveBeenCalledTimes(1);
     expect(typeof result).toBe('string');
     await apiModule.setFcmConfig({});
+  });
+});
+
+// ===================================================================
+// 10. buildFcmNotification public API
+// ===================================================================
+
+describe('buildFcmNotification', () => {
+  afterEach(async () => {
+    await apiModule.setFcmConfig({});
+  });
+
+  it('builds synchronously from valid notifee_options without displaying', () => {
+    setPlatform('android');
+
+    const notification = apiModule.buildFcmNotification(makeMessage());
+
+    expect(notification).toEqual(
+      expect.objectContaining({
+        id: 'msg-1',
+        title: 'Hello',
+        body: 'World',
+        android: expect.objectContaining({ channelId: 'default' }),
+      }),
+    );
+    expect(notification).not.toBeInstanceOf(Promise);
+    expect(displaySpy).not.toHaveBeenCalled();
+  });
+
+  it('returns null for an absent payload when fallbackBehavior is ignore', async () => {
+    await apiModule.setFcmConfig({ fallbackBehavior: 'ignore' });
+
+    const notification = apiModule.buildFcmNotification({});
+
+    expect(notification).toBeNull();
+    expect(displaySpy).not.toHaveBeenCalled();
+  });
+
+  it('builds a valid notifee_options payload when fallbackBehavior is ignore', async () => {
+    await apiModule.setFcmConfig({ fallbackBehavior: 'ignore' });
+
+    const notification = apiModule.buildFcmNotification(makeMessage());
+
+    expect(notification).not.toBeNull();
+    expect(notification?.title).toBe('Hello');
+    expect(displaySpy).not.toHaveBeenCalled();
+  });
+
+  it('returns null for malformed notifee_options when fallbackBehavior is ignore', async () => {
+    await apiModule.setFcmConfig({ fallbackBehavior: 'ignore' });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const notification = apiModule.buildFcmNotification({
+      data: { notifee_options: '{malformed' },
+    });
+
+    expect(notification).toBeNull();
+    expect(displaySpy).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Failed to parse notifee_options'));
+    warn.mockRestore();
+  });
+
+  it('uses the default fallback and returns empty fields without an own ID property', () => {
+    const fallback = apiModule.buildFcmNotification({
+      notification: { title: 'FCM title', body: 'FCM body' },
+    });
+    const empty = apiModule.buildFcmNotification({});
+
+    expect(fallback).toEqual(
+      expect.objectContaining({ title: 'FCM title', body: 'FCM body' }),
+    );
+    expect(empty).not.toBeNull();
+    expect(empty?.title).toBe('');
+    expect(empty?.body).toBe('');
+    expect(empty?.id).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(empty, 'id')).toBe(false);
+    expect(displaySpy).not.toHaveBeenCalled();
+  });
+
+  it('preserves remoteMessage.messageId when no payload ID is provided', () => {
+    const notification = apiModule.buildFcmNotification(
+      makeMessage({ messageId: 'remote-message-id' }),
+    );
+
+    expect(notification?.id).toBe('remote-message-id');
+    expect(Object.prototype.hasOwnProperty.call(notification, 'id')).toBe(true);
+  });
+
+  it('does not treat a null runtime messageId as an ID', () => {
+    const notification = apiModule.buildFcmNotification({ messageId: null as any });
+
+    expect(notification?.id).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(notification, 'id')).toBe(false);
+  });
+
+  it('preserves an explicit payload ID ahead of remoteMessage.messageId', () => {
+    const notification = apiModule.buildFcmNotification({
+      messageId: 'remote-message-id',
+      data: {
+        notifee_options: JSON.stringify({
+          _v: 1,
+          id: 'payload-id',
+          title: 'Payload',
+          body: 'ID',
+        }),
+      },
+    });
+
+    expect(notification?.id).toBe('payload-id');
+    expect(Object.prototype.hasOwnProperty.call(notification, 'id')).toBe(true);
+  });
+
+  it('passes a build-only notification without an ID through display validation', async () => {
+    setPlatform('android');
+    await apiModule.setFcmConfig({ defaultChannelId: 'fallback-channel' });
+    const notification = apiModule.buildFcmNotification({
+      notification: { title: 'FCM title', body: 'FCM body' },
+    });
+
+    expect(notification).not.toBeNull();
+    expect(Object.prototype.hasOwnProperty.call(notification, 'id')).toBe(false);
+
+    displaySpy.mockRestore();
+    mockNotifeeNativeModule.displayNotification.mockClear();
+    mockNotifeeNativeModule.displayNotification.mockResolvedValueOnce(undefined);
+
+    const id = await apiModule.displayNotification(notification!);
+
+    expect(id).toEqual(expect.any(String));
+    expect(mockNotifeeNativeModule.displayNotification).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id }),
+    );
+  });
+
+  it('handles a fallback message without an ID through display validation', async () => {
+    setPlatform('android');
+    await apiModule.setFcmConfig({ defaultChannelId: 'fallback-channel' });
+
+    displaySpy.mockRestore();
+    mockNotifeeNativeModule.displayNotification.mockClear();
+    mockNotifeeNativeModule.displayNotification.mockResolvedValueOnce(undefined);
+
+    const id = await apiModule.handleFcmMessage({
+      notification: { title: 'FCM title', body: 'FCM body' },
+    });
+
+    expect(id).toEqual(expect.any(String));
+    expect(mockNotifeeNativeModule.displayNotification).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id }),
+    );
+  });
+
+  it('applies defaults without sharing defaultPressAction across builds', async () => {
+    setPlatform('android');
+    const defaultPressAction = { id: 'default', launchActivity: 'default' };
+    await apiModule.setFcmConfig({
+      defaultChannelId: 'configured-channel',
+      defaultPressAction,
+    });
+
+    defaultPressAction.id = 'caller-change';
+    const first = apiModule.buildFcmNotification(makeMessage({ messageId: undefined }));
+
+    expect(first?.android?.channelId).toBe('default');
+    expect(first?.android?.pressAction).toEqual({
+      id: 'default',
+      launchActivity: 'default',
+    });
+
+    first!.android!.pressAction!.id = 'notification-change';
+    first!.title = 'consumer title';
+    const second = apiModule.buildFcmNotification(
+      makeMessage({
+        messageId: undefined,
+        data: {
+          notifee_options: JSON.stringify({ _v: 1, title: 'Second', body: 'Build', android: {} }),
+        },
+      }),
+    );
+
+    expect(first?.title).toBe('consumer title');
+    expect(second?.android?.channelId).toBe('configured-channel');
+    expect(second?.android?.pressAction?.id).toBe('default');
+  });
+
+  it('keeps the input unchanged and removes reserved data after merging notifee_data', () => {
+    const remoteMessage: FcmRemoteMessage = {
+      data: {
+        notifee_options: JSON.stringify({ _v: 1, title: 'Original', body: 'Body' }),
+        notifee_data: JSON.stringify({
+          shared: 'nested',
+          notifee_options: 'reserved',
+          notifee_data: 'reserved',
+        }),
+        shared: 'top-level',
+        safe: 'value',
+      },
+    };
+    const originalMessage = JSON.parse(JSON.stringify(remoteMessage));
+
+    const notification = apiModule.buildFcmNotification(remoteMessage);
+    notification!.title = 'Consumer override';
+
+    expect(notification?.title).toBe('Consumer override');
+    expect(notification?.data).toEqual({ shared: 'nested', safe: 'value' });
+    expect(remoteMessage).toEqual(originalMessage);
+  });
+
+  it('preserves an explicit BIG_PICTURE style from notifee_options', () => {
+    setPlatform('android');
+    const picture = 'https://cdn.example.com/picture.png';
+
+    const notification = apiModule.buildFcmNotification({
+      data: {
+        notifee_options: JSON.stringify({
+          _v: 1,
+          title: 'Picture',
+          body: 'Notification',
+          android: {
+            channelId: 'images',
+            style: { type: 'BIG_PICTURE', picture },
+          },
+        }),
+      },
+    });
+
+    expect(notification?.android?.style).toEqual({
+      type: Notifee.AndroidStyle.BIGPICTURE,
+      picture,
+    });
+  });
+
+  it('does not auto-map FCM image fields or custom data.image to BIG_PICTURE', async () => {
+    setPlatform('android');
+    await apiModule.setFcmConfig({ defaultChannelId: 'images' });
+    const image = 'https://cdn.example.com/fcm-image.png';
+    const remoteMessage = {
+      notification: {
+        title: 'FCM image',
+        body: 'No automatic style',
+        image,
+        android: { imageUrl: image },
+      },
+      data: { image },
+    } as FcmRemoteMessage;
+
+    const notification = apiModule.buildFcmNotification(remoteMessage);
+
+    expect(notification?.android?.style).toBeUndefined();
+    expect(notification?.data?.image).toBe(image);
+  });
+
+  it('does not read AppState or apply suppressForegroundBanner on iOS', async () => {
+    setPlatform('ios');
+    await apiModule.setFcmConfig({ ios: { suppressForegroundBanner: true } });
+    const appStateGetter = jest.fn(() => 'background' as const);
+    Object.defineProperty(AppState, 'currentState', {
+      get: appStateGetter,
+      configurable: true,
+    });
+
+    const notification = apiModule.buildFcmNotification(makeMessage());
+
+    expect(notification).not.toBeNull();
+    expect(appStateGetter).not.toHaveBeenCalled();
+    expect(displaySpy).not.toHaveBeenCalled();
+  });
+
+  it('throws synchronously with its own public error prefix for invalid input', () => {
+    expect(() => apiModule.buildFcmNotification(null as any)).toThrow(
+      "notifee.buildFcmNotification(*) 'remoteMessage' expected an object.",
+    );
+  });
+
+  it('shares the same reconstructed notification shape with handleFcmMessage', async () => {
+    setPlatform('android');
+    await apiModule.setFcmConfig({
+      defaultChannelId: 'shared-channel',
+      defaultPressAction: { id: 'shared-action' },
+    });
+    const remoteMessage: FcmRemoteMessage = {
+      messageId: 'shared-id',
+      data: {
+        notifee_options: JSON.stringify({ _v: 1, title: 'Shared', body: 'Pipeline', android: {} }),
+        notifee_data: JSON.stringify({ source: 'test' }),
+      },
+    };
+
+    const built = apiModule.buildFcmNotification(remoteMessage);
+    await apiModule.handleFcmMessage(remoteMessage);
+
+    expect(displaySpy).toHaveBeenCalledTimes(1);
+    expect(displaySpy).toHaveBeenCalledWith(built);
   });
 });

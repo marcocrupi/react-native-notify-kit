@@ -732,7 +732,7 @@ export const onOrderCreated = onDocumentCreated('orders/{orderId}', async event 
 
 ## Client API reference
 
-Import the default `notifee` module — `handleFcmMessage` and `setFcmConfig` are instance methods on the singleton.
+Import the default `notifee` module — `buildFcmNotification`, `handleFcmMessage`, and `setFcmConfig` are instance methods on the singleton.
 
 ### `notifee.handleFcmMessage(remoteMessage): Promise<string | null>`
 
@@ -784,9 +784,50 @@ This is a **structural** type — `handleFcmMessage` doesn't import `@react-nati
 - `[react-native-notify-kit] handleFcmMessage: displaying notification with empty title and body. Check your FCM payload.`
 - `[react-native-notify-kit] handleFcmMessage: Android fallback path has no channelId (no payload channelId, no defaultChannelId configured). Notification may be dropped by the OS.`
 
+### `notifee.buildFcmNotification(remoteMessage): Notification | null`
+
+Builds a `Notification` from an FCM remote message using the same config-aware reconstruction pipeline as `handleFcmMessage`, but does not display it.
+
+Use it when your app needs to inspect or customize the reconstructed notification before displaying it manually. For example, an app can apply its own image URL as an Android BigPicture style:
+
+```ts
+import notifee, { AndroidStyle } from 'react-native-notify-kit';
+
+const notification = notifee.buildFcmNotification(remoteMessage);
+
+if (notification) {
+  const imageUrl = getImageUrlFromYourAppOrBackend(remoteMessage);
+
+  if (imageUrl) {
+    notification.android = {
+      ...notification.android,
+      style: {
+        type: AndroidStyle.BIGPICTURE,
+        picture: imageUrl,
+      },
+    };
+  }
+
+  await notifee.displayNotification(notification);
+}
+```
+
+The return value is a pre-validation notification. Its `id` may be absent until it is passed to `displayNotification`; `displayNotification` continues to apply final validation and defaults.
+
+It returns `null` only when the FCM payload parser returns `null` and `fallbackBehavior` is `'ignore'`.
+
+`buildFcmNotification` does not call `displayNotification`, does not apply iOS display policies such as `suppressForegroundBanner`, and does not read `AppState`. `handleFcmMessage` retains its existing iOS policy, including `suppressForegroundBanner`. When you display a built notification manually, your app is responsible for the display policy.
+
+`buildFcmNotification` does not automatically map standard or custom FCM image fields to `AndroidStyle.BIGPICTURE`; choose and apply any image mapping explicitly in your app.
+
+**Avoid duplicate display.** Do not call both `handleFcmMessage` and `buildFcmNotification` for the same remote message. Choose one path:
+
+- `handleFcmMessage` for automatic build and display.
+- `buildFcmNotification` for build, manual patching, and manual display.
+
 ### `notifee.setFcmConfig(config): Promise<void>`
 
-Sets defaults that `handleFcmMessage` consults when the payload leaves a field unset. Call once at app startup, typically in `index.js` before `AppRegistry.registerComponent`. Resolves synchronously; the Promise return is there so a future release can persist config across cold starts without a breaking API change.
+Sets defaults that `buildFcmNotification` and `handleFcmMessage` consult when the payload leaves a field unset. Call once at app startup, typically in `index.js` before `AppRegistry.registerComponent`. Resolves synchronously; the Promise return is there so a future release can persist config across cold starts without a breaking API change.
 
 **Config type:**
 

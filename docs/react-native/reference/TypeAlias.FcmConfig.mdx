@@ -8,10 +8,11 @@
 
 > **FcmConfig** = `object`
 
-Defined in: [packages/react-native/src/fcm/types.ts:23](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L23)
+Defined in: [packages/react-native/src/fcm/types.ts:24](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L24)
 
-Configuration for `handleFcmMessage`. Call `setFcmConfig` once
-at app startup (typically in `index.js` before `registerComponent`).
+Configuration for `buildFcmNotification` and `handleFcmMessage`. Call
+`setFcmConfig` once at app startup (typically in `index.js` before
+`registerComponent`).
 
 ## Properties
 
@@ -19,7 +20,7 @@ at app startup (typically in `index.js` before `registerComponent`).
 
 > `optional` **defaultChannelId?**: `string`
 
-Defined in: [packages/react-native/src/fcm/types.ts:30](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L30)
+Defined in: [packages/react-native/src/fcm/types.ts:31](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L31)
 
 Default channelId used when `notifee_options.android.channelId` is absent.
 If this is also absent and the payload has no channelId,
@@ -32,7 +33,7 @@ If this is also absent and the payload has no channelId,
 
 > `optional` **defaultPressAction?**: `object`
 
-Defined in: [packages/react-native/src/fcm/types.ts:36](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L36)
+Defined in: [packages/react-native/src/fcm/types.ts:37](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L37)
 
 Default pressAction when `notifee_options.android.pressAction` is absent.
 Mirrors the existing behavior: `{ id: 'default', launchActivity: 'default' }`.
@@ -51,9 +52,9 @@ Mirrors the existing behavior: `{ id: 'default', launchActivity: 'default' }`.
 
 > `optional` **fallbackBehavior?**: `"display"` | `"ignore"`
 
-Defined in: [packages/react-native/src/fcm/types.ts:46](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L46)
+Defined in: [packages/react-native/src/fcm/types.ts:47](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L47)
 
-What to do when `remoteMessage.data.notifee_options` is absent entirely.
+What to do when `remoteMessage.data.notifee_options` is absent or invalid.
 
 - `'display'`: build a minimal notification from `remoteMessage.notification`
   title/body (or `data.title`/`data.body` as a fallback). Uses `defaultChannelId`.
@@ -71,7 +72,7 @@ What to do when `remoteMessage.data.notifee_options` is absent entirely.
 
 > `optional` **ios?**: `object`
 
-Defined in: [packages/react-native/src/fcm/types.ts:49](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L49)
+Defined in: [packages/react-native/src/fcm/types.ts:50](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/fcm/types.ts#L50)
 
 iOS-specific options.
 

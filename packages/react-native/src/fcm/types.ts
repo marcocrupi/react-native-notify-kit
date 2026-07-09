@@ -5,7 +5,7 @@
 
 /**
  * Minimal subset of `@react-native-firebase/messaging`'s RemoteMessage that
- * `handleFcmMessage` actually reads.
+ * the FCM notification APIs actually read.
  */
 export type FcmRemoteMessage = {
   messageId?: string;
@@ -17,8 +17,9 @@ export type FcmRemoteMessage = {
 };
 
 /**
- * Configuration for `handleFcmMessage`. Call `setFcmConfig` once
- * at app startup (typically in `index.js` before `registerComponent`).
+ * Configuration for `buildFcmNotification` and `handleFcmMessage`. Call
+ * `setFcmConfig` once at app startup (typically in `index.js` before
+ * `registerComponent`).
  */
 export type FcmConfig = {
   /**
@@ -36,7 +37,7 @@ export type FcmConfig = {
   defaultPressAction?: { id: string; launchActivity?: string };
 
   /**
-   * What to do when `remoteMessage.data.notifee_options` is absent entirely.
+   * What to do when `remoteMessage.data.notifee_options` is absent or invalid.
    * - `'display'`: build a minimal notification from `remoteMessage.notification`
    *   title/body (or `data.title`/`data.body` as a fallback). Uses `defaultChannelId`.
    * - `'ignore'`: return `null` without displaying anything.

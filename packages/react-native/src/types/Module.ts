@@ -677,6 +677,16 @@ export interface Module {
   hideNotificationDrawer(): void;
 
   /**
+   * Builds a notification from an FCM remote message without displaying it.
+   *
+   * The notification is returned before display validation, so it may not have
+   * an ID and can be modified before being passed to {@link displayNotification}.
+   * Returns `null` only when `notifee_options` is absent or invalid and
+   * `fallbackBehavior` is configured as `'ignore'`.
+   */
+  buildFcmNotification(remoteMessage: FcmRemoteMessage): Notification | null;
+
+  /**
    * Processes an FCM remote message produced by the Notify Kit server SDK and
    * displays a Notify Kit notification according to the embedded `notifee_options`.
    *
@@ -689,8 +699,8 @@ export interface Module {
   handleFcmMessage(remoteMessage: FcmRemoteMessage): Promise<string | null>;
 
   /**
-   * Configures defaults for {@link handleFcmMessage}. Call once at app startup,
-   * typically in `index.js` before `registerComponent`.
+   * Configures defaults for {@link buildFcmNotification} and {@link handleFcmMessage}.
+   * Call once at app startup, typically in `index.js` before `registerComponent`.
    *
    * Returns Promise for forward compatibility — a future version may persist
    * config across cold starts, which would be async. Currently resolves

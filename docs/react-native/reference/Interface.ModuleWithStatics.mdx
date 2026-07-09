@@ -6,7 +6,7 @@
 
 # Interface: ModuleWithStatics
 
-Defined in: [packages/react-native/src/types/Module.ts:718](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L718)
+Defined in: [packages/react-native/src/types/Module.ts:728](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L728)
 
 ## Extends
 
@@ -18,7 +18,7 @@ Defined in: [packages/react-native/src/types/Module.ts:718](https://github.com/m
 
 > **SDK_VERSION**: `string`
 
-Defined in: [packages/react-native/src/types/Module.ts:715](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L715)
+Defined in: [packages/react-native/src/types/Module.ts:725](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L725)
 
 Returns the current Notify Kit SDK version in use.
 
@@ -27,6 +27,35 @@ Returns the current Notify Kit SDK version in use.
 `ModuleStatics.SDK_VERSION`
 
 ## Methods
+
+### buildFcmNotification()
+
+> **buildFcmNotification**(`remoteMessage`): [`Notification`](react-native/reference/Interface.Notification) | `null`
+
+Defined in: [packages/react-native/src/types/Module.ts:687](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L687)
+
+Builds a notification from an FCM remote message without displaying it.
+
+The notification is returned before display validation, so it may not have
+an ID and can be modified before being passed to [displayNotification](#displaynotification).
+Returns `null` only when `notifee_options` is absent or invalid and
+`fallbackBehavior` is configured as `'ignore'`.
+
+#### Parameters
+
+##### remoteMessage
+
+[`FcmRemoteMessage`](react-native/reference/TypeAlias.FcmRemoteMessage)
+
+#### Returns
+
+[`Notification`](react-native/reference/Interface.Notification) | `null`
+
+#### Inherited from
+
+`Module.buildFcmNotification`
+
+---
 
 ### cancelAllNotifications()
 
@@ -898,7 +927,7 @@ API used to return the trigger notifications that are pending.
 
 > **handleFcmMessage**(`remoteMessage`): `Promise`<`string` | `null`>
 
-Defined in: [packages/react-native/src/types/Module.ts:689](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L689)
+Defined in: [packages/react-native/src/types/Module.ts:699](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L699)
 
 Processes an FCM remote message produced by the Notify Kit server SDK and
 displays a Notify Kit notification according to the embedded `notifee_options`.
@@ -1455,10 +1484,10 @@ ios
 
 > **setFcmConfig**(`config`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:699](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L699)
+Defined in: [packages/react-native/src/types/Module.ts:709](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L709)
 
-Configures defaults for [handleFcmMessage](#handlefcmmessage). Call once at app startup,
-typically in `index.js` before `registerComponent`.
+Configures defaults for [buildFcmNotification](#buildfcmnotification) and [handleFcmMessage](#handlefcmmessage).
+Call once at app startup, typically in `index.js` before `registerComponent`.
 
 Returns Promise for forward compatibility — a future version may persist
 config across cold starts, which would be async. Currently resolves

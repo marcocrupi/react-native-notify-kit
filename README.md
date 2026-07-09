@@ -170,6 +170,8 @@ await notifee.handleFcmMessage(remoteMessage);
 npx react-native-notify-kit init-nse && cd ios && pod install
 ```
 
+Need to inspect or patch a reconstructed notification before display—for example, to apply your own Android BigPicture image? Use `notifee.buildFcmNotification(remoteMessage)`, modify the returned notification, then call `displayNotification()` yourself. Do not also call `handleFcmMessage` for that message. See the [FCM Mode guide](docs/fcm-mode.mdx) for the complete build-only flow and iOS display-policy considerations.
+
 ### Expo CNG / development builds
 
 Expo CNG / development builds are supported. Expo Go is not supported because this library requires native modules and native notification targets/capabilities.

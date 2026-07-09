@@ -57,6 +57,27 @@ let fcmConfig: FcmConfig = {};
 
 let registeredForegroundServiceTask: (notification: Notification) => Promise<void>;
 
+function cloneFcmConfig(config: FcmConfig): FcmConfig {
+  return {
+    ...config,
+    defaultPressAction: config.defaultPressAction ? { ...config.defaultPressAction } : undefined,
+    ios: config.ios ? { ...config.ios } : undefined,
+  };
+}
+
+function buildFcmNotificationFromConfig(
+  remoteMessage: FcmRemoteMessage,
+  config: FcmConfig,
+): Notification | null {
+  const parsed = parseFcmPayload(remoteMessage.data);
+
+  if (parsed === null && config.fallbackBehavior === 'ignore') {
+    return null;
+  }
+
+  return reconstructNotification(parsed, remoteMessage, config);
+}
+
 if (isAndroid) {
   // Register foreground service
   AppRegistry.registerHeadlessTask(kReactNativeNotifeeForegroundServiceHeadlessTask, () => {
@@ -845,6 +866,18 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
   };
 
   /**
+   * Builds a Notifee notification from an FCM remote message without displaying it.
+   * The returned object has not been passed through display validation.
+   */
+  public buildFcmNotification = (remoteMessage: FcmRemoteMessage): Notification | null => {
+    if (remoteMessage == null || typeof remoteMessage !== 'object') {
+      throw new Error("notifee.buildFcmNotification(*) 'remoteMessage' expected an object.");
+    }
+
+    return buildFcmNotificationFromConfig(remoteMessage, cloneFcmConfig(fcmConfig));
+  };
+
+  /**
    * Processes an FCM remote message produced by the NotifyKit server SDK and
    * displays a Notifee notification according to the embedded `notifee_options`.
    *
@@ -856,20 +889,12 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
     }
 
     // Snapshot config at entry — Rule C10 (mid-flight setFcmConfig won't affect this call).
-    // Deep-copy nested ios sub-object to prevent caller mutation leaking through.
-    const config: FcmConfig = {
-      ...fcmConfig,
-      ios: fcmConfig.ios ? { ...fcmConfig.ios } : undefined,
-    };
+    const config = cloneFcmConfig(fcmConfig);
+    const notification = buildFcmNotificationFromConfig(remoteMessage, config);
 
-    const parsed = parseFcmPayload(remoteMessage.data);
-
-    // Fallback path — no notifee_options present
-    if (parsed === null && config.fallbackBehavior === 'ignore') {
+    if (notification === null) {
       return null;
     }
-
-    const notification = reconstructNotification(parsed, remoteMessage, config);
 
     // iOS background/killed no-op — Rule C3 (NSE already displayed)
     if (isIOS) {
@@ -900,8 +925,8 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
   };
 
   /**
-   * Configures defaults for {@link handleFcmMessage}. Call once at app startup,
-   * typically in `index.js` before `registerComponent`.
+   * Configures defaults for {@link buildFcmNotification} and {@link handleFcmMessage}.
+   * Call once at app startup, typically in `index.js` before `registerComponent`.
    *
    * Returns Promise for forward compatibility — a future version may persist
    * config across cold starts (AsyncStorage / MMKV), which would be async.
@@ -912,10 +937,7 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       const got = config === null ? 'null' : Array.isArray(config) ? 'array' : typeof config;
       throw new Error(`notifee.setFcmConfig(*) config must be a plain object. Got: ${got}`);
     }
-    fcmConfig = {
-      ...config,
-      ios: config.ios ? { ...config.ios } : undefined,
-    };
+    fcmConfig = cloneFcmConfig(config);
     return Promise.resolve();
   };
 }
