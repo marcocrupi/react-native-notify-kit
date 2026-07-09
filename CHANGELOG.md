@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.4.8] - 2026-07-09
+
 ### Added
 
 - **FCM Mode**: added `buildFcmNotification(remoteMessage)`, a build-only counterpart to `handleFcmMessage()` that reconstructs the FCM `Notification` without displaying it, so apps can inspect or customize it before calling `displayNotification()` manually.

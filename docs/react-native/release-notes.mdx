@@ -5,6 +5,16 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.4.8] (2026-07-09)
+
+This 10.4.8 update adds an FCM build-only helper so apps can inspect or customize a reconstructed FCM notification before displaying it manually.
+
+### FCM Mode
+
+- Added `buildFcmNotification(remoteMessage)`, a build-only counterpart to `handleFcmMessage()`.
+- Reconstructs the FCM `Notification` without displaying it.
+- Allows apps to inspect or customize the notification before calling `displayNotification()` manually.
+
 ## [10.4.7] (2026-07-07)
 
 This 10.4.7 maintenance update hardens the Android foreground-service STOP/null placeholder path on Android 14+ so defensive cleanup no longer reuses unsafe while-in-use foreground-service types when the app is backgrounded. Public APIs and the normal foreground-service START path are unchanged.
