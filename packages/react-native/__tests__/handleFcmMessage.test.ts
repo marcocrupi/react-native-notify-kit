@@ -839,9 +839,7 @@ describe('buildFcmNotification', () => {
     });
     const empty = apiModule.buildFcmNotification({});
 
-    expect(fallback).toEqual(
-      expect.objectContaining({ title: 'FCM title', body: 'FCM body' }),
-    );
+    expect(fallback).toEqual(expect.objectContaining({ title: 'FCM title', body: 'FCM body' }));
     expect(empty).not.toBeNull();
     expect(empty?.title).toBe('');
     expect(empty?.body).toBe('');
