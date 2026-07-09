@@ -37,7 +37,8 @@ export function reconstructNotification(
   const body = parsed?.body ?? remoteMessage.notification?.body ?? remoteMessage.data?.body ?? '';
 
   const id =
-    ((parsed as Record<string, unknown> | null)?.id as string | undefined) ?? remoteMessage.messageId;
+    ((parsed as Record<string, unknown> | null)?.id as string | undefined) ??
+    remoteMessage.messageId;
 
   const notification: Notification = {
     ...(id === undefined || id === null ? {} : { id }),
