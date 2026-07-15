@@ -522,6 +522,11 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       throw new Error("notifee.onForegroundEvent(*) 'observer' expected a function.");
     }
 
+    if (isAndroid || isIOS) {
+      // Foreground listeners require the shared native event relay before registration returns.
+      this.native;
+    }
+
     const subscriber = this.emitter.addListener(
       kReactNativeNotifeeNotificationEvent,
 
