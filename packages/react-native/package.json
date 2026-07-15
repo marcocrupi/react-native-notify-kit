@@ -68,6 +68,9 @@
   "peerDependenciesMeta": {
     "expo": {
       "optional": true
+    },
+    "react-native": {
+      "optional": true
     }
   },
   "codegenConfig": {

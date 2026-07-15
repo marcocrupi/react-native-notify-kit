@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Server SDK**: marked the `react-native` peer dependency as optional in `peerDependenciesMeta`, so package managers that auto-install peer dependencies (npm 7+, pnpm with `auto-install-peers`) no longer force a full React Native tree (~175 MB resolved closure) into pure-Node backends that only consume `react-native-notify-kit/server`. React Native applications are unaffected: the peer range (`>=0.73.0`) is still validated whenever `react-native` is present in the consumer's tree, and autolinking never reads a library's peer declarations. ([#46](https://github.com/marcocrupi/react-native-notify-kit/issues/46))
+
 ## [10.4.8] - 2026-07-09
 
 ### Added
