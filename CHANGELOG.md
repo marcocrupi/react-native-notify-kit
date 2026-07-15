@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: fixed React Native bridge events being dropped on the Old Architecture (bridge mode) when the application exposes no bridgeless `ReactHost` — `getReactHost()` returning `null` threw `java.lang.AssertionError: getReactHost() is null in New Architecture`, so `onForegroundEvent` never fired for presses (or dismiss/delivery) and headless task startup failed; the same assertion inside the queued-task drain callback could crash the main thread. For such applications, event delivery and headless task initialization now fall back to `ReactNativeHost`/`ReactInstanceManager`, as upstream Notifee's pre-migration dual-architecture path did. New Architecture (bridgeless) applications are unaffected. ([#47](https://github.com/marcocrupi/react-native-notify-kit/issues/47))
+
+### Tests
+
+- **Android**: added `HeadlessTask`/`NotifeeReactUtils` regression coverage for the Old Architecture fallback path (application without a `ReactHost`), covering `getReactContext()` resolution, foreground event emission, and headless task initialization via `ReactInstanceManager`.
+
 ## [10.4.8] - 2026-07-09
 
 ### Added

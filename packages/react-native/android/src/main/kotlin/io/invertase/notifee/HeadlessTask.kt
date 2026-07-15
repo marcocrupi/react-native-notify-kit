@@ -38,8 +38,9 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import app.notifee.core.EventSubscriber
-import com.facebook.infer.annotation.Assertions
+import com.facebook.react.ReactApplication
 import com.facebook.react.ReactInstanceEventListener
+import com.facebook.react.ReactNativeHost
 import com.facebook.react.bridge.ReactContext
 import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableMap
@@ -163,31 +164,54 @@ class HeadlessTask {
         if (mIsInitializingReactContext.compareAndSet(false, true)) {
             Log.d(HEADLESS_TASK_NAME, "initialize ReactContext")
             val reactHost = getReactHost(context)
-            val callback = object : ReactInstanceEventListener {
-                override fun onReactContextInitialized(reactCtx: ReactContext) {
-                    mIsReactContextInitialized.set(true)
-                    drainTaskQueue(context, reactCtx)
-                    try {
-                        val removeMethod = reactHost!!.javaClass.getMethod(
-                            "removeReactInstanceEventListener",
-                            ReactInstanceEventListener::class.java,
-                        )
-                        removeMethod.invoke(reactHost, this)
-                    } catch (e: Exception) {
-                        Log.e(HEADLESS_TASK_NAME, "reflection error A: $e", e)
+            if (reactHost != null) { // New Architecture (bridgeless)
+                val callback = object : ReactInstanceEventListener {
+                    override fun onReactContextInitialized(reactCtx: ReactContext) {
+                        mIsReactContextInitialized.set(true)
+                        drainTaskQueue(context, reactCtx)
+                        try {
+                            val removeMethod = reactHost.javaClass.getMethod(
+                                "removeReactInstanceEventListener",
+                                ReactInstanceEventListener::class.java,
+                            )
+                            removeMethod.invoke(reactHost, this)
+                        } catch (e: Exception) {
+                            Log.e(HEADLESS_TASK_NAME, "reflection error A: $e", e)
+                        }
                     }
                 }
-            }
-            try {
-                val addMethod = reactHost!!.javaClass.getMethod(
-                    "addReactInstanceEventListener",
-                    ReactInstanceEventListener::class.java,
+                try {
+                    val addMethod = reactHost.javaClass.getMethod(
+                        "addReactInstanceEventListener",
+                        ReactInstanceEventListener::class.java,
+                    )
+                    addMethod.invoke(reactHost, callback)
+                    val startMethod = reactHost.javaClass.getMethod("start")
+                    startMethod.invoke(reactHost)
+                } catch (e: Exception) {
+                    Log.e(HEADLESS_TASK_NAME, "reflection error ReactHost start: ${e.message}", e)
+                }
+            } else { // Old Architecture (bridge)
+                val reactInstanceManager = getReactNativeHost(context)?.reactInstanceManager
+                if (reactInstanceManager == null) {
+                    Log.e(
+                        HEADLESS_TASK_NAME,
+                        "Failed to initialize ReactContext: the application provides " +
+                            "neither a ReactHost nor a ReactNativeHost",
+                    )
+                    mIsInitializingReactContext.set(false)
+                    return
+                }
+                reactInstanceManager.addReactInstanceEventListener(
+                    object : ReactInstanceEventListener {
+                        override fun onReactContextInitialized(reactCtx: ReactContext) {
+                            mIsReactContextInitialized.set(true)
+                            drainTaskQueue(context, reactCtx)
+                            reactInstanceManager.removeReactInstanceEventListener(this)
+                        }
+                    },
                 )
-                addMethod.invoke(reactHost, callback)
-                val startMethod = reactHost.javaClass.getMethod("start")
-                startMethod.invoke(reactHost)
-            } catch (e: Exception) {
-                Log.e(HEADLESS_TASK_NAME, "reflection error ReactHost start: ${e.message}", e)
+                reactInstanceManager.createReactContextInBackground()
             }
         }
     }
@@ -254,12 +278,37 @@ class HeadlessTask {
         }
 
         @JvmStatic
+        fun getReactNativeHost(context: Context): ReactNativeHost? {
+            val reactApplication = context.applicationContext as? ReactApplication
+            if (reactApplication == null) {
+                Log.w(
+                    HEADLESS_TASK_NAME,
+                    "Application context does not implement ReactApplication",
+                )
+                return null
+            }
+            return try {
+                reactApplication.reactNativeHost
+            } catch (e: Exception) {
+                // RN 0.83+'s default ReactApplication.reactNativeHost getter throws
+                // in bridgeless apps that do not override it.
+                Log.w(HEADLESS_TASK_NAME, "Failed to resolve ReactNativeHost: ${e.message}")
+                null
+            }
+        }
+
+        @JvmStatic
         @SuppressLint("VisibleForTests")
         fun getReactContext(context: Context): ReactContext? {
             val reactHost = getReactHost(context)
-            Assertions.assertNotNull(reactHost, "getReactHost() is null in New Architecture")
+            if (reactHost == null) {
+                // Old Architecture (bridge): the application exposes no bridgeless
+                // ReactHost, so resolve the context through the ReactNativeHost's
+                // ReactInstanceManager, like upstream Notifee does.
+                return getReactNativeHost(context)?.reactInstanceManager?.currentReactContext
+            }
             try {
-                val method = reactHost!!.javaClass.getMethod("getCurrentReactContext")
+                val method = reactHost.javaClass.getMethod("getCurrentReactContext")
                 return method.invoke(reactHost) as? ReactContext
             } catch (e: Exception) {
                 Log.e(
