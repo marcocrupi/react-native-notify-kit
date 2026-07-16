@@ -97,6 +97,10 @@ RCT_EXPORT_MODULE();
   return @{@"ANDROID_API_LEVEL" : @0};
 }
 
+- (NSDictionary *)constantsToExport {
+  return [self getConstants];
+}
+
 #pragma mark - Events
 
 - (void)didReceiveNotifeeCoreEvent:(NSDictionary *_Nonnull)event {
@@ -149,93 +153,93 @@ RCT_EXPORT_MODULE();
 
 #pragma mark - Shared Methods
 
-- (void)cancelAllNotifications:(RCTPromiseResolveBlock)resolve
-                        reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelAllNotifications:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelAllNotifications:kReactNativeNotifeeNotificationTypeAll withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelDisplayedNotifications:(RCTPromiseResolveBlock)resolve
-                              reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelDisplayedNotifications:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelAllNotifications:kReactNativeNotifeeNotificationTypeDisplayed withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelTriggerNotifications:(RCTPromiseResolveBlock)resolve
-                            reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelTriggerNotifications:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelAllNotifications:kReactNativeNotifeeNotificationTypeTrigger withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelAllNotificationsWithIds:(NSArray *)ids
-                     notificationType:(double)notificationType
-                                  tag:(NSString *_Nullable)tag
-                              resolve:(RCTPromiseResolveBlock)resolve
-                               reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelAllNotificationsWithIds:(NSArray *)ids
+                  notificationType:(double)notificationType
+                  tag:(NSString *_Nullable)tag
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   // tag is Android-only, ignored on iOS
   [NotifeeCore cancelAllNotificationsWithIds:(NSInteger)notificationType withIds:ids withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)getDisplayedNotifications:(RCTPromiseResolveBlock)resolve
-                           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getDisplayedNotifications:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getDisplayedNotifications:^(NSError *_Nullable error, NSArray<NSDictionary *> *notifications) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:notifications];
   }];
 }
 
-- (void)getTriggerNotifications:(RCTPromiseResolveBlock)resolve
-                         reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getTriggerNotifications:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getTriggerNotifications:^(NSError *_Nullable error, NSArray<NSDictionary *> *notifications) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:notifications];
   }];
 }
 
-- (void)getTriggerNotificationIds:(RCTPromiseResolveBlock)resolve
-                           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getTriggerNotificationIds:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getTriggerNotificationIds:^(NSError *_Nullable error, NSArray<NSDictionary *> *notifications) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:notifications];
   }];
 }
 
-- (void)displayNotification:(NSDictionary *)notification
-                    resolve:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(displayNotification:(NSDictionary *)notification
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore displayNotification:notification withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)createTriggerNotification:(NSDictionary *)notification
-                          trigger:(NSDictionary *)trigger
-                          resolve:(RCTPromiseResolveBlock)resolve
-                           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(createTriggerNotification:(NSDictionary *)notification
+                  trigger:(NSDictionary *)trigger
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore createTriggerNotification:notification withTrigger:trigger withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)requestPermission:(NSDictionary *)permissions
+RCT_EXPORT_METHOD(requestPermission:(NSDictionary *)permissions
                   resolve:(RCTPromiseResolveBlock)resolve
-                   reject:(RCTPromiseRejectBlock)reject {
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore requestPermission:permissions withBlock:^(NSError *_Nullable error, NSDictionary *settings) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:settings];
   }];
 }
 
-- (void)getNotificationSettings:(RCTPromiseResolveBlock)resolve
-                         reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getNotificationSettings:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getNotificationSettings:^(NSError *_Nullable error, NSDictionary *settings) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:settings];
   }];
 }
 
-- (void)getInitialNotification:(RCTPromiseResolveBlock)resolve
-                        reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getInitialNotification:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getInitialNotification:^(NSError *_Nullable error, NSDictionary *notification) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:notification];
   }];
@@ -243,95 +247,95 @@ RCT_EXPORT_MODULE();
 
 #pragma mark - iOS-only Methods
 
-- (void)cancelNotification:(NSString *)notificationId
-                   resolve:(RCTPromiseResolveBlock)resolve
-                    reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelNotification:(NSString *)notificationId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelNotification:notificationId withNotificationType:kReactNativeNotifeeNotificationTypeAll withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelDisplayedNotification:(NSString *)notificationId
-                            resolve:(RCTPromiseResolveBlock)resolve
-                             reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelDisplayedNotification:(NSString *)notificationId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelNotification:notificationId withNotificationType:kReactNativeNotifeeNotificationTypeDisplayed withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelTriggerNotification:(NSString *)notificationId
-                          resolve:(RCTPromiseResolveBlock)resolve
-                           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelTriggerNotification:(NSString *)notificationId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelNotification:notificationId withNotificationType:kReactNativeNotifeeNotificationTypeTrigger withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelDisplayedNotificationsWithIds:(NSArray *)ids
-                                    resolve:(RCTPromiseResolveBlock)resolve
-                                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelDisplayedNotificationsWithIds:(NSArray *)ids
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelAllNotificationsWithIds:kReactNativeNotifeeNotificationTypeDisplayed withIds:ids withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)cancelTriggerNotificationsWithIds:(NSArray *)ids
-                                  resolve:(RCTPromiseResolveBlock)resolve
-                                   reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(cancelTriggerNotificationsWithIds:(NSArray *)ids
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore cancelAllNotificationsWithIds:kReactNativeNotifeeNotificationTypeTrigger withIds:ids withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)getNotificationCategories:(RCTPromiseResolveBlock)resolve
-                           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getNotificationCategories:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getNotificationCategories:^(NSError *_Nullable error, NSArray<NSDictionary *> *categories) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:categories];
   }];
 }
 
-- (void)setNotificationCategories:(NSArray *)categories
-                          resolve:(RCTPromiseResolveBlock)resolve
-                           reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(setNotificationCategories:(NSArray *)categories
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore setNotificationCategories:categories withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)setBadgeCount:(double)count
-              resolve:(RCTPromiseResolveBlock)resolve
-               reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(setBadgeCount:(double)count
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore setBadgeCount:(NSInteger)count withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)getBadgeCount:(RCTPromiseResolveBlock)resolve
-               reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getBadgeCount:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore getBadgeCount:^(NSError *_Nullable error, NSInteger count) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:@(count)];
   }];
 }
 
-- (void)incrementBadgeCount:(double)incrementBy
-                    resolve:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(incrementBadgeCount:(double)incrementBy
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore incrementBadgeCount:(NSInteger)incrementBy withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)decrementBadgeCount:(double)decrementBy
-                    resolve:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(decrementBadgeCount:(double)decrementBy
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore decrementBadgeCount:(NSInteger)decrementBy withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
 }
 
-- (void)setNotificationConfig:(NSDictionary *)config
-                      resolve:(RCTPromiseResolveBlock)resolve
-                       reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(setNotificationConfig:(NSDictionary *)config
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   [NotifeeCore setNotificationConfig:config withBlock:^(NSError *_Nullable error) {
     [self resolve:resolve orReject:reject promiseWithError:error orResult:nil];
   }];
@@ -339,118 +343,118 @@ RCT_EXPORT_MODULE();
 
 #pragma mark - Android-only stubs (required by NativeNotifeeModuleSpec)
 
-- (void)createChannel:(NSDictionary *)channelMap
-              resolve:(RCTPromiseResolveBlock)resolve
-               reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(createChannel:(NSDictionary *)channelMap
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)createChannels:(NSArray *)channelsArray
-               resolve:(RCTPromiseResolveBlock)resolve
-                reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(createChannels:(NSArray *)channelsArray
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)createChannelGroup:(NSDictionary *)channelGroupMap
-                   resolve:(RCTPromiseResolveBlock)resolve
-                    reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(createChannelGroup:(NSDictionary *)channelGroupMap
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)createChannelGroups:(NSArray *)channelGroupsArray
-                    resolve:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(createChannelGroups:(NSArray *)channelGroupsArray
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)deleteChannel:(NSString *)channelId
-              resolve:(RCTPromiseResolveBlock)resolve
-               reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(deleteChannel:(NSString *)channelId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)deleteChannelGroup:(NSString *)channelGroupId
-                   resolve:(RCTPromiseResolveBlock)resolve
-                    reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(deleteChannelGroup:(NSString *)channelGroupId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)getChannel:(NSString *)channelId
-           resolve:(RCTPromiseResolveBlock)resolve
-            reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getChannel:(NSString *)channelId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)getChannels:(RCTPromiseResolveBlock)resolve
-             reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getChannels:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)getChannelGroup:(NSString *)channelGroupId
-                resolve:(RCTPromiseResolveBlock)resolve
-                 reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getChannelGroup:(NSString *)channelGroupId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)getChannelGroups:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getChannelGroups:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)isChannelCreated:(NSString *)channelId
-                 resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(isChannelCreated:(NSString *)channelId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(@(NO));
 }
 
-- (void)isChannelBlocked:(NSString *)channelId
-                 resolve:(RCTPromiseResolveBlock)resolve
-                  reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(isChannelBlocked:(NSString *)channelId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(@(NO));
 }
 
-- (void)openAlarmPermissionSettings:(RCTPromiseResolveBlock)resolve
-                             reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(openAlarmPermissionSettings:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)openNotificationSettings:(NSString *_Nullable)channelId
-                         resolve:(RCTPromiseResolveBlock)resolve
-                          reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(openNotificationSettings:(NSString *_Nullable)channelId
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)openBatteryOptimizationSettings:(RCTPromiseResolveBlock)resolve
-                                 reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(openBatteryOptimizationSettings:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)isBatteryOptimizationEnabled:(RCTPromiseResolveBlock)resolve
-                              reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(isBatteryOptimizationEnabled:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(@(NO));
 }
 
-- (void)getPowerManagerInfo:(RCTPromiseResolveBlock)resolve
-                     reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(getPowerManagerInfo:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(@{});
 }
 
-- (void)openPowerManagerSettings:(RCTPromiseResolveBlock)resolve
-                          reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(openPowerManagerSettings:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)stopForegroundService:(RCTPromiseResolveBlock)resolve
-                       reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(stopForegroundService:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)prewarmForegroundService:(RCTPromiseResolveBlock)resolve
-                          reject:(RCTPromiseRejectBlock)reject {
+RCT_EXPORT_METHOD(prewarmForegroundService:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
   resolve(nil);
 }
 
-- (void)hideNotificationDrawer {
+RCT_EXPORT_METHOD(hideNotificationDrawer) {
   // Android-only, no-op on iOS
 }
 
