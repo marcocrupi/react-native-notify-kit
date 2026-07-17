@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: registering `onForegroundEvent()` now initializes the native event relay, preventing foreground events from being missed when no other native API has been called.
+- **Android**: pending notification events are requeued when the `ReactContext` becomes null or inactive after the flush snapshot, preventing permanent event loss while preserving FIFO ordering, the queue capacity of 10, and drop-oldest behavior.
+
 ## [10.4.8] - 2026-07-09
 
 ### Added

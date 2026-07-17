@@ -146,6 +146,8 @@ useEffect(() => {
 }, []);
 ```
 
+> **Android event reliability:** Registering `onForegroundEvent()` initializes the native event relay. Pending events received while the `ReactContext` is unavailable are buffered. If the context becomes unavailable after a flush takes its buffer snapshot, undelivered events are requeued so a later native event relay flush can deliver them without duplication in the validated recovery path, while preserving FIFO, the 10-event capacity, and drop-oldest behavior. No application code changes or warm-up calls such as `getDisplayedNotifications()` are required; continue registering foreground and background handlers at the recommended points shown above. This hardens the Android event path investigated in [react-native-notify-kit#47](https://github.com/marcocrupi/react-native-notify-kit/issues/47) and relates to the event reliability and buffering problem tracked in [invertase/notifee#1279](https://github.com/invertase/notifee/issues/1279); the scenarios are not necessarily identical.
+
 > **Which handler fires when (iOS):**
 >
 > - Tap a notification while the app is **active in foreground** → `onForegroundEvent` receives `PRESS`.
