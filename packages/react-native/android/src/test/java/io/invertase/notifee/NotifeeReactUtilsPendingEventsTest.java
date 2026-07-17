@@ -50,8 +50,7 @@ public class NotifeeReactUtilsPendingEventsTest {
 
   private static final String DIAGNOSTICS_TAG = "NOTIFEE_PENDING_DIAG";
   private static final String NOTIFICATION_EVENT_NAME = "app.notifee.notification-event";
-  private static final String DIAGNOSTIC_SCENARIO_ID_KEY =
-      "__notifeePendingDiagScenarioId";
+  private static final String DIAGNOSTIC_SCENARIO_ID_KEY = "__notifeePendingDiagScenarioId";
   private static final String DIAGNOSTIC_EVENT_ID_KEY = "__notifeePendingDiagEventId";
 
   private TestApplication application;
@@ -93,8 +92,7 @@ public class NotifeeReactUtilsPendingEventsTest {
 
   @Test
   public void sendEvent_whenElevenEventsPending_dropsOldestAndKeepsTen() throws Exception {
-    List<String> names =
-        Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K");
+    List<String> names = Arrays.asList("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K");
 
     setReactContexts((ReactContext) null);
     for (String name : names) {
@@ -133,7 +131,8 @@ public class NotifeeReactUtilsPendingEventsTest {
   }
 
   @Test
-  public void sendEvent_afterSnapshot_staysInCurrentQueueAndOutsidePreviousBatch() throws Exception {
+  public void sendEvent_afterSnapshot_staysInCurrentQueueAndOutsidePreviousBatch()
+      throws Exception {
     WritableMap eventA = mock(WritableMap.class);
     WritableMap eventB = mock(WritableMap.class);
     ReactContext activeContext = mock(ReactContext.class);
@@ -257,8 +256,7 @@ public class NotifeeReactUtilsPendingEventsTest {
   }
 
   @Test
-  public void flushPendingEvents_partialDelivery_requeuesOnlyUndeliveredEvents()
-      throws Exception {
+  public void flushPendingEvents_partialDelivery_requeuesOnlyUndeliveredEvents() throws Exception {
     WritableMap eventA = mock(WritableMap.class);
     WritableMap eventB = mock(WritableMap.class);
     WritableMap eventC = mock(WritableMap.class);
@@ -407,7 +405,8 @@ public class NotifeeReactUtilsPendingEventsTest {
   }
 
   @Test
-  public void diagnosticIdentity_missingPayload_returnsUnavailableWithoutException() throws Exception {
+  public void diagnosticIdentity_missingPayload_returnsUnavailableWithoutException()
+      throws Exception {
     assertNull(extractPendingDiagnosticIdentity(new JavaOnlyMap()));
 
     JavaOnlyMap eventMap = JavaOnlyMap.of("detail", JavaOnlyMap.of("notification", null));
@@ -415,7 +414,8 @@ public class NotifeeReactUtilsPendingEventsTest {
   }
 
   @Test
-  public void diagnosticIdentity_wrongFieldType_returnsUnavailableWithoutException() throws Exception {
+  public void diagnosticIdentity_wrongFieldType_returnsUnavailableWithoutException()
+      throws Exception {
     JavaOnlyMap eventMap = diagnosticEventMap("scenario-1", 7);
 
     assertNull(extractPendingDiagnosticIdentity(eventMap));
@@ -425,8 +425,7 @@ public class NotifeeReactUtilsPendingEventsTest {
   public void diagnosticIdentity_eventTypeMustBePresentNumericAndIntegerValued() throws Exception {
     JavaOnlyMap missingType =
         diagnosticEventMapWithoutType("scenario-1", "pending-diag:scenario-1:A");
-    JavaOnlyMap wrongType =
-        diagnosticEventMap("scenario-1", "pending-diag:scenario-1:A", "3");
+    JavaOnlyMap wrongType = diagnosticEventMap("scenario-1", "pending-diag:scenario-1:A", "3");
     JavaOnlyMap fractionalType =
         diagnosticEventMap("scenario-1", "pending-diag:scenario-1:A", 3.5d);
     JavaOnlyMap outOfRangeType =
@@ -449,8 +448,7 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertNull(privateField(fractionalTypeIdentity, "eventType"));
     assertNull(privateField(outOfRangeTypeIdentity, "eventType"));
     assertEquals(
-        NotificationEvent.TYPE_DELIVERED,
-        privateField(integerValuedIdentity, "eventType"));
+        NotificationEvent.TYPE_DELIVERED, privateField(integerValuedIdentity, "eventType"));
 
     assertTrue(initializePendingDiagnostics(diagnosticsContext(true, true, 0).context));
     setReactContexts((ReactContext) null);
@@ -518,8 +516,7 @@ public class NotifeeReactUtilsPendingEventsTest {
         Arrays.asList(eventId, eventId), markerFieldValues("EVENT_RECEIVED", "diagEventId"));
     assertEquals(Arrays.asList("1", "2"), markerFieldValues("EVENT_RECEIVED", "eventSeq"));
     assertEquals(Arrays.asList("7", "3"), markerFieldValues("EVENT_RECEIVED", "eventType"));
-    assertEquals(
-        Arrays.asList("7"), markerFieldValues("EVENT_EMIT_DIRECT_BEGIN", "eventType"));
+    assertEquals(Arrays.asList("7"), markerFieldValues("EVENT_EMIT_DIRECT_BEGIN", "eventType"));
     assertEquals(Arrays.asList("3"), markerFieldValues("EVENT_ENQUEUED", "eventType"));
   }
 
@@ -587,13 +584,11 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertTrue(hasMarker("FLUSH_COMPLETED"));
     assertTrue(markerMessage("EVENT_RECEIVED").contains("eventSeq=1"));
     assertTrue(markerMessage("EVENT_RECEIVED").contains("diagScenarioId=scenario-1"));
-    assertTrue(
-        markerMessage("EVENT_RECEIVED").contains("diagEventId=pending-diag:scenario-1:A"));
+    assertTrue(markerMessage("EVENT_RECEIVED").contains("diagEventId=pending-diag:scenario-1:A"));
     assertEquals(Arrays.asList("3"), markerFieldValues("EVENT_RECEIVED", "eventType"));
     assertEquals(Arrays.asList("3"), markerFieldValues("EVENT_ENQUEUED", "eventType"));
     assertEquals(Arrays.asList("3"), markerFieldValues("FLUSH_SNAPSHOT_ITEM", "eventType"));
-    assertEquals(
-        Arrays.asList("3"), markerFieldValues("FLUSH_EVENT_CONTEXT_CHECK", "eventType"));
+    assertEquals(Arrays.asList("3"), markerFieldValues("FLUSH_EVENT_CONTEXT_CHECK", "eventType"));
     assertEquals(Arrays.asList("3"), markerFieldValues("FLUSH_EVENT_EMIT_RETURN", "eventType"));
     assertTrue(markerMessage("FLUSH_REQUESTED").contains("flushId=1"));
 
@@ -625,8 +620,7 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertSame(eventA, pendingEventBody(pendingEvents().get(0)));
     assertEquals(
         1,
-        ((java.util.Map<?, ?>)
-                privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
+        ((java.util.Map<?, ?>) privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
             .size());
     assertEquals(Arrays.asList("1"), markerFieldValues("FLUSH_EVENT_REQUEUED", "eventSeq"));
     assertEquals(Arrays.asList("1"), markerFieldValues("FLUSH_EVENT_REQUEUED", "flushId"));
@@ -637,8 +631,7 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertEquals(
         Arrays.asList("context_null"), markerFieldValues("FLUSH_EVENT_REQUEUED", "reason"));
     assertEquals(Arrays.asList("1"), markerFieldValues("FLUSH_REQUEUE_MERGE", "requeuedCount"));
-    assertEquals(
-        Arrays.asList("0"), markerFieldValues("FLUSH_REQUEUE_MERGE", "newArrivalsCount"));
+    assertEquals(Arrays.asList("0"), markerFieldValues("FLUSH_REQUEUE_MERGE", "newArrivalsCount"));
     assertEquals(Arrays.asList("0"), markerFieldValues("FLUSH_REQUEUE_MERGE", "droppedCount"));
 
     setReactContexts(activeContext);
@@ -648,8 +641,7 @@ public class NotifeeReactUtilsPendingEventsTest {
     verify(emitter, times(1)).emit(NOTIFICATION_EVENT_NAME, eventA);
     assertTrue(pendingEvents().isEmpty());
     assertTrue(
-        ((java.util.Map<?, ?>)
-                privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
+        ((java.util.Map<?, ?>) privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
             .isEmpty());
     assertEquals(Arrays.asList("1", "1"), markerFieldValues("FLUSH_SNAPSHOT_ITEM", "eventSeq"));
     assertEquals(Arrays.asList("1", "2"), markerFieldValues("FLUSH_SNAPSHOT_ITEM", "flushId"));
@@ -723,26 +715,24 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertEquals(10, pendingEvents().size());
     assertEquals(
         10,
-        ((java.util.Map<?, ?>)
-                privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
+        ((java.util.Map<?, ?>) privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
             .size());
     assertEquals(
         Arrays.asList(expectedEventIds.get(0)),
         markerFieldValues("FLUSH_REQUEUE_DROP", "diagEventId"));
     assertEquals(Arrays.asList("2"), markerFieldValues("FLUSH_REQUEUE_MERGE", "requeuedCount"));
-    assertEquals(
-        Arrays.asList("9"), markerFieldValues("FLUSH_REQUEUE_MERGE", "newArrivalsCount"));
+    assertEquals(Arrays.asList("9"), markerFieldValues("FLUSH_REQUEUE_MERGE", "newArrivalsCount"));
     assertEquals(Arrays.asList("1"), markerFieldValues("FLUSH_REQUEUE_MERGE", "droppedCount"));
 
     setReactContexts(activeContext);
     NotifeeReactUtils.INSTANCE.flushPendingEvents();
 
     List<String> allSnapshotIds = markerFieldValues("FLUSH_SNAPSHOT_ITEM", "diagEventId");
-    assertEquals(expectedEventIds.subList(1, expectedEventIds.size()), allSnapshotIds.subList(2, 12));
+    assertEquals(
+        expectedEventIds.subList(1, expectedEventIds.size()), allSnapshotIds.subList(2, 12));
     assertTrue(pendingEvents().isEmpty());
     assertTrue(
-        ((java.util.Map<?, ?>)
-                privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
+        ((java.util.Map<?, ?>) privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
             .isEmpty());
     verify(emitter, times(10)).emit(eq("overflow"), any(WritableMap.class));
   }
@@ -773,8 +763,7 @@ public class NotifeeReactUtilsPendingEventsTest {
         Arrays.asList("pending-diag:scenario-1:A", "pending-diag:scenario-1:B"),
         markerFieldValues("FLUSH_SNAPSHOT_ITEM", "diagEventId"));
     assertTrue(
-        ((java.util.Map<?, ?>)
-                privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
+        ((java.util.Map<?, ?>) privateField(pendingDiagnosticsState(), "queuedEventDiagnostics"))
             .isEmpty());
   }
 
@@ -787,14 +776,11 @@ public class NotifeeReactUtilsPendingEventsTest {
     for (int index = 1; index <= 11; index += 1) {
       String eventId = String.format("pending-diag:scenario-1:overflow:%02d", index);
       expectedEventIds.add(eventId);
-      NotifeeReactUtils.INSTANCE.sendEvent(
-          "overflow", diagnosticEventMap("scenario-1", eventId));
+      NotifeeReactUtils.INSTANCE.sendEvent("overflow", diagnosticEventMap("scenario-1", eventId));
     }
 
     Object state = pendingDiagnosticsState();
-    assertEquals(
-        10,
-        ((java.util.Map<?, ?>) privateField(state, "queuedEventDiagnostics")).size());
+    assertEquals(10, ((java.util.Map<?, ?>) privateField(state, "queuedEventDiagnostics")).size());
     assertTrue(
         markerMessage("EVENT_OVERFLOW_DROPPED")
             .contains("diagEventId=pending-diag:scenario-1:overflow:01"));
@@ -814,8 +800,7 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertEquals(
         expectedEventIds.subList(1, expectedEventIds.size()),
         markerFieldValues("FLUSH_EVENT_CONTEXT_CHECK", "diagEventId"));
-    assertTrue(
-        ((java.util.Map<?, ?>) privateField(state, "queuedEventDiagnostics")).isEmpty());
+    assertTrue(((java.util.Map<?, ?>) privateField(state, "queuedEventDiagnostics")).isEmpty());
   }
 
   @Test
@@ -824,13 +809,16 @@ public class NotifeeReactUtilsPendingEventsTest {
     assertFalse(initializePendingDiagnostics(releaseContext.context));
     assertNull(pendingDiagnosticsState());
 
-    Object negativeDelayConfig = loadPendingDiagnosticsConfig(diagnosticsContext(true, true, -1).context);
+    Object negativeDelayConfig =
+        loadPendingDiagnosticsConfig(diagnosticsContext(true, true, -1).context);
     assertEquals(
         0L, ((Number) privateField(negativeDelayConfig, "delayAfterSnapshotMs")).longValue());
 
     DiagnosticsContext clampedContext = diagnosticsContext(true, true, 15000);
     assertTrue(initializePendingDiagnostics(clampedContext.context));
-    assertEquals(10000L, ((Number) privateField(pendingDiagnosticsState(), "delayAfterSnapshotMs")).longValue());
+    assertEquals(
+        10000L,
+        ((Number) privateField(pendingDiagnosticsState(), "delayAfterSnapshotMs")).longValue());
     assertTrue(initializePendingDiagnostics(clampedContext.context));
     verify(clampedContext.packageManager, times(1))
         .getApplicationInfo("com.notifeeexample", PackageManager.GET_META_DATA);
@@ -962,14 +950,11 @@ public class NotifeeReactUtilsPendingEventsTest {
     ApplicationInfo applicationInfo = new ApplicationInfo();
     applicationInfo.flags = debuggable ? ApplicationInfo.FLAG_DEBUGGABLE : 0;
     applicationInfo.metaData = new Bundle();
-    applicationInfo.metaData.putBoolean(
-        "notifee_pending_events_diagnostics_enabled", enabled);
-    applicationInfo.metaData.putInt(
-        "notifee_pending_events_delay_after_snapshot_ms", delayMs);
+    applicationInfo.metaData.putBoolean("notifee_pending_events_diagnostics_enabled", enabled);
+    applicationInfo.metaData.putInt("notifee_pending_events_delay_after_snapshot_ms", delayMs);
     when(context.getPackageManager()).thenReturn(packageManager);
     when(context.getPackageName()).thenReturn("com.notifeeexample");
-    when(packageManager.getApplicationInfo(
-            "com.notifeeexample", PackageManager.GET_META_DATA))
+    when(packageManager.getApplicationInfo("com.notifeeexample", PackageManager.GET_META_DATA))
         .thenReturn(applicationInfo);
     return new DiagnosticsContext(context, packageManager);
   }
