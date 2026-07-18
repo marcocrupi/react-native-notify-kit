@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.4.9] - 2026-07-18
+
 ### Fixed
 
 - **Android**: registering `onForegroundEvent()` now initializes the native event relay, preventing foreground events from being missed when no other native API has been called.

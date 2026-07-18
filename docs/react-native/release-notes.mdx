@@ -5,6 +5,15 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.4.9] (2026-07-18)
+
+This 10.4.9 maintenance update fixes Android foreground event delivery during native event relay initialization and React context transitions.
+
+### Android Foreground Events
+
+- Registering `onForegroundEvent()` now initializes the native event relay, preventing foreground events from being missed when no other native API has been called.
+- Pending notification events are requeued when the `ReactContext` becomes null or inactive after the flush snapshot, preventing permanent event loss while preserving FIFO ordering, the queue capacity of 10, and drop-oldest behavior.
+
 ## [10.4.8] (2026-07-09)
 
 This 10.4.8 update adds an FCM build-only helper so apps can inspect or customize a reconstructed FCM notification before displaying it manually.
