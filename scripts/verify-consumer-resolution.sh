@@ -152,7 +152,7 @@ const apns = buildIosApnsPayload(input, { notifeeOptions: '{"_v":1}' });
 const android = buildAndroidPayload(input, { collapseKey: 'k', ttlSeconds: 60 });
 const merged: string = serializeNotifeeOptions({ title: 'a', body: 'b', android: androidCfg, ios: iosCfg });
 
-const priority: 'HIGH' | 'NORMAL' = out.android.priority;
+const priority: 'high' | 'normal' = out.android.priority;
 const pushType: 'alert' = out.apns.headers['apns-push-type'];
 const mutableContent: 1 = out.apns.payload.aps['mutable-content'];
 
