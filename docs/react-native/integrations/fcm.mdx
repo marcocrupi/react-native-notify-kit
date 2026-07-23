@@ -63,7 +63,7 @@ export async function sendOrderUpdate(deviceToken: string, orderId: string) {
 }
 ```
 
-`buildNotifyKitPayload` emits one FCM HTTP v1 message that is data-only on Android and alert-style on iOS. Both platforms carry an identical `notifee_options` blob.
+`buildNotifyKitPayload` returns a Firebase Admin-compatible message that is data-only on Android and alert-style on iOS. Firebase Admin serializes it to the FCM HTTP v1 request format. `options.ttl` is expressed in seconds; the builder performs the Android millisecond conversion. Both platforms carry an identical `notifee_options` blob.
 
 ### 2. Android client: wire `handleFcmMessage`
 

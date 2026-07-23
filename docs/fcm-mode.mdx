@@ -492,7 +492,7 @@ Import from `react-native-notify-kit/server`. Runs in Node.js 22+ and Firebase C
 
 ### `buildNotifyKitPayload(input): NotifyKitPayloadOutput`
 
-Builds a complete FCM HTTP v1 `Message` object ready for `admin.messaging().send()`. Validates input, serializes the `notifee_options` blob, and emits both the Android data-only half and the iOS APNs alert half.
+Builds a Firebase Admin-compatible message ready for `admin.messaging().send()`. Validates input, serializes the `notifee_options` blob, and emits both the Android data-only half and the iOS APNs alert half. Firebase Admin serializes the message to the FCM HTTP v1 request format.
 
 ```ts
 const message = buildNotifyKitPayload({
@@ -550,25 +550,27 @@ type NotifyKitOptions = {
 };
 ```
 
-The returned value is a valid FCM `Message`:
+The returned value is a Firebase Admin-compatible message with exactly one routing target:
 
 ```ts
-type NotifyKitPayloadOutput = {
-  token?: string;
-  topic?: string;
-  condition?: string;
-  data: Record<string, string>; // your data keys + notifee_options (+ notifee_data when > 5 keys)
+type NotifyKitPayloadTarget =
+  | { token: string; topic?: never; condition?: never }
+  | { topic: string; token?: never; condition?: never }
+  | { condition: string; token?: never; topic?: never };
+
+type NotifyKitPayloadOutput = NotifyKitPayloadTarget & {
+  data: Record<string, string>; // your data keys + notifee_options
   android: {
-    priority: 'HIGH' | 'NORMAL';
-    collapse_key?: string;
-    ttl?: string; // '3600s' format
+    priority: 'high' | 'normal';
+    collapseKey?: string;
+    ttl?: number; // milliseconds; options.ttl input seconds × 1000
   };
   apns: {
     headers: {
       'apns-push-type': 'alert';
       'apns-priority': '10';
       'apns-collapse-id'?: string;
-      'apns-expiration'?: string;
+      'apns-expiration'?: string; // absolute UNIX epoch in seconds
     };
     payload: {
       aps: {
@@ -581,12 +583,14 @@ type NotifyKitPayloadOutput = {
         badge?;
       };
       notifee_options: string; // JSON blob, see Payload reference
-      notifee_data?: string;
+      notifee_data?: string; // present when notification.data has user data
     };
   };
   sizeBytes: number; // non-enumerable — not serialized with JSON.stringify
 };
 ```
+
+Top-level `data` contains the user data keys and `notifee_options`. `notifee_data` is added only to `apns.payload` when user data is present; there is no key-count threshold.
 
 `sizeBytes` is defined as **non-enumerable**: it's accessible on the returned object for your own diagnostics, but `JSON.stringify(message)` strips it, so it never leaks onto the wire.
 
@@ -612,7 +616,7 @@ import type {
   NotifyKitAndroidStyle,
   NotifyKitIosAttachment,
   NotifyKitIosInterruptionLevel,
-  // raw FCM output shapes
+  // Firebase Admin-compatible output shapes
   NotifyKitAndroidOutput,
   NotifyKitApnsOutput,
   NotifyKitApnsAps,
@@ -652,22 +656,11 @@ Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages
 | `options.collapseKey` non-empty                | `Validation: 'options.collapseKey' must be a non-empty string`                                                                      |
 | Blob must be serializable                      | `Serialization: notifee_options contains circular references or non-serializable values`                                            |
 
-> **Note on `ttl: 0`.** Zero is rejected because it's semantically ambiguous ("never expire" vs "expire immediately") and FCM's HTTP v1 API uses the same string format for both concepts. Omit `ttl` entirely to use FCM's default (4 weeks), or pass a positive integer in seconds.
+> **Note on `ttl: 0`.** Zero is rejected because it's semantically ambiguous ("never expire" vs "expire immediately"). Omit `ttl` entirely to use FCM's default (4 weeks), or pass a positive integer in seconds.
 
 <!-- markdownlint-disable-next-line MD028 -->
 
-> **Note on `firebase-admin` TTL compatibility.** `buildNotifyKitPayload` emits `android.ttl` in FCM HTTP v1 wire format (`"3600s"`), which is what the FCM REST API expects. `firebase-admin`'s `admin.messaging().send()` validates input in the SDK layer before serializing and expects `ttl` as a **number of milliseconds** (`3_600_000`). If you route through `firebase-admin` and pass `options.ttl`, normalize it before sending:
->
-> ```ts
-> const message = buildNotifyKitPayload(input);
-> if (typeof message.android.ttl === 'string') {
->   const match = message.android.ttl.match(/^(\d+)s$/);
->   if (match) (message.android as any).ttl = Number(match[1]) * 1000;
-> }
-> await admin.messaging().send(message);
-> ```
->
-> See [`scripts/send-test-fcm.js`](../scripts/send-test-fcm.js) in this repo for the reference adapter.
+> **Note on `firebase-admin` TTL compatibility.** `options.ttl` remains expressed in seconds. `buildNotifyKitPayload()` converts the Android value to the millisecond duration required by Firebase Admin (`ttl: 3600` becomes `android.ttl: 3_600_000`), so the message can be passed directly to `admin.messaging().send()`. APNs expiration remains an absolute UNIX epoch timestamp in seconds.
 
 ### Payload size
 

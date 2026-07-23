@@ -377,7 +377,7 @@ For bare React Native projects with non-standard iOS paths or heavily-customized
 
 ## Server SDK
 
-`react-native-notify-kit` ships a **zero-dependency server SDK** under the `/server` subpath, for building FCM HTTP v1 payloads that the client `handleFcmMessage` handler consumes. Runs in Node.js 22+ and Firebase Cloud Functions.
+`react-native-notify-kit` ships a **zero-dependency server SDK** under the `/server` subpath for building Firebase Admin-compatible FCM messages that the client `handleFcmMessage` handler consumes. Firebase Admin serializes each message to the FCM HTTP v1 request format. The SDK runs in Node.js 22+ and Firebase Cloud Functions.
 
 ```ts
 import { buildNotifyKitPayload } from 'react-native-notify-kit/server';
@@ -398,6 +398,8 @@ const message = buildNotifyKitPayload({
 
 await admin.messaging().send(message);
 ```
+
+`options.ttl` is expressed in seconds. Pass the message directly to Firebase Admin without an adapter or a manual unit conversion.
 
 Full reference: [docs/fcm-mode.mdx#server-sdk-reference](docs/fcm-mode.mdx#server-sdk-reference) (types, validation rules, payload shape, FCM 4 KB limit).
 

@@ -1,6 +1,6 @@
 # react-native-notify-kit/server
 
-Server-side FCM HTTP v1 payload builder for [`react-native-notify-kit`](../README.md). Runs in Node.js 22+ (backends, Firebase Cloud Functions). **Zero runtime dependencies.**
+Server-side Firebase Admin-compatible FCM message builder for [`react-native-notify-kit`](../README.md). Runs in Node.js 22+ (backends, Firebase Cloud Functions). **Zero runtime dependencies.**
 
 Use it to construct payloads that the client-side `handleFcmMessage` handler can consume — Android receives data-only messages routed through `setBackgroundMessageHandler`, iOS receives alert-style APNs payloads that a Notification Service Extension reads from the `notifee_options` key.
 
@@ -42,21 +42,23 @@ const message = buildNotifyKitPayload({
 await admin.messaging().send(message);
 ```
 
+`options.ttl` is expressed in seconds. Pass the message directly to Firebase Admin without an adapter or a manual unit conversion.
+
 ## API
 
 ### `buildNotifyKitPayload(input: NotifyKitPayloadInput): NotifyKitPayloadOutput`
 
-Main entry point. Validates the input, serializes the `notifee_options` blob, and returns a complete FCM HTTP v1 `Message` object with an `android` half (data-only) and an `apns` half (alert + `mutable-content: 1`). Routing field (`token` / `topic` / `condition`) is passed through from the input; exactly one must be provided.
+Main entry point. Validates the input, serializes the `notifee_options` blob, and returns a Firebase Admin-compatible message with an `android` half (data-only) and an `apns` half (alert + `mutable-content: 1`). Firebase Admin serializes the message to the FCM HTTP v1 request format. Routing field (`token` / `topic` / `condition`) is passed through from the input; exactly one must be provided.
 
 The returned object also carries a **non-enumerable** `sizeBytes` field — accessible for your own diagnostics, invisible to `JSON.stringify` so it never leaks to FCM.
 
 ### `buildAndroidPayload(input, context): NotifyKitAndroidOutput`
 
-Builds the Android half only: `{ priority, collapse_key?, ttl? }`. Use when composing a custom `Message` (rare).
+Builds the Android half only: `{ priority: 'high' | 'normal', collapseKey?: string, ttl?: number }`. The public `options.ttl` input is expressed in seconds; the Firebase Admin-compatible `android.ttl` output is expressed in milliseconds. Use when composing a custom message (rare).
 
 ### `buildIosApnsPayload(input, context): NotifyKitApnsOutput`
 
-Builds the iOS APNs half only: `{ headers, payload }` with the `aps` object, `notifee_options` blob, and optional `notifee_data`. Use when composing a custom `Message`.
+Builds the iOS APNs half only: `{ headers, payload }` with the `aps` object, `notifee_options` blob, and optional `notifee_data`. When TTL is set, `apns-expiration` is an absolute UNIX epoch timestamp in seconds. Use when composing a custom message.
 
 ### `serializeNotifeeOptions(input): string`
 
