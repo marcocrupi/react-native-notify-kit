@@ -8,7 +8,7 @@ describe('buildNotifyKitPayload — smoke', () => {
       notification: { title: 'Hi', body: 'There' },
     });
     expect(out.token).toBe('abc');
-    expect(out.android.priority).toBe('HIGH');
+    expect(out.android.priority).toBe('high');
     expect(out.apns.headers['apns-push-type']).toBe('alert');
     expect(out.apns.payload.aps.alert).toEqual({ title: 'Hi', body: 'There' });
   });
@@ -58,12 +58,12 @@ describe('buildNotifyKitPayload — android rules', () => {
     expect(Object.keys(out.android).sort()).toEqual(['priority'].sort());
   });
 
-  it("defaults options.androidPriority to 'high' → 'HIGH'", () => {
+  it("defaults options.androidPriority to 'high'", () => {
     const out = buildNotifyKitPayload({
       token: 't',
       notification: { title: 'a', body: 'b' },
     });
-    expect(out.android.priority).toBe('HIGH');
+    expect(out.android.priority).toBe('high');
   });
 
   it("honors options.androidPriority = 'normal'", () => {
@@ -72,7 +72,7 @@ describe('buildNotifyKitPayload — android rules', () => {
       notification: { title: 'a', body: 'b' },
       options: { androidPriority: 'normal' },
     });
-    expect(out.android.priority).toBe('NORMAL');
+    expect(out.android.priority).toBe('normal');
   });
 });
 
@@ -112,7 +112,7 @@ describe('buildNotifyKitPayload — iOS rules', () => {
   });
 });
 
-describe('buildNotifyKitPayload — TTL formatting (Rule 8)', () => {
+describe('buildNotifyKitPayload — TTL conversion (Rule 8)', () => {
   const realNow = Date.now;
   beforeEach(() => {
     Date.now = () => 1_700_000_000_000;
@@ -121,22 +121,24 @@ describe('buildNotifyKitPayload — TTL formatting (Rule 8)', () => {
     Date.now = realNow;
   });
 
-  it("formats android.ttl as 'Ns'", () => {
+  it('converts the minimum ttl from seconds to milliseconds without changing APNs seconds', () => {
     const out = buildNotifyKitPayload({
       token: 't',
       notification: { title: 'a', body: 'b' },
-      options: { ttl: 3600 },
+      options: { ttl: 1 },
     });
-    expect(out.android.ttl).toBe('3600s');
+    expect(out.android.ttl).toBe(1000);
+    expect(out.apns.headers['apns-expiration']).toBe('1700000001');
   });
 
-  it('formats apns-expiration as unix seconds + ttl', () => {
+  it('converts a realistic ttl to Admin milliseconds and keeps APNs expiration in seconds', () => {
     const out = buildNotifyKitPayload({
       token: 't',
       notification: { title: 'a', body: 'b' },
-      options: { ttl: 60 },
+      options: { ttl: 30000 },
     });
-    expect(out.apns.headers['apns-expiration']).toBe('1700000060');
+    expect(out.android.ttl).toBe(30_000_000);
+    expect(out.apns.headers['apns-expiration']).toBe('1700030000');
   });
 
   it('omits ttl and apns-expiration when options.ttl is absent', () => {
@@ -147,6 +149,16 @@ describe('buildNotifyKitPayload — TTL formatting (Rule 8)', () => {
     expect(out.android.ttl).toBeUndefined();
     expect(out.apns.headers['apns-expiration']).toBeUndefined();
   });
+
+  it("continues to reject the wire-format string '30000s' as input", () => {
+    expect(() =>
+      buildNotifyKitPayload({
+        token: 't',
+        notification: { title: 'a', body: 'b' },
+        options: { ttl: '30000s' as unknown as number },
+      }),
+    ).toThrow(/options\.ttl must be a positive integer \(seconds\)\. Got: 30000s/);
+  });
 });
 
 describe('buildNotifyKitPayload — collapse key precedence (Rule 7)', () => {
@@ -156,7 +168,8 @@ describe('buildNotifyKitPayload — collapse key precedence (Rule 7)', () => {
       notification: { id: 'notif-id', title: 'a', body: 'b' },
       options: { collapseKey: 'override' },
     });
-    expect(out.android.collapse_key).toBe('override');
+    expect(out.android.collapseKey).toBe('override');
+    expect('collapse_key' in out.android).toBe(false);
     expect(out.apns.headers['apns-collapse-id']).toBe('override');
   });
 
@@ -165,7 +178,7 @@ describe('buildNotifyKitPayload — collapse key precedence (Rule 7)', () => {
       token: 't',
       notification: { id: 'order-42', title: 'a', body: 'b' },
     });
-    expect(out.android.collapse_key).toBe('order-42');
+    expect(out.android.collapseKey).toBe('order-42');
     expect(out.apns.headers['apns-collapse-id']).toBe('order-42');
   });
 
@@ -174,7 +187,7 @@ describe('buildNotifyKitPayload — collapse key precedence (Rule 7)', () => {
       token: 't',
       notification: { title: 'a', body: 'b' },
     });
-    expect(out.android.collapse_key).toBeUndefined();
+    expect(out.android.collapseKey).toBeUndefined();
     expect(out.apns.headers['apns-collapse-id']).toBeUndefined();
   });
 });
@@ -345,6 +358,13 @@ describe('buildNotifyKitPayload — sizeBytes field', () => {
     expect(typeof out.sizeBytes).toBe('number');
     expect(out.sizeBytes).toBeGreaterThan(0);
     expect(Number.isInteger(out.sizeBytes)).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(out, 'sizeBytes')).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(out, 'sizeBytes')).toEqual({
+      value: out.sizeBytes,
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    });
   });
 
   it('sizeBytes reflects FCM payload bytes (excludes sizeBytes itself)', () => {

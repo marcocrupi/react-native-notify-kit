@@ -11,34 +11,35 @@ function base(overrides: Partial<NotifyKitPayloadInput> = {}): NotifyKitPayloadI
 }
 
 describe('buildAndroidPayload', () => {
-  it("capitalizes priority 'high' → 'HIGH'", () => {
+  it("preserves priority 'high'", () => {
     const out = buildAndroidPayload(base({ options: { androidPriority: 'high' } }), {});
-    expect(out.priority).toBe('HIGH');
+    expect(out.priority).toBe('high');
   });
 
-  it("capitalizes priority 'normal' → 'NORMAL'", () => {
+  it("preserves priority 'normal'", () => {
     const out = buildAndroidPayload(base({ options: { androidPriority: 'normal' } }), {});
-    expect(out.priority).toBe('NORMAL');
+    expect(out.priority).toBe('normal');
   });
 
-  it("defaults priority to 'HIGH' when not specified", () => {
+  it("defaults priority to 'high' when not specified", () => {
     const out = buildAndroidPayload(base(), {});
-    expect(out.priority).toBe('HIGH');
+    expect(out.priority).toBe('high');
   });
 
-  it('copies collapse_key from context', () => {
+  it('copies collapseKey from context', () => {
     const out = buildAndroidPayload(base(), { collapseKey: 'order-42' });
-    expect(out.collapse_key).toBe('order-42');
+    expect(out.collapseKey).toBe('order-42');
+    expect('collapse_key' in out).toBe(false);
   });
 
-  it('formats ttl as "Ns" string', () => {
+  it('converts ttl from seconds to milliseconds', () => {
     const out = buildAndroidPayload(base(), { ttlSeconds: 3600 });
-    expect(out.ttl).toBe('3600s');
+    expect(out.ttl).toBe(3_600_000);
   });
 
-  it('omits collapse_key and ttl when not provided', () => {
+  it('omits collapseKey and ttl when not provided', () => {
     const out = buildAndroidPayload(base(), {});
-    expect(out.collapse_key).toBeUndefined();
+    expect(out.collapseKey).toBeUndefined();
     expect(out.ttl).toBeUndefined();
   });
 

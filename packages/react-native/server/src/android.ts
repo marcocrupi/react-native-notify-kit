@@ -5,8 +5,8 @@ type BuildAndroidContext = {
   ttlSeconds?: number;
 };
 
-function toAndroidPriority(priority: NotifyKitOptions['androidPriority']): 'HIGH' | 'NORMAL' {
-  return priority === 'normal' ? 'NORMAL' : 'HIGH';
+function toAndroidPriority(priority: NotifyKitOptions['androidPriority']): 'high' | 'normal' {
+  return priority === 'normal' ? 'normal' : 'high';
 }
 
 export function buildAndroidPayload(
@@ -18,10 +18,10 @@ export function buildAndroidPayload(
     priority: toAndroidPriority(options.androidPriority),
   };
   if (context.collapseKey !== undefined) {
-    output.collapse_key = context.collapseKey;
+    output.collapseKey = context.collapseKey;
   }
   if (context.ttlSeconds !== undefined) {
-    output.ttl = `${context.ttlSeconds}s`;
+    output.ttl = context.ttlSeconds * 1000;
   }
   return output;
 }

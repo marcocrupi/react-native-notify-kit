@@ -158,12 +158,12 @@ describe('Check 1 — notifee_options byte-identical on both paths', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Check 2 — FCM v1 schema conformance
+// Check 2 — Firebase Admin message conformance
 // ---------------------------------------------------------------------------
 
 const VALID_INTERRUPTION_LEVELS = ['passive', 'active', 'time-sensitive', 'critical'];
 
-function assertFcmV1Conformance(output: NotifyKitPayloadOutput, _label: string): void {
+function assertFirebaseAdminConformance(output: NotifyKitPayloadOutput, _label: string): void {
   // Routing: exactly one of token/topic/condition
   const routingKeys = ['token', 'topic', 'condition'].filter(
     k => (output as Record<string, unknown>)[k] !== undefined,
@@ -179,14 +179,18 @@ function assertFcmV1Conformance(output: NotifyKitPayloadOutput, _label: string):
   }
 
   // android
-  expect(['HIGH', 'NORMAL']).toContain(output.android.priority);
+  expect(['high', 'normal']).toContain(output.android.priority);
   expect('notification' in output.android).toBe(false);
   if (output.android.ttl !== undefined) {
-    expect(output.android.ttl).toMatch(/^\d+s$/);
+    expect(typeof output.android.ttl).toBe('number');
+    expect(Number.isInteger(output.android.ttl)).toBe(true);
+    expect(output.android.ttl).toBeGreaterThan(0);
+    expect(output.android.ttl % 1000).toBe(0);
   }
-  if (output.android.collapse_key !== undefined) {
-    expect(typeof output.android.collapse_key).toBe('string');
+  if (output.android.collapseKey !== undefined) {
+    expect(typeof output.android.collapseKey).toBe('string');
   }
+  expect('collapse_key' in output.android).toBe(false);
 
   // apns.headers
   expect(output.apns.headers['apns-push-type']).toBe('alert');
@@ -230,12 +234,12 @@ function assertFcmV1Conformance(output: NotifyKitPayloadOutput, _label: string):
   expect(output.sizeBytes).toBeGreaterThan(0);
 }
 
-describe('Check 2 — FCM v1 schema conformance', () => {
+describe('Check 2 — Firebase Admin message conformance', () => {
   const outputs = buildAll();
 
   for (const [name, output] of Object.entries(outputs)) {
-    it(`Fixture "${name}" passes FCM v1 conformance`, () => {
-      assertFcmV1Conformance(output, name);
+    it(`Fixture "${name}" passes Firebase Admin message conformance`, () => {
+      assertFirebaseAdminConformance(output, name);
     });
   }
 });

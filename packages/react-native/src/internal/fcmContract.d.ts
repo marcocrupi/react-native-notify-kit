@@ -55,7 +55,7 @@ export type NotifyKitIosConfig = {
 export type NotifyKitNotification = {
   /**
    * Optional notification identifier. When provided, it is also used as the
-   * FCM collapse key (Android `collapse_key`, iOS `apns-collapse-id`) unless
+   * FCM collapse key (Android `collapseKey`, iOS `apns-collapse-id`) unless
    * `options.collapseKey` is explicitly set. Collapse key precedence (Rule 7):
    *   1. `options.collapseKey` if set
    *   2. `notification.id` if set
@@ -92,9 +92,9 @@ export type NotifyKitPayloadInput = {
 export type ApnsInterruptionLevel = 'passive' | 'active' | 'time-sensitive' | 'critical';
 
 export type NotifyKitAndroidOutput = {
-  priority: 'HIGH' | 'NORMAL';
-  collapse_key?: string;
-  ttl?: string;
+  priority: 'high' | 'normal';
+  collapseKey?: string;
+  ttl?: number;
 };
 
 export type NotifyKitApnsAps = {
@@ -125,10 +125,12 @@ export type NotifyKitApnsOutput = {
   payload: NotifyKitApnsPayload;
 };
 
-export type NotifyKitPayloadOutput = {
-  token?: string;
-  topic?: string;
-  condition?: string;
+type NotifyKitPayloadTarget =
+  | { token: string; topic?: never; condition?: never }
+  | { topic: string; token?: never; condition?: never }
+  | { condition: string; token?: never; topic?: never };
+
+export type NotifyKitPayloadOutput = NotifyKitPayloadTarget & {
   data: Record<string, string>;
   android: NotifyKitAndroidOutput;
   apns: NotifyKitApnsOutput;

@@ -3,9 +3,9 @@
 exports[`buildNotifyKitPayload — kitchen sink snapshot matches canonical shape 1`] = `
 {
   "android": {
-    "collapse_key": "order-42",
-    "priority": "HIGH",
-    "ttl": "3600s",
+    "collapseKey": "order-42",
+    "priority": "high",
+    "ttl": 3600000,
   },
   "apns": {
     "headers": {
