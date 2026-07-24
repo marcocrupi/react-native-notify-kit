@@ -37,8 +37,8 @@ tar -tzf "$TARBALL_PATH" | grep -q "package/cli/bin/react-native-notify-kit" || 
   echo "ERROR: tarball missing cli/bin/react-native-notify-kit" >&2
   exit 1
 }
-tar -tzf "$TARBALL_PATH" | grep -q "package/cli/dist/cli.bundle.js" || {
-  echo "ERROR: tarball missing cli/dist/cli.bundle.js" >&2
+tar -tzf "$TARBALL_PATH" | grep -q "package/cli/dist/cli.js" || {
+  echo "ERROR: tarball missing cli/dist/cli.js" >&2
   exit 1
 }
 tar -tzf "$TARBALL_PATH" | grep -q "package/cli/dist/templates" || {

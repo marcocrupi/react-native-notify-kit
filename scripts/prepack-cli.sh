@@ -4,9 +4,9 @@
 # Called automatically by the "prepack" lifecycle script in
 # packages/react-native/package.json.
 #
-# Copies the CLI's compiled output (dist/ with templates, bin/) into the
-# RN package. CLI runtime deps (xcode, commander, chalk, plist) ship as
-# optionalDependencies of the RN package — no bundling needed.
+# Copies the CLI's compiled output (dist/ with templates) into the RN package
+# and generates its bin wrapper. CLI runtime deps (xcode, commander, chalk,
+# plist) ship as optionalDependencies of the RN package — no bundling needed.
 
 set -euo pipefail
 
@@ -26,8 +26,12 @@ mkdir -p "$TARGET"
 # Copy dist (compiled JS + templates)
 cp -R "$CLI_PKG/dist" "$TARGET/dist"
 
-# Copy bin (shebang entry)
-cp -R "$CLI_PKG/bin" "$TARGET/bin"
+# Generate bin (shebang entry)
+mkdir -p "$TARGET/bin"
+cat > "$TARGET/bin/react-native-notify-kit" <<'EOF'
+#!/usr/bin/env node
+require('../dist/cli.js');
+EOF
 chmod +x "$TARGET/bin/react-native-notify-kit"
 
 # Copy a minimal package.json (cli.ts reads version from it)
