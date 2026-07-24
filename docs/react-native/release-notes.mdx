@@ -5,6 +5,19 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.5.0] (2026-07-24)
+
+This 10.5.0 update fixes Firebase Admin compatibility in the Server SDK payload builder while preserving the public TTL input in seconds.
+
+### Server SDK / Firebase Admin
+
+- Fixed `buildNotifyKitPayload()` returning Android fields in raw HTTP v1 form, which caused Firebase Admin to reject messages using `options.ttl`.
+- Generated messages now use Firebase Admin-compatible millisecond TTL values, priority values, collapse-key naming, and routing types.
+
+### Validation
+
+- Added local Firebase Admin compatibility coverage for TTL conversion, priority, collapse keys, token/topic/condition routing, APNs expiration, custom data, and non-enumerable payload metadata without credentials or network requests.
+
 ## [10.4.9] (2026-07-18)
 
 This 10.4.9 maintenance update fixes Android foreground event delivery during native event relay initialization and React context transitions.

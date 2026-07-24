@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.5.0] - 2026-07-24
+
 ### Fixed
 
 - **Server SDK / Firebase Admin**: fixed `buildNotifyKitPayload()` returning Android fields in raw HTTP v1 form, which caused Firebase Admin to reject messages using `options.ttl`. The public TTL input remains expressed in seconds, while the generated message now uses Firebase Admin-compatible millisecond TTL values, priority values, collapse-key naming, and routing types.
