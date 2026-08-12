@@ -170,7 +170,21 @@ public class ResourceUtils {
         new BaseBitmapDataSubscriber() {
           @Override
           protected void onNewResultImpl(@Nullable Bitmap bitmap) {
-            bitmapTCS.set(bitmap);
+            // Fresco owns this pooled bitmap and only guarantees it is valid for the
+            // duration of this callback. If it escapes without a copy, Fresco may
+            // recycle it on memory-cache eviction (e.g. onTrimMemory) while the
+            // notification is still being built, posted or re-parceled, crashing with
+            // "Can't copy/parcel a recycled bitmap" or "Canvas: trying to use a
+            // recycled bitmap".
+            if (bitmap == null) {
+              bitmapTCS.set(null);
+              return;
+            }
+            Bitmap.Config config = bitmap.getConfig();
+            if (config == null) {
+              config = Bitmap.Config.ARGB_8888;
+            }
+            bitmapTCS.set(bitmap.copy(config, false));
           }
 
           @Override
