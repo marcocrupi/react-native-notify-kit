@@ -92,3 +92,118 @@ To learn more, view the [Category Summary Text](/react-native/ios/categories#cat
 documentation.
 
 > This functionality is only available on iOS >= 12.
+
+## Communication Notifications
+
+On iOS 15+, [`ios.communicationInfo`](/react-native/reference/Interface.IOSCommunicationInfo) donates an
+`INSendMessageIntent` so Messages-style notifications show a **circular sender avatar** with your **app icon badge**
+on the lock screen and Notification Center.
+
+### Direct message (HTTPS avatar)
+
+Prefer remote HTTPS avatars for pushes handled by a Notification Service Extension — the extension can download the
+image while the app is backgrounded or killed:
+
+```js
+import notifee from 'react-native-notify-kit';
+
+await notifee.displayNotification({
+  title: 'Alex',
+  body: 'Are we still on for the walk?',
+  ios: {
+    communicationInfo: {
+      conversationId: 'chat-42',
+      body: 'Are we still on for the walk?',
+      sender: {
+        id: 'user-alex',
+        displayName: 'Alex',
+        avatar: 'https://cdn.example.com/avatars/alex.png',
+      },
+    },
+  },
+});
+```
+
+### Group conversation
+
+Provide `groupName` (and optionally `groupAvatar`) for group chats. The native layer adds a placeholder recipient so
+iOS treats the intent as a group conversation:
+
+```js
+await notifee.displayNotification({
+  title: 'Puppy Parents',
+  body: 'Sam: See you at the park!',
+  ios: {
+    communicationInfo: {
+      conversationId: 'group-7',
+      body: 'See you at the park!',
+      groupName: 'Puppy Parents',
+      groupAvatar: 'https://cdn.example.com/groups/7.png',
+      sender: {
+        id: 'user-sam',
+        displayName: 'Sam',
+        avatar: 'https://cdn.example.com/avatars/sam.png',
+      },
+    },
+  },
+});
+```
+
+### Local / cached avatars
+
+`sender.avatar` and `groupAvatar` also accept local `file://` URLs, absolute paths, or bundle resource names (useful
+for foreground demos). The core loads **image bytes** into `INImage` rather than passing a `file://` URL to
+`imageWithURL:`, which can fail when iOS persists the intent image after Notification Service Extension caching.
+
+```js
+await notifee.displayNotification({
+  title: 'Jordan',
+  body: 'Local avatar smoke test',
+  ios: {
+    communicationInfo: {
+      conversationId: 'local-demo',
+      body: 'Local avatar smoke test',
+      sender: {
+        id: 'user-jordan',
+        displayName: 'Jordan',
+        // e.g. after downloading/caching under the app or NSE shared container
+        avatar: 'file:///var/mobile/Containers/Data/Application/.../Library/Caches/avatar.png',
+      },
+    },
+  },
+});
+```
+
+### FCM / APNs (background & killed)
+
+For remote delivery, include `communicationInfo` inside Notify Kit options so the NSE can apply the intent. With the
+server SDK:
+
+```js
+import { buildNotifyKitPayload } from 'react-native-notify-kit/server';
+
+const message = buildNotifyKitPayload({
+  token: deviceToken,
+  notification: {
+    title: 'Alex',
+    body: 'Are we still on for the walk?',
+    ios: {
+      communicationInfo: {
+        conversationId: 'chat-42',
+        body: 'Are we still on for the walk?',
+        sender: {
+          id: 'user-alex',
+          displayName: 'Alex',
+          avatar: 'https://cdn.example.com/avatars/alex.png',
+        },
+      },
+    },
+  },
+});
+```
+
+`buildNotifyKitPayload` sets `mutable-content: 1` on APNs so the Notification Service Extension can run. Without the
+NSE (or without `communicationInfo` in the payload), iOS will show a standard alert without the circular avatar layout.
+
+> Requires iOS 15+, Communication Notifications capability / entitlement as configured for your app, and a Notification
+> Service Extension for background/killed remote pushes.

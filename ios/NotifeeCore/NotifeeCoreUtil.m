@@ -1249,6 +1249,45 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
   return dictionary;
 }
 
+/**
+ * Build an INImage for Communication Notifications.
+ *
+ * `INImage imageWithURL:` with a local `file://` cache URL often fails while iOS
+ * persists the intent image (invalid URL-encoded filename + ".png"). Prefer
+ * `imageWithImageData:` from downloaded / local bytes; fall back to a remote URL.
+ */
++ (INImage *)inImageFromCommunicationAvatarString:(NSString *)avatarString {
+  if (avatarString == nil || avatarString.length == 0) {
+    return nil;
+  }
+
+  NSURL *resolvedURL = nil;
+  BOOL isRemote = [avatarString hasPrefix:@"http://"] || [avatarString hasPrefix:@"https://"];
+
+  if (isRemote) {
+    resolvedURL = [self downloadMediaSynchronously:avatarString];
+  } else if ([avatarString hasPrefix:@"file://"]) {
+    resolvedURL = [NSURL URLWithString:avatarString];
+  } else if ([avatarString hasPrefix:@"/"]) {
+    resolvedURL = [NSURL fileURLWithPath:avatarString];
+  } else {
+    resolvedURL = [self getURLFromString:avatarString];
+  }
+
+  if (resolvedURL != nil) {
+    NSData *imageData = [NSData dataWithContentsOfURL:resolvedURL];
+    if (imageData != nil && imageData.length > 0) {
+      return [INImage imageWithImageData:imageData];
+    }
+  }
+
+  if (isRemote) {
+    return [INImage imageWithURL:[NSURL URLWithString:avatarString]];
+  }
+
+  return nil;
+}
+
 + (INSendMessageIntent *)generateSenderIntentForCommunicationNotification:
     (NSDictionary *)communicationInfo {
   if (@available(iOS 15.0, *)) {
@@ -1256,11 +1295,10 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
     INPersonHandle *senderPersonHandle =
         [[INPersonHandle alloc] initWithValue:sender[@"id"] type:INPersonHandleTypeUnknown];
 
-    // Parse sender's avatar
+    // Parse sender's avatar (image data — not file:// imageWithURL)
     INImage *avatar = nil;
     if (sender[@"avatar"] != nil) {
-      NSURL *url = [self getURLFromString:sender[@"avatar"]];
-      avatar = [INImage imageWithURL:url];
+      avatar = [self inImageFromCommunicationAvatarString:sender[@"avatar"]];
     }
 
     INPerson *senderPerson = [[INPerson alloc] initWithPersonHandle:senderPersonHandle
@@ -1268,7 +1306,7 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
                                                         displayName:sender[@"displayName"]
                                                               image:avatar
                                                   contactIdentifier:nil
-                                                   customIdentifier:nil];
+                                                   customIdentifier:sender[@"id"]];
 
     NSMutableArray *recipients = nil;
 
@@ -1305,11 +1343,17 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
                                                  sender:senderPerson
                                             attachments:nil];
 
-    if (communicationInfo[@"groupAvatar"] != nil) {
-      NSURL *groupAvatarURL = [[NSURL alloc] initWithString:communicationInfo[@"groupAvatar"]];
-      INImage *groupAvatarImage = [INImage imageWithURL:groupAvatarURL];
+    // Required for the lock-screen circular avatar + app-icon badge layout.
+    if (avatar != nil) {
+      [intent setImage:avatar forParameterNamed:@"sender"];
+    }
 
-      [intent setImage:groupAvatarImage forParameterNamed:@"speakableGroupName"];
+    if (communicationInfo[@"groupAvatar"] != nil) {
+      INImage *groupAvatarImage =
+          [self inImageFromCommunicationAvatarString:communicationInfo[@"groupAvatar"]];
+      if (groupAvatarImage != nil) {
+        [intent setImage:groupAvatarImage forParameterNamed:@"speakableGroupName"];
+      }
     }
 
     return intent;

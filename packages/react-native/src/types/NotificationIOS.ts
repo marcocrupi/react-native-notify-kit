@@ -121,7 +121,12 @@ export interface NotificationIOS {
 }
 
 /**
- * An interface to support communication notifications on iOS 15 and above
+ * An interface to support communication notifications on iOS 15 and above.
+ *
+ * Avatars (`sender.avatar`, `groupAvatar`) accept a remote `https://` URL (preferred for
+ * Notification Service Extension downloads), a local `file://` path, an absolute path, or a
+ * bundle resource name. The native core loads image bytes into `INImage` so lock-screen circular
+ * avatars render reliably (including after NSE disk caching).
  *
  * @platform ios
  */
@@ -129,6 +134,10 @@ export interface IOSCommunicationInfo {
   conversationId: string;
   body?: string;
   groupName?: string;
+  /**
+   * Optional group avatar. Prefer `https://` for remote pushes; local `file://` / absolute paths
+   * also work for foreground `displayNotification` demos.
+   */
   groupAvatar?: string;
   sender: IOSCommunicationInfoPerson;
 }
@@ -136,6 +145,10 @@ export interface IOSCommunicationInfo {
 export interface IOSCommunicationInfoPerson {
   id: string;
   displayName: string;
+  /**
+   * Optional sender avatar URL or local path. Remote HTTPS is preferred for background / NSE.
+   * Local `file://` paths are loaded as image data (not `INImage imageWithURL:`).
+   */
   avatar?: string;
 }
 

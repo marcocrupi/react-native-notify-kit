@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **iOS Communication Notifications**: load sender / group avatars via `INImage imageWithImageData:` (downloaded or local bytes) instead of `imageWithURL:` on `file://` cache URLs, which often failed while iOS persisted the intent image (URL-encoded filename + `.png`). Also set the intent image for the `sender` parameter (required for the lock-screen circular avatar + app-icon badge layout) and use `sender.id` as `customIdentifier`.
+
 ## [10.5.0] - 2026-07-24
 
 ### Fixed
