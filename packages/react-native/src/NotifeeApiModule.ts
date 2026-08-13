@@ -602,6 +602,7 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
             ios,
             android: {
               alarm: AndroidNotificationSetting.ENABLED,
+              fullScreenIntent: AndroidNotificationSetting.ENABLED,
             },
             web: {},
           };
@@ -614,6 +615,7 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       authorizationStatus: AuthorizationStatus.NOT_DETERMINED,
       android: {
         alarm: AndroidNotificationSetting.ENABLED,
+        fullScreenIntent: AndroidNotificationSetting.ENABLED,
       },
       ios: {
         alert: 1,
@@ -725,6 +727,7 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
             ios,
             android: {
               alarm: AndroidNotificationSetting.ENABLED,
+              fullScreenIntent: AndroidNotificationSetting.ENABLED,
             },
             web: {},
           };
@@ -737,6 +740,7 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
       authorizationStatus: AuthorizationStatus.NOT_DETERMINED,
       android: {
         alarm: AndroidNotificationSetting.ENABLED,
+        fullScreenIntent: AndroidNotificationSetting.ENABLED,
       },
       ios: {
         alert: 1,
