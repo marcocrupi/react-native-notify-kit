@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`, preventing later notification build, drawing, or parceling paths from depending on Fresco's bitmap lifetime.
+
+### Tests
+
+- **Android**: added deterministic Robolectric regression coverage for Fresco bitmap ownership, verifying that the source bitmap can be released while the bitmap returned by `ResourceUtils` remains independent and usable.
+
 ## [10.5.0] - 2026-07-24
 
 ### Fixed
