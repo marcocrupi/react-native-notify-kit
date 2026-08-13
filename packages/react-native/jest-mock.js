@@ -83,6 +83,7 @@ export const testNotificationSettings = {
   authorizationStatus: Notification.AuthorizationStatus.AUTHORIZED,
   android: {
     alarm: NotificationAndroid.AndroidNotificationSetting.ENABLED,
+    fullScreenIntent: NotificationAndroid.AndroidNotificationSetting.ENABLED,
   },
   ios: {
     alert: true,

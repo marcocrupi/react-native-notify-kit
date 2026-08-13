@@ -501,6 +501,21 @@ export interface AndroidNotificationSettings {
    * View the [Trigger](/react-native/android/triggers#android-12-limitations) documentation for more information.
    */
   alarm: AndroidNotificationSetting;
+
+  /**
+   * Enum describing if a notification with a `fullScreenAction` will actually be shown full screen.
+   *
+   * For Android < 14 / API < 34, this will default to enabled.
+   *
+   * On Android 14 / API 34 and above, `USE_FULL_SCREEN_INTENT` is a user-revocable special app
+   * access rather than a normal install-time permission. It is revoked on install for apps outside
+   * the calling and alarm categories, and the user can toggle it at any time. While it is disabled
+   * the notification still posts and no error is raised — only the full screen presentation is
+   * dropped, so this setting is the only way to detect it.
+   *
+   * Send the user to `Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT` to have it granted.
+   */
+  fullScreenIntent: AndroidNotificationSetting;
 }
 
 /**

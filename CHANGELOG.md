@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Android**: `getNotificationSettings()` now reports `android.fullScreenIntent`, an `AndroidNotificationSetting` describing whether a notification posted with a `fullScreenAction` will actually be shown full screen. On Android 14 / API 34 and above, `USE_FULL_SCREEN_INTENT` is a user-revocable special app access that the Play Store revokes on install for apps outside the calling and alarm categories — and a denial was previously undetectable, because the notification still posts and no error is raised. Below API 34 the value is always `ENABLED`, matching the existing `android.alarm` field.
+
 ### Fixed
 
 - **Android**: fixed a failure path that could drop `MessagingStyle` notifications when `Person` resolution timed out or an icon could not be loaded or created. These recoverable failures now use an icon-less fallback that preserves the remaining `Person` fields and allows notification construction to continue.
@@ -24,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Android**: added deterministic regression coverage for `MessagingStyle` `Person` timeouts and icon failures, verifying an icon-less fallback that preserves the remaining `Person` fields while unexpected person-construction failures continue to propagate.
 
 - **Android**: added deterministic Robolectric regression coverage for Fresco bitmap ownership, verifying that the source bitmap can be released while the bitmap returned by `ResourceUtils` remains independent and usable.
+- **Android**: added Robolectric coverage for full-screen intent availability across the API 34 boundary, including the fail-open path when the `NotificationManager` is unavailable.
 
 - **Android**: added deterministic Robolectric regression coverage for `ReceiverService` `PendingIntent` identity and a physical-device smoke harness covering a notification surviving a process restart, a second notification posted from the new process, real action-button presses, and real dismiss routing; the device scenarios were validated on a Pixel 9 Pro XL running Android 17/API 37.
 
