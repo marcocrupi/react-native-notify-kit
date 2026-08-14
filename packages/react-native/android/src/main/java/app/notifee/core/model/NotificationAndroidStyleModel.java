@@ -117,20 +117,26 @@ public class NotificationAndroidStyleModel {
   }
 
   /**
-   * Awaits a person, degrading to an icon-less one if it does not arrive in time.
+   * Awaits a person, degrading to an icon-less one if it cannot be delivered.
    *
-   * <p>getPerson() already bounds its own icon fetch, so this deadline expires only when the
-   * process was frozen mid-fetch. Losing the person there costs an avatar; letting the
-   * TimeoutException escape costs the entire notification.
+   * <p>getPerson() already bounds its own icon fetch, so the deadline expires only when the process
+   * was frozen mid-fetch, and it can still fail outright on the icon decode. Either way the loss is
+   * an avatar; letting the exception escape loses the entire notification.
+   *
+   * <p>InterruptedException deliberately propagates: it means this thread is being torn down, not
+   * that the person is unavailable.
    */
   private static Person awaitPerson(ListenableFuture<Person> personTask, Bundle personBundle)
-      throws ExecutionException, InterruptedException {
+      throws InterruptedException {
     try {
       return personTask.get(20, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       Logger.e(TAG, "Timeout occurred whilst trying to retrieve a messaging style person", e);
-      return getPersonBuilder(personBundle).build();
+    } catch (ExecutionException e) {
+      Logger.e(TAG, "An error occurred whilst trying to retrieve a messaging style person", e);
     }
+
+    return getPersonBuilder(personBundle).build();
   }
 
   public Bundle toBundle() {

@@ -30,6 +30,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -40,17 +41,19 @@ import org.robolectric.RobolectricTestRunner;
 /**
  * Regression tests for the messaging style's person lookups.
  *
- * <p>{@code getMessagingStyleTask} awaits each person with a timed {@code get()}. That deadline is
- * unreachable through a slow network — {@code getPerson} bounds its own icon fetch and degrades to
- * an icon-less person — so it expires only when the process stopped being scheduled mid-fetch, e.g.
- * under Android's cached-app freezer. Letting the resulting TimeoutException escape the callable
- * fails the whole notification, so the user loses the message over an avatar.
+ * <p>{@code getMessagingStyleTask} awaits each person with a timed {@code get()}, which can fail
+ * two ways. The deadline is unreachable through a slow network — {@code getPerson} bounds its own
+ * icon fetch and degrades to an icon-less person — so it expires only when the process stopped
+ * being scheduled mid-fetch, e.g. under Android's cached-app freezer. An ExecutionException means
+ * the lookup itself threw, which the icon decode outside {@code getPerson}'s try block can still
+ * do. Letting either escape the callable fails the whole notification, so the user loses the
+ * message over an avatar.
  *
- * <p>{@link TimingOutPersonExecutor} simulates that by handing back a person future whose timed get
- * always times out.
+ * <p>{@link FailingPersonExecutor} simulates both by handing back a person future that fails the
+ * way the caller would observe.
  */
 @RunWith(RobolectricTestRunner.class)
-public class NotificationAndroidStyleModelPersonTimeoutTest {
+public class NotificationAndroidStyleModelPersonFailureTest {
 
   private static final int STYLE_TYPE_MESSAGING = 3;
 
@@ -59,7 +62,7 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     NotificationAndroidStyleModel model =
         NotificationAndroidStyleModel.fromBundle(messagingStyleBundle());
 
-    NotificationCompat.Style style = model.getStyleTask(new TimingOutPersonExecutor()).get();
+    NotificationCompat.Style style = model.getStyleTask(timesOut()).get();
 
     assertTrue(style instanceof NotificationCompat.MessagingStyle);
   }
@@ -70,7 +73,7 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
         NotificationAndroidStyleModel.fromBundle(messagingStyleBundle());
 
     NotificationCompat.MessagingStyle style =
-        (NotificationCompat.MessagingStyle) model.getStyleTask(new TimingOutPersonExecutor()).get();
+        (NotificationCompat.MessagingStyle) model.getStyleTask(timesOut()).get();
 
     Person user = style.getUser();
     assertEquals("Me", user.getName());
@@ -88,7 +91,7 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
         NotificationAndroidStyleModel.fromBundle(messagingStyleBundle());
 
     NotificationCompat.MessagingStyle style =
-        (NotificationCompat.MessagingStyle) model.getStyleTask(new TimingOutPersonExecutor()).get();
+        (NotificationCompat.MessagingStyle) model.getStyleTask(timesOut()).get();
 
     List<NotificationCompat.MessagingStyle.Message> messages = style.getMessages();
     assertEquals(1, messages.size());
@@ -97,7 +100,35 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     assertNull(messages.get(0).getPerson().getIcon());
   }
 
-  /** Guards the builder shared by the normal and timed-out paths. */
+  @Test
+  public void messagingStyle_personLookupThrows_stillBuildsTheStyle() throws Exception {
+    NotificationAndroidStyleModel model =
+        NotificationAndroidStyleModel.fromBundle(messagingStyleBundle());
+
+    NotificationCompat.Style style = model.getStyleTask(throwsFrom()).get();
+
+    assertTrue(style instanceof NotificationCompat.MessagingStyle);
+  }
+
+  @Test
+  public void messagingStyle_personLookupThrows_keepsEverythingButTheIcon() throws Exception {
+    NotificationAndroidStyleModel model =
+        NotificationAndroidStyleModel.fromBundle(messagingStyleBundle());
+
+    NotificationCompat.MessagingStyle style =
+        (NotificationCompat.MessagingStyle) model.getStyleTask(throwsFrom()).get();
+
+    Person user = style.getUser();
+    assertEquals("Me", user.getName());
+    assertEquals("viewer-1", user.getKey());
+    assertEquals("mailto:me@example.com", user.getUri());
+    assertTrue(user.isImportant());
+    assertTrue(user.isBot());
+    assertNull(user.getIcon());
+    assertEquals("Alice", style.getMessages().get(0).getPerson().getName());
+  }
+
+  /** Guards the builder shared by the normal and degraded paths. */
   @Test
   public void messagingStyle_personResolves_mapsEveryBundleField() throws Exception {
     NotificationAndroidStyleModel model =
@@ -147,13 +178,38 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     return person;
   }
 
+  /** How an awaited person future fails. */
+  private interface PersonFailure {
+    void raise() throws ExecutionException, TimeoutException;
+  }
+
+  private static FailingPersonExecutor timesOut() {
+    return new FailingPersonExecutor(
+        () -> {
+          throw new TimeoutException("simulated frozen process");
+        });
+  }
+
+  private static FailingPersonExecutor throwsFrom() {
+    return new FailingPersonExecutor(
+        () -> {
+          throw new ExecutionException(
+              new IllegalStateException("Can't create an Icon from a recycled bitmap"));
+        });
+  }
+
   /**
    * Runs the style task inline, but every person submitted from inside it comes back as a future
-   * whose timed get times out — what the caller observes when the process was frozen mid-fetch.
+   * that fails the given way when awaited.
    */
-  private static final class TimingOutPersonExecutor extends ForwardingListeningExecutorService {
+  private static final class FailingPersonExecutor extends ForwardingListeningExecutorService {
     private final ListeningExecutorService delegate = MoreExecutors.newDirectExecutorService();
+    private final PersonFailure failure;
     private boolean styleTaskSubmitted = false;
+
+    FailingPersonExecutor(PersonFailure failure) {
+      this.failure = failure;
+    }
 
     @Override
     protected ListeningExecutorService delegate() {
@@ -163,13 +219,13 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     @Override
     public <T> ListenableFuture<T> submit(Callable<T> task) {
       if (styleTaskSubmitted) {
-        return timesOut();
+        return failingFuture();
       }
       styleTaskSubmitted = true;
       return delegate.submit(task);
     }
 
-    private static <T> ListenableFuture<T> timesOut() {
+    private <T> ListenableFuture<T> failingFuture() {
       return new ListenableFuture<T>() {
         @Override
         public void addListener(Runnable listener, Executor executor) {}
@@ -195,8 +251,9 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
         }
 
         @Override
-        public T get(long timeout, TimeUnit unit) throws TimeoutException {
-          throw new TimeoutException("simulated frozen process");
+        public T get(long timeout, TimeUnit unit) throws ExecutionException, TimeoutException {
+          failure.raise();
+          throw new AssertionError("unreachable");
         }
       };
     }
