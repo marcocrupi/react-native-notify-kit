@@ -76,6 +76,8 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     assertEquals("Me", user.getName());
     assertEquals("viewer-1", user.getKey());
     assertEquals("mailto:me@example.com", user.getUri());
+    assertTrue(user.isImportant());
+    assertTrue(user.isBot());
     assertNull(user.getIcon());
   }
 
@@ -110,7 +112,9 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     assertEquals("viewer-1", user.getKey());
     assertEquals("mailto:me@example.com", user.getUri());
     assertTrue(user.isImportant());
+    assertTrue(user.isBot());
     assertEquals("Room", style.getConversationTitle().toString());
+    assertTrue(style.isGroupConversation());
     assertEquals("Alice", style.getMessages().get(0).getPerson().getName());
   }
 
@@ -138,6 +142,7 @@ public class NotificationAndroidStyleModelPersonTimeoutTest {
     person.putString("name", name);
     person.putString("id", id);
     person.putBoolean("important", true);
+    person.putBoolean("bot", true);
     person.putString("uri", name.equals("Me") ? "mailto:me@example.com" : "mailto:a@example.com");
     return person;
   }
