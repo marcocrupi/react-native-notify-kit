@@ -19,6 +19,7 @@
 #include <CoreGraphics/CGGeometry.h>
 #import <Intents/INIntentIdentifiers.h>
 #import <UIKit/UIKit.h>
+#import <dispatch/dispatch.h>
 #include <limits.h>
 #include <math.h>
 #import "NotifeeCore+NSURLSession.h"
@@ -55,8 +56,29 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
                                          defaultMissingCreatedAt:(BOOL)defaultMissingCreatedAt;
 + (nullable id)rollingJSONObjectFromObject:(nullable id)object;
 + (NSNumber *)rollingCurrentTimestampMs;
++ (INSendMessageIntent *)generateSenderIntentForCommunicationNotification:
+                             (NSDictionary *)communicationInfo
+                                                                 deadline:(dispatch_time_t)deadline;
++ (dispatch_time_t)communicationAvatarCurrentTime;
 
 @end
+
+@interface NotifeeCoreCommunicationAvatarDownloadResult : NSObject
+
+@property(nonatomic, strong, nullable) NSURL *URL;
+@property(nonatomic, assign) dispatch_time_t completionTime;
+@property(nonatomic, assign, getter=isCompleted) BOOL completed;
+@property(nonatomic, assign, getter=isUsable) BOOL usable;
+
+@end
+
+@implementation NotifeeCoreCommunicationAvatarDownloadResult
+@end
+
+static BOOL NotifeeCoreIsRemoteURLString(id value) {
+  return [value isKindOfClass:NSString.class] &&
+         ([value hasPrefix:@"http://"] || [value hasPrefix:@"https://"]);
+}
 
 @implementation NotifeeCoreUtil
 
@@ -223,20 +245,26 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
  * @return NSURL
  */
 + (NSURL *)getURLFromString:(NSString *)urlString {
-  NSURL *url;
-
-  if ([urlString hasPrefix:@"http://"] || [urlString hasPrefix:@"https://"]) {
-    // handle remote url by attempting to download attachement synchronously
-    url = [self downloadMediaSynchronously:urlString];
-  } else if ([urlString hasPrefix:@"/"]) {
-    // handle absolute file path
-    url = [NSURL fileURLWithPath:urlString];
-  } else {
-    // try to resolve local resource
-    url = [[NSBundle mainBundle] URLForResource:urlString withExtension:nil];
+  if (![urlString isKindOfClass:NSString.class] || [urlString length] == 0) {
+    return nil;
   }
 
-  return url;
+  NSURL *parsedURL = [NSURL URLWithString:urlString];
+
+  if ([parsedURL isFileURL]) {
+    return parsedURL;
+  }
+
+  if (NotifeeCoreIsRemoteURLString(urlString)) {
+    // handle remote url by attempting to download attachement synchronously
+    return [self downloadMediaSynchronously:urlString];
+  } else if ([urlString hasPrefix:@"/"]) {
+    // handle absolute file path
+    return [NSURL fileURLWithPath:urlString];
+  }
+
+  // try to resolve local resource
+  return [[NSBundle mainBundle] URLForResource:urlString withExtension:nil];
 }
 
 /*
@@ -1251,16 +1279,135 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
 
 + (INSendMessageIntent *)generateSenderIntentForCommunicationNotification:
     (NSDictionary *)communicationInfo {
+  return [self generateSenderIntentForCommunicationNotification:communicationInfo
+                                                       deadline:DISPATCH_TIME_FOREVER];
+}
+
++ (dispatch_time_t)communicationAvatarCurrentTime {
+  return dispatch_time(DISPATCH_TIME_NOW, 0);
+}
+
++ (INSendMessageIntent *)
+    generateSenderIntentForCommunicationNotification:(NSDictionary *)communicationInfo
+                                            deadline:(dispatch_time_t)deadline {
   if (@available(iOS 15.0, *)) {
     NSDictionary *sender = communicationInfo[@"sender"];
     INPersonHandle *senderPersonHandle =
         [[INPersonHandle alloc] initWithValue:sender[@"id"] type:INPersonHandleTypeUnknown];
 
+    id senderAvatarValue = sender[@"avatar"];
+    id groupAvatarValue = communicationInfo[@"groupAvatar"];
+    BOOL sharesAvatar = [senderAvatarValue isKindOfClass:NSString.class] &&
+                        [groupAvatarValue isKindOfClass:NSString.class] &&
+                        [senderAvatarValue isEqualToString:groupAvatarValue];
+
+    NSURL *senderAvatarURL = nil;
+    NSURL *groupAvatarURL = nil;
+
+    if (deadline == DISPATCH_TIME_FOREVER) {
+      __block NSURL *downloadedGroupAvatarURL = nil;
+      dispatch_group_t groupAvatarDownload = nil;
+
+      if (!sharesAvatar && NotifeeCoreIsRemoteURLString(groupAvatarValue)) {
+        groupAvatarDownload = dispatch_group_create();
+        dispatch_group_async(groupAvatarDownload, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0),
+                             ^{
+                               downloadedGroupAvatarURL = [self getURLFromString:groupAvatarValue];
+                             });
+      }
+
+      if (senderAvatarValue != nil) {
+        senderAvatarURL = [self getURLFromString:senderAvatarValue];
+      }
+
+      if (sharesAvatar) {
+        groupAvatarURL = senderAvatarURL;
+      } else if (groupAvatarDownload != nil) {
+        if (dispatch_group_wait(groupAvatarDownload, deadline) == 0) {
+          groupAvatarURL = downloadedGroupAvatarURL;
+        }
+      } else if (groupAvatarValue != nil) {
+        groupAvatarURL = [self getURLFromString:groupAvatarValue];
+      }
+    } else {
+      BOOL senderAvatarIsRemote = NotifeeCoreIsRemoteURLString(senderAvatarValue);
+      BOOL groupAvatarIsRemote = NotifeeCoreIsRemoteURLString(groupAvatarValue);
+      BOOL remoteDownloadsMayStart = [self communicationAvatarCurrentTime] < deadline;
+      NotifeeCoreCommunicationAvatarDownloadResult *senderAvatarResult = nil;
+      NotifeeCoreCommunicationAvatarDownloadResult *groupAvatarResult = nil;
+      dispatch_group_t senderAvatarDownload = nil;
+      dispatch_group_t groupAvatarDownload = nil;
+
+      dispatch_group_t (^startRemoteDownload)(NSString *,
+                                              NotifeeCoreCommunicationAvatarDownloadResult *) =
+          ^dispatch_group_t(NSString *avatarValue,
+                            NotifeeCoreCommunicationAvatarDownloadResult *result) {
+            dispatch_group_t download = dispatch_group_create();
+            dispatch_group_async(download, dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+              dispatch_time_t downloadStartTime = [self communicationAvatarCurrentTime];
+              if (downloadStartTime >= deadline) {
+                @synchronized(result) {
+                  result.completionTime = downloadStartTime;
+                  result.completed = YES;
+                  result.usable = NO;
+                }
+                return;
+              }
+
+              NSURL *downloadedURL = [self getURLFromString:avatarValue];
+              dispatch_time_t completionTime = [self communicationAvatarCurrentTime];
+              @synchronized(result) {
+                result.URL = downloadedURL;
+                result.completionTime = completionTime;
+                result.completed = YES;
+                result.usable = completionTime < deadline;
+              }
+            });
+            return download;
+          };
+
+      NSURL * (^waitForRemoteDownload)(dispatch_group_t,
+                                       NotifeeCoreCommunicationAvatarDownloadResult *) =
+          ^NSURL *(dispatch_group_t download,
+                   NotifeeCoreCommunicationAvatarDownloadResult *result) {
+        dispatch_group_wait(download, deadline);
+        @synchronized(result) {
+          if (result.isCompleted && result.isUsable) {
+            return result.URL;
+          }
+          return nil;
+        }
+      };
+
+      if (remoteDownloadsMayStart && senderAvatarIsRemote) {
+        senderAvatarResult = [NotifeeCoreCommunicationAvatarDownloadResult new];
+        senderAvatarDownload = startRemoteDownload(senderAvatarValue, senderAvatarResult);
+      }
+
+      if (remoteDownloadsMayStart && !sharesAvatar && groupAvatarIsRemote) {
+        groupAvatarResult = [NotifeeCoreCommunicationAvatarDownloadResult new];
+        groupAvatarDownload = startRemoteDownload(groupAvatarValue, groupAvatarResult);
+      }
+
+      if (senderAvatarDownload != nil) {
+        senderAvatarURL = waitForRemoteDownload(senderAvatarDownload, senderAvatarResult);
+      } else if (!senderAvatarIsRemote && senderAvatarValue != nil) {
+        senderAvatarURL = [self getURLFromString:senderAvatarValue];
+      }
+
+      if (sharesAvatar) {
+        groupAvatarURL = senderAvatarURL;
+      } else if (groupAvatarDownload != nil) {
+        groupAvatarURL = waitForRemoteDownload(groupAvatarDownload, groupAvatarResult);
+      } else if (!groupAvatarIsRemote && groupAvatarValue != nil) {
+        groupAvatarURL = [self getURLFromString:groupAvatarValue];
+      }
+    }
+
     // Parse sender's avatar
     INImage *avatar = nil;
-    if (sender[@"avatar"] != nil) {
-      NSURL *url = [self getURLFromString:sender[@"avatar"]];
-      avatar = [INImage imageWithURL:url];
+    if (senderAvatarURL != nil) {
+      avatar = [INImage imageWithURL:senderAvatarURL];
     }
 
     INPerson *senderPerson = [[INPerson alloc] initWithPersonHandle:senderPersonHandle
@@ -1305,8 +1452,7 @@ static NSInteger const kNotifeeRollingTargetPerTrigger = 32;
                                                  sender:senderPerson
                                             attachments:nil];
 
-    if (communicationInfo[@"groupAvatar"] != nil) {
-      NSURL *groupAvatarURL = [[NSURL alloc] initWithString:communicationInfo[@"groupAvatar"]];
+    if (groupAvatarURL != nil) {
       INImage *groupAvatarImage = [INImage imageWithURL:groupAvatarURL];
 
       [intent setImage:groupAvatarImage forParameterNamed:@"speakableGroupName"];
