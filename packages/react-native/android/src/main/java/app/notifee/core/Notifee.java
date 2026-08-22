@@ -36,6 +36,7 @@ import app.notifee.core.model.ChannelGroupModel;
 import app.notifee.core.model.ChannelModel;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.utility.AlarmUtils;
+import app.notifee.core.utility.FullScreenIntentUtils;
 import app.notifee.core.utility.PowerManagerUtils;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -506,6 +507,14 @@ public class Notifee {
       androidSettingsBundle.putInt("alarm", 1);
     } else {
       androidSettingsBundle.putInt("alarm", 0);
+    }
+
+    boolean canUseFullScreenIntent = FullScreenIntentUtils.canUseFullScreenIntent();
+
+    if (canUseFullScreenIntent) {
+      androidSettingsBundle.putInt("fullScreenIntent", 1);
+    } else {
+      androidSettingsBundle.putInt("fullScreenIntent", 0);
     }
 
     notificationSettingsBundle.putBundle("android", androidSettingsBundle);

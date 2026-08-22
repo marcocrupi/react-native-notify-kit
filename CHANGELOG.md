@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Android**: `getNotificationSettings()` now reports `android.fullScreenIntent`, an `AndroidNotificationSetting` describing whether a notification posted with a `fullScreenAction` will actually be shown full screen. On Android 14 / API 34 and above, `USE_FULL_SCREEN_INTENT` is a user-revocable special app access that the Play Store revokes on install for apps outside the calling and alarm categories — and a denial was previously undetectable, because the notification still posts and no error is raised. Below API 34 the value is always `ENABLED`, matching the existing `android.alarm` field.
+
 ### Fixed
 
 - **Android**: fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`, preventing later notification build, drawing, or parceling paths from depending on Fresco's bitmap lifetime.
@@ -16,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Tests
 
 - **Android**: added deterministic Robolectric regression coverage for Fresco bitmap ownership, verifying that the source bitmap can be released while the bitmap returned by `ResourceUtils` remains independent and usable.
+- **Android**: added Robolectric coverage for full-screen intent availability across the API 34 boundary, including the fail-open path when the `NotificationManager` is unavailable.
 
 - **iOS**: added harness coverage for avatar resolution and materialization in Communication Notifications, deadline and media-cutoff handling, and one-shot NSE completion; physical-device validation covered valid `file://` sender avatars, HTTPS group avatars in direct and NSE paths, and HTTPS sender regression paths.
 
