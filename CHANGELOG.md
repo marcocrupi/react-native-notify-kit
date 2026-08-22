@@ -11,11 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`, preventing later notification build, drawing, or parceling paths from depending on Fresco's bitmap lifetime.
 
+- **Android**: fixed `ReceiverService` `PendingIntent` identity collisions across app process restarts that could cause action buttons or dismiss/delete intents on older live notifications to receive another notification's payload when multiple notifications remained in the tray.
+
 - **iOS / Communication Notifications**: valid `file://` sender avatars now display their image instead of a placeholder, and HTTPS group avatars are now materialized before the communication intent is built in both direct and Notification Service Extension (NSE) paths.
 
 ### Tests
 
 - **Android**: added deterministic Robolectric regression coverage for Fresco bitmap ownership, verifying that the source bitmap can be released while the bitmap returned by `ResourceUtils` remains independent and usable.
+
+- **Android**: added deterministic Robolectric regression coverage for `ReceiverService` `PendingIntent` identity and a physical-device smoke harness covering a notification surviving a process restart, a second notification posted from the new process, real action-button presses, and real dismiss routing; the device scenarios were validated on a Pixel 9 Pro XL running Android 17/API 37.
 
 - **iOS**: added harness coverage for avatar resolution and materialization in Communication Notifications, deadline and media-cutoff handling, and one-shot NSE completion; physical-device validation covered valid `file://` sender avatars, HTTPS group avatars in direct and NSE paths, and HTTPS sender regression paths.
 
