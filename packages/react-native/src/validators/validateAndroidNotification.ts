@@ -103,6 +103,13 @@ export default function validateAndroidNotification(
       throw new Error(`'notification.android.actions' invalid AndroidAction. ${e.message}.`);
     }
 
+    const pressActionIds = new Set<string>(actions.map(action => action.pressAction.id));
+    if (pressActionIds.size !== actions.length) {
+      throw new Error(
+        "'notification.android.actions' pressAction IDs must be unique within the notification.",
+      );
+    }
+
     if (actions.length) {
       out.actions = actions;
     }

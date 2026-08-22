@@ -145,6 +145,75 @@ describe('Validate Android Notification', () => {
       );
     });
 
+    test('throws an error when sibling actions have duplicate pressAction IDs', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        actions: [
+          { title: 'Done', pressAction: { id: 'done' } },
+          { title: 'Snooze', pressAction: { id: 'done' } },
+        ],
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.actions' pressAction IDs must be unique within the notification.",
+      );
+    });
+
+    test('accepts sibling actions with distinct pressAction IDs', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        actions: [
+          { title: 'Done', pressAction: { id: 'done' } },
+          { title: 'Snooze', pressAction: { id: 'snooze' } },
+        ],
+      };
+
+      const result = validateAndroidNotification(notification);
+
+      expect(result.actions?.map(action => action.pressAction.id)).toEqual(['done', 'snooze']);
+    });
+
+    test('accepts the same pressAction ID for the notification body and an action', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        pressAction: { id: 'done' },
+        actions: [{ title: 'Done', pressAction: { id: 'done' } }],
+      };
+
+      const result = validateAndroidNotification(notification);
+
+      expect(result.pressAction?.id).toBe('done');
+      expect(result.actions?.[0].pressAction.id).toBe('done');
+    });
+
+    test('accepts the same action pressAction ID in separate notifications', () => {
+      const notificationA: NotificationAndroid = {
+        channelId: 'channelId',
+        actions: [{ title: 'Done', pressAction: { id: 'done' } }],
+      };
+      const notificationB: NotificationAndroid = {
+        channelId: 'channelId',
+        actions: [{ title: 'Done', pressAction: { id: 'done' } }],
+      };
+
+      expect(() => validateAndroidNotification(notificationA)).not.toThrow();
+      expect(() => validateAndroidNotification(notificationB)).not.toThrow();
+    });
+
+    test('throws an error for duplicate action pressAction IDs with RemoteInput', () => {
+      const notification: NotificationAndroid = {
+        channelId: 'channelId',
+        actions: [
+          { title: 'Reply', pressAction: { id: 'reply' }, input: true },
+          { title: 'Quick reply', pressAction: { id: 'reply' } },
+        ],
+      };
+
+      expect(() => validateAndroidNotification(notification)).toThrowError(
+        "'notification.android.actions' pressAction IDs must be unique within the notification.",
+      );
+    });
+
     test('throws an error when asForegroundService is invalid', () => {
       const channelGroup: NotificationAndroid = {
         channelId: 'channelId',
