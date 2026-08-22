@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android**: fixed validation in the React Native client and Server SDK so duplicate `pressAction.id` values within a single notification's `android.actions` array are rejected, preventing ambiguous action configurations.
+
 - **Android**: fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`, preventing later notification build, drawing, or parceling paths from depending on Fresco's bitmap lifetime.
 
 - **Android**: fixed `ReceiverService` `PendingIntent` identity collisions across app process restarts that could cause action buttons or dismiss/delete intents on older live notifications to receive another notification's payload when multiple notifications remained in the tray.
