@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Android**: fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`, preventing later notification build, drawing, or parceling paths from depending on Fresco's bitmap lifetime.
 
+- **iOS / Communication Notifications**: valid `file://` sender avatars now display their image instead of a placeholder, and HTTPS group avatars are now materialized before the communication intent is built in both direct and Notification Service Extension (NSE) paths.
+
 ### Tests
 
 - **Android**: added deterministic Robolectric regression coverage for Fresco bitmap ownership, verifying that the source bitmap can be released while the bitmap returned by `ResourceUtils` remains independent and usable.
+
+- **iOS**: added harness coverage for avatar resolution and materialization in Communication Notifications, deadline and media-cutoff handling, and one-shot NSE completion; physical-device validation covered valid `file://` sender avatars, HTTPS group avatars in direct and NSE paths, and HTTPS sender regression paths.
 
 ## [10.5.0] - 2026-07-24
 

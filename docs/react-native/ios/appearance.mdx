@@ -51,6 +51,65 @@ Audio, image and video files are supported.
 
 Advanced attachment options — `typeHint` (the [Uniform Type Identifier](https://developer.apple.com/library/archive/documentation/Miscellaneous/Reference/UTIRef/Articles/System-DeclaredUniformTypeIdentifiers.html), e.g. `'public.jpeg'`, used when iOS can't infer the content type from the URL) and `thumbnailClippingRect` (to crop the thumbnail shown when the notification is collapsed) — are documented in the [`IOSNotificationAttachment`](/react-native/reference/iosnotificationattachment) reference along with every available field.
 
+## Communication Notifications
+
+Use `ios.communicationInfo` to provide the sender and conversation context for Communication Notifications. In a direct conversation, `sender.avatar` represents the sender avatar:
+
+```js
+import notifee from 'react-native-notify-kit';
+
+await notifee.displayNotification({
+  title: 'Maya Chen',
+  body: 'Can you review the PR?',
+  ios: {
+    communicationInfo: {
+      conversationId: 'dm-maya',
+      body: 'Can you review the PR?',
+      sender: {
+        id: 'user_maya',
+        displayName: 'Maya Chen',
+        avatar: 'https://cdn.example.com/avatars/maya.png',
+      },
+    },
+  },
+});
+```
+
+For a group conversation, `sender.avatar` still represents the individual sender, while `groupAvatar` represents the group avatar:
+
+```js
+await notifee.displayNotification({
+  title: 'Design Team',
+  body: 'Maya: The latest mockups are ready.',
+  ios: {
+    communicationInfo: {
+      conversationId: 'design-team',
+      body: 'The latest mockups are ready.',
+      groupName: 'Design Team',
+      groupAvatar: 'https://cdn.example.com/groups/design-team.png',
+      sender: {
+        id: 'user_maya',
+        displayName: 'Maya Chen',
+        avatar: 'https://cdn.example.com/avatars/maya.png',
+      },
+    },
+  },
+});
+```
+
+### Avatar sources
+
+Both `sender.avatar` and `groupAvatar` accept the following image sources. The source must be available to the process that handles the notification:
+
+- An HTTPS URL, which is recommended for remote avatars.
+- A valid file URL (`file://`) that points to a real image file which already exists and is accessible to the process handling the notification.
+- An absolute local path, which refers to the current device and is not portable between devices.
+- A bundle resource, which must be included in the bundle of the process resolving it. A resource in the main app bundle is not automatically available in the Notification Service Extension (NSE) bundle.
+
+For remote avatars processed by an NSE, use an HTTPS URL.
+
+If an avatar cannot be resolved, iOS can fall back to the default communication avatar while the notification is still delivered.
+
 ## Foreground Notifications
 
 By default, Notify Kit will show iOS notifications in heads-up mode if your app is currently in the foreground.
