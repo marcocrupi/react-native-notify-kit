@@ -1,8 +1,5 @@
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
-import notifee, {
-  AndroidForegroundServiceType,
-  AndroidImportance,
-} from 'react-native-notify-kit';
+import notifee, { AndroidForegroundServiceType, AndroidImportance } from 'react-native-notify-kit';
 import { logSmokeResult, smokeErrorReason } from './smokeAutomation';
 
 const ISSUE44_PREFIX = 'notifykit://issue44/fgs-stop';
@@ -95,9 +92,7 @@ function parseIssue44Types(rawTypes: string): Issue44SupportedType[] | null {
   return uniqueTypes;
 }
 
-function foregroundServiceTypesFor(
-  types: Issue44SupportedType[],
-): AndroidForegroundServiceType[] {
+function foregroundServiceTypesFor(types: Issue44SupportedType[]): AndroidForegroundServiceType[] {
   return types.map(type => {
     switch (type) {
       case 'microphone':
@@ -183,9 +178,7 @@ function installIssue44ForegroundServiceRunner(notificationId: string): void {
   notifee.registerForegroundService(notification => {
     const activeState = issue44Global().__NOTIFEE_ISSUE44_FGS_RUNNER__;
     const activeNotificationId =
-      typeof notification.id === 'string' && notification.id.length > 0
-        ? notification.id
-        : null;
+      typeof notification.id === 'string' && notification.id.length > 0 ? notification.id : null;
 
     logIssue44('FGS_RUNNER_STARTED', {
       notificationId: activeNotificationId,
@@ -258,9 +251,7 @@ function failIssue44(reason: string, extra: Record<string, unknown> = {}): void 
   });
 }
 
-export async function executeIssue44FgsStopDeepLink(
-  request: Issue44FgsStopRequest,
-): Promise<void> {
+export async function executeIssue44FgsStopDeepLink(request: Issue44FgsStopRequest): Promise<void> {
   const globals = issue44Global();
 
   if (globals.__NOTIFEE_ISSUE44_RUNNING__) {
