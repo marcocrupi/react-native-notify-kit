@@ -124,32 +124,58 @@ notifee.displayNotification({
 
 # Badges
 
-Android devices on 8.0 (API level 26) and above have a feature called "notification badges". Badges are a way for users
-to interact with notifications without pulling down the notification shade, or opening the app. When enabled, your
-application icon will show a "notification dot" (see below) when there are unread notifications.
+Devices running Android 8.0 (API level 26) and above support channel-based notification badges and dots. On launchers
+that support them, these surfaces let users interact with notifications without pulling down the notification shade or
+opening the app. Their appearance is controlled by the launcher and device manufacturer (OEM): some launchers may show
+a number, others may show only a notification dot, and launchers may aggregate notifications differently. A number on
+the app icon is therefore not guaranteed.
 
-When a user long-presses on your application icon, the notification badge will appear with unread notification information:
+On compatible launchers, long-pressing the application icon may show unread notification information:
 
 <Vimeo id="385469776" caption="Android Badge Example" />
 
-Since badges are only available on Android 8.0 and above, the devices will also have [channel](/react-native/android/channels)
-support. Using Notify Kit, there are two ways to control notification badges; via channels and on the notification.
-
-When creating a channel, set the `badge` property to `true` or `false` to control whether notifications posted to the
-channel will appear in the badge if unread. This property defaults to `true` when creating a channel:
+On Android 8.0 and above, a [channel](/react-native/android/channels) controls whether its notifications can contribute
+to badging on systems that support it. Set the channel's `badge` property to `true` to allow this. The property defaults
+to `true` when creating a channel, and it does not set a count:
 
 ```js
-notifee.createChannel({
+await notifee.createChannel({
   id: 'messages',
   name: 'Private Messages',
-  badge: false, // disable in badges
+  badge: true,
 });
 ```
 
 > You cannot update the badge property value once the channel has been created.
 
-With channel badge support enabled, you can further choose how the icon appears inside of the badge. The example image
-above shows the notification large icon being displayed.
+Set `android.badgeCount` to associate a number with an individual notification. Notify Kit applies this using the Android
+behavior corresponding to `NotificationCompat.Builder.setNumber(...)`. The notification number itself is not restricted
+to API level 26; that requirement applies to channel-based notification badges and dots.
+
+```js
+await notifee.displayNotification({
+  id: 'messages',
+  title: 'New messages',
+  body: 'You have 5 unread messages',
+  android: {
+    channelId: 'messages',
+    badgeCount: 5,
+  },
+});
+```
+
+To update the number on an existing notification, display it again with the same `id` and a new `badgeCount`. Android
+will update or replace that notification. The launcher may use the notification number when representing it on the app
+icon, but the numeric rendering and aggregation remain launcher- and OEM-dependent.
+
+> On iOS, `notifee.setBadgeCount()` controls the global badge on the app icon. Android has no equivalent standard public
+> API for setting a global app icon badge independently of notifications, so `android.badgeCount` is not its global
+> equivalent. In particular, `badgeCount: 0` does not provide a portable equivalent of
+> `await notifee.setBadgeCount(0)`: the Android notification remains posted and there is no portable global badge count
+> to clear.
+
+With channel badge support enabled, you can further choose which notification icon appears in the badge surface. The
+example image above shows the notification large icon being displayed.
 
 To control what icon is used on the badge, the `badgeIconType` property on the notification body can be set. This property
 accepts one of three types:

@@ -62,9 +62,9 @@ export interface NotificationAndroid {
   autoCancel?: boolean;
 
   /**
-   * Overrides the current number of active notifications shown on the device.
-   *
-   * If no number is provided, the system displays the current number of active notifications.
+   * Sets the number associated with this notification. Compatible Android launchers may use it for
+   * the app icon badge, but numeric display is launcher-dependent and it is not equivalent to the
+   * global iOS `notifee.setBadgeCount()` API.
    */
   badgeCount?: number;
 

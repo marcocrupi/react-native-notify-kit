@@ -156,6 +156,42 @@ useEffect(() => {
 >
 > Register **both** handlers if you need to react to taps in every app state. Resolves the confusion reported in upstream [invertase/notifee#1155](https://github.com/invertase/notifee/issues/1155).
 
+### Android notification numbers and launcher badges
+
+For notifications displayed through `notifee.displayNotification()`, use `android.badgeCount` to associate a number with
+an individual Android notification:
+
+```ts
+await notifee.createChannel({
+  id: 'messages',
+  name: 'Messages',
+  badge: true,
+});
+
+await notifee.displayNotification({
+  id: 'messages',
+  title: 'New messages',
+  body: 'You have 5 unread messages',
+  android: {
+    channelId: 'messages',
+    badgeCount: 5,
+  },
+});
+```
+
+`android.badgeCount` belongs to that notification and maps conceptually to AndroidX
+`NotificationCompat.Builder.setNumber(...)`. Display the notification again with the same `id` and a new `badgeCount`
+to update or replace it. The notification number itself is not limited to API level 26.
+
+On Android 8.0 (API level 26) and above, `badge: true` allows notifications in the channel to contribute to launcher
+badging; it does not set a count. Launcher and OEM behavior determines whether a number, only a notification dot, or a
+different aggregation is shown, so a numeric badge on the app icon is not guaranteed.
+
+Unlike the global iOS `notifee.setBadgeCount()` API, Android has no equivalent standard public API independent of posted
+notifications. `badgeCount: 0` neither cancels the posted notification nor provides a portable way to clear a global
+Android badge. See [Android Appearance: Badges](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/appearance#badges)
+for complete details.
+
 ## Notifee FCM Mode (NEW in 10.0.0, Expo CNG in 10.4.0)
 
 **Use `react-native-notify-kit` as the sole FCM display layer on both Android and iOS**: one developer API, no duplicate notifications on Android, no silent-push drops on iOS. Ship a server SDK payload, let the client handle it in one line, and set up the iOS Notification Service Extension with the Expo config plugin or, for bare React Native, the `init-nse` CLI. On Android, FCM Mode remains data-only: RNFirebase receives the message and calls `notifee.handleFcmMessage`.
