@@ -34,6 +34,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -50,6 +51,31 @@ public class NotificationAndroidStyleModel {
     return new NotificationAndroidStyleModel(styleBundle);
   }
 
+  /** Builds a person from everything in its bundle except the remotely fetched icon. */
+  private static Person.Builder getPersonBuilder(Bundle personBundle) {
+    Person.Builder personBuilder = new Person.Builder();
+
+    personBuilder.setName(personBundle.getString("name"));
+
+    if (personBundle.containsKey("id")) {
+      personBuilder.setKey(personBundle.getString("id"));
+    }
+
+    if (personBundle.containsKey("bot")) {
+      personBuilder.setBot(personBundle.getBoolean("bot"));
+    }
+
+    if (personBundle.containsKey("important")) {
+      personBuilder.setImportant(personBundle.getBoolean("important"));
+    }
+
+    if (personBundle.containsKey("uri")) {
+      personBuilder.setUri(personBundle.getString("uri"));
+    }
+
+    return personBuilder;
+  }
+
   /**
    * Converts a person bundle from JS into a Person
    *
@@ -60,52 +86,57 @@ public class NotificationAndroidStyleModel {
       ListeningExecutorService lExecutor, Bundle personBundle) {
     return lExecutor.submit(
         () -> {
-          Person.Builder personBuilder = new Person.Builder();
-
-          personBuilder.setName(personBundle.getString("name"));
-
-          if (personBundle.containsKey("id")) {
-            personBuilder.setKey(personBundle.getString("id"));
-          }
-
-          if (personBundle.containsKey("bot")) {
-            personBuilder.setBot(personBundle.getBoolean("bot"));
-          }
-
-          if (personBundle.containsKey("important")) {
-            personBuilder.setImportant(personBundle.getBoolean("important"));
-          }
+          Person.Builder personBuilder = getPersonBuilder(personBundle);
 
           if (personBundle.containsKey("icon")) {
             String personIcon = Objects.requireNonNull(personBundle.getString("icon"));
-            Bitmap personIconBitmap = null;
 
             try {
-              personIconBitmap =
+              Bitmap personIconBitmap =
                   ResourceUtils.getImageBitmapFromUrl(personIcon).get(10, TimeUnit.SECONDS);
+
+              if (personIconBitmap != null) {
+                personBuilder.setIcon(IconCompat.createWithAdaptiveBitmap(personIconBitmap));
+              }
             } catch (TimeoutException e) {
               Logger.e(
                   TAG,
                   "Timeout occurred whilst trying to retrieve a person icon: " + personIcon,
                   e);
-            } catch (Exception e) {
+            } catch (ExecutionException | RuntimeException e) {
               Logger.e(
                   TAG,
-                  "An error occurred whilst trying to retrieve a person icon: " + personIcon,
+                  "An error occurred whilst trying to retrieve or create a person icon: "
+                      + personIcon,
                   e);
             }
-
-            if (personIconBitmap != null) {
-              personBuilder.setIcon(IconCompat.createWithAdaptiveBitmap(personIconBitmap));
-            }
-          }
-
-          if (personBundle.containsKey("uri")) {
-            personBuilder.setUri(personBundle.getString("uri"));
           }
 
           return personBuilder.build();
         });
+  }
+
+  /**
+   * Awaits a person, degrading to an icon-less one only if the outer deadline expires.
+   *
+   * <p>The icon lookup has a shorter timeout, but scheduling delays, process suspension, or other
+   * task stalls can still exhaust this outer deadline. The runtime cause is not inferred here.
+   *
+   * <p>ExecutionException and InterruptedException propagate because neither proves that only the
+   * icon failed.
+   */
+  private static Person awaitPerson(ListenableFuture<Person> personTask, Bundle personBundle)
+      throws InterruptedException, ExecutionException {
+    try {
+      return personTask.get(20, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      Logger.e(TAG, "Timeout occurred whilst trying to retrieve a messaging style person", e);
+    } catch (ExecutionException e) {
+      Logger.e(TAG, "Unexpected failure whilst building a messaging style person", e);
+      throw e;
+    }
+
+    return getPersonBuilder(personBundle).build();
   }
 
   public Bundle toBundle() {
@@ -291,11 +322,9 @@ public class NotificationAndroidStyleModel {
       ListeningExecutorService lExecutor) {
     return lExecutor.submit(
         () -> {
-          Person person =
-              getPerson(
-                      lExecutor,
-                      Objects.requireNonNull(mNotificationAndroidStyleBundle.getBundle("person")))
-                  .get(20, TimeUnit.SECONDS);
+          Bundle personBundle =
+              Objects.requireNonNull(mNotificationAndroidStyleBundle.getBundle("person"));
+          Person person = awaitPerson(getPerson(lExecutor, personBundle), personBundle);
 
           NotificationCompat.MessagingStyle messagingStyle =
               new NotificationCompat.MessagingStyle(person);
@@ -322,9 +351,9 @@ public class NotificationAndroidStyleModel {
             long timestamp = BundleValueReader.getLongPreserving(message, "timestamp");
 
             if (message.containsKey("person")) {
+              Bundle messagePersonBundle = Objects.requireNonNull(message.getBundle("person"));
               messagePerson =
-                  getPerson(lExecutor, Objects.requireNonNull(message.getBundle("person")))
-                      .get(20, TimeUnit.SECONDS);
+                  awaitPerson(getPerson(lExecutor, messagePersonBundle), messagePersonBundle);
             }
 
             messagingStyle =

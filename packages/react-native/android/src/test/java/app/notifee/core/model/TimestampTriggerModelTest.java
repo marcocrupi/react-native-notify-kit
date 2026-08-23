@@ -7,15 +7,16 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import android.os.Bundle;
+import android.os.SystemClock;
 import java.util.Calendar;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 
 @RunWith(RobolectricTestRunner.class)
 public class TimestampTriggerModelTest {
@@ -543,35 +544,27 @@ public class TimestampTriggerModelTest {
   }
 
   @Test
+  @Config(instrumentedPackages = "app.notifee.core.model")
   public void setNextTimestamp_dailyEveryTwoDaysAcrossDstSpringForward() {
     TimeZone rome = TimeZone.getTimeZone("Europe/Rome");
     TimeZone.setDefault(rome);
 
-    Calendar start = Calendar.getInstance(rome);
-    start.clear();
-    start.set(2026, Calendar.MARCH, 28, 4, 30, 0);
-    long originalTimestamp = start.getTimeInMillis();
-
-    Calendar windowStart = Calendar.getInstance(rome);
-    windowStart.clear();
-    windowStart.set(2026, Calendar.MARCH, 31, 0, 0, 0);
-    Calendar windowEnd = Calendar.getInstance(rome);
-    windowEnd.clear();
-    windowEnd.set(2026, Calendar.OCTOBER, 24, 23, 59, 59);
-    long now = System.currentTimeMillis();
-    Assume.assumeTrue(
-        "spring-forward repeatInterval discrimination requires current time in"
-            + " [2026-03-31, 2026-10-24] Europe/Rome",
-        now >= windowStart.getTimeInMillis() && now <= windowEnd.getTimeInMillis());
+    long originalTimestamp = 1774668600000L; // 2026-03-28 04:30 CET
+    long fixedNow = 1774908000000L; // 2026-03-31 00:00 CEST
+    long expectedTimestamp = 1775010600000L; // 2026-04-01 04:30 CEST
+    assertTrue(SystemClock.setCurrentTimeMillis(fixedNow));
 
     TimestampTriggerModel trigger =
         buildRepeatingTrigger(originalTimestamp, REPEAT_FREQUENCY_DAILY, 2);
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();
 
+    // Two-day calendar steps cross the offset change without the 05:30 fixed-ms drift.
+    assertEquals("next timestamp must match the fixed DST fixture", expectedTimestamp, next);
+    assertTrue("next timestamp must be >= fixed now", next >= fixedNow);
+    assertEquals("repeatInterval must remain 2", 2, trigger.getInterval());
     Calendar nextCal = Calendar.getInstance(rome);
     nextCal.setTimeInMillis(next);
-    assertTrue("next timestamp must be >= now", next >= now);
     assertEquals(
         "wall-clock hour must remain 4 with repeatInterval=2",
         4,
@@ -581,46 +574,26 @@ public class TimestampTriggerModelTest {
   }
 
   @Test
+  @Config(instrumentedPackages = "app.notifee.core.model")
   public void setNextTimestamp_dailyAcrossDstSpringForward() {
-    // Europe/Rome spring-forward 2026: 2026-03-29 02:00 local jumps to 03:00 local. The 29
-    // March 2026 calendar day is 23 hours long in Europe/Rome. Using 04:30 (NOT 01:30) as
-    // the wall-clock: 04:30 on 2026-03-28 is CET (UTC+1), while 04:30 on 2026-03-29 is CEST
-    // (UTC+2). Calendar.add(DAY_OF_MONTH, 1) preserves the local 04:30 wall-clock across the
-    // boundary; a hypothetical refactor to +86_400_000 ms fixed arithmetic would drift the
-    // wall-clock to 05:30 CEST on the day after the crossing. Using 01:30 would NOT
-    // discriminate because 01:30 sits in the same UTC offset on both sides of the transition.
     TimeZone rome = TimeZone.getTimeZone("Europe/Rome");
     TimeZone.setDefault(rome);
 
-    Calendar start = Calendar.getInstance(rome);
-    start.clear();
-    start.set(2026, Calendar.MARCH, 28, 4, 30, 0);
-    long originalTimestamp = start.getTimeInMillis();
-
-    // Assume the current wall-clock is in the post-spring-forward / pre-fall-back window for
-    // 2026. Outside this window the while-loop inside setNextTimestamp either does not run
-    // (future-dated start) or crosses an even number of DST boundaries whose effects cancel
-    // for fixed-ms arithmetic, making the assertion non-discriminative.
-    Calendar windowStart = Calendar.getInstance(rome);
-    windowStart.clear();
-    windowStart.set(2026, Calendar.MARCH, 30, 0, 0, 0);
-    Calendar windowEnd = Calendar.getInstance(rome);
-    windowEnd.clear();
-    windowEnd.set(2026, Calendar.OCTOBER, 24, 23, 59, 59);
-    long now = System.currentTimeMillis();
-    Assume.assumeTrue(
-        "spring-forward discrimination requires current time in [2026-03-30, 2026-10-24]"
-            + " Europe/Rome",
-        now >= windowStart.getTimeInMillis() && now <= windowEnd.getTimeInMillis());
+    long originalTimestamp = 1774668600000L; // 2026-03-28 04:30 CET
+    long fixedNow = 1774821600000L; // 2026-03-30 00:00 CEST
+    long expectedTimestamp = 1774837800000L; // 2026-03-30 04:30 CEST
+    assertTrue(SystemClock.setCurrentTimeMillis(fixedNow));
 
     TimestampTriggerModel trigger =
         buildRepeatingTrigger(originalTimestamp, REPEAT_FREQUENCY_DAILY);
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();
 
+    // Calendar days preserve 04:30 across spring-forward; fixed 24-hour steps reach 05:30.
+    assertEquals("next timestamp must match the fixed DST fixture", expectedTimestamp, next);
+    assertTrue("next timestamp must be >= fixed now", next >= fixedNow);
     Calendar nextCal = Calendar.getInstance(rome);
     nextCal.setTimeInMillis(next);
-    assertTrue("next timestamp must be >= now", next >= now);
     assertEquals(
         "wall-clock hour must remain 4 after crossing spring-forward",
         4,
@@ -630,42 +603,26 @@ public class TimestampTriggerModelTest {
   }
 
   @Test
+  @Config(instrumentedPackages = "app.notifee.core.model")
   public void setNextTimestamp_dailyAcrossDstFallBack() {
-    // Europe/Rome fall-back 2025: 2025-10-26 03:00 local reverts to 02:00 local. The 26
-    // October 2025 calendar day is 25 hours long. Starting at 2025-10-25 04:30 CEST (UTC+2)
-    // — the day before the fall-back — the local 04:30 wall-clock on 2025-10-26 is CET
-    // (UTC+1). Calendar.add preserves the 04:30 local wall-clock; +86_400_000 ms would drift
-    // it to 03:30 CET after the crossing.
     TimeZone rome = TimeZone.getTimeZone("Europe/Rome");
     TimeZone.setDefault(rome);
 
-    Calendar start = Calendar.getInstance(rome);
-    start.clear();
-    start.set(2025, Calendar.OCTOBER, 25, 4, 30, 0);
-    long originalTimestamp = start.getTimeInMillis();
-
-    // Assume the current wall-clock is in the post-fall-back-2025 / pre-spring-forward-2026
-    // window, so the setNextTimestamp loop crosses exactly one DST boundary (the fall-back)
-    // and the test remains discriminative against fixed-ms arithmetic.
-    Calendar windowStart = Calendar.getInstance(rome);
-    windowStart.clear();
-    windowStart.set(2025, Calendar.OCTOBER, 27, 0, 0, 0);
-    Calendar windowEnd = Calendar.getInstance(rome);
-    windowEnd.clear();
-    windowEnd.set(2026, Calendar.MARCH, 28, 23, 59, 59);
-    long now = System.currentTimeMillis();
-    Assume.assumeTrue(
-        "fall-back discrimination requires current time in [2025-10-27, 2026-03-28] Europe/Rome",
-        now >= windowStart.getTimeInMillis() && now <= windowEnd.getTimeInMillis());
+    long originalTimestamp = 1761359400000L; // 2025-10-25 04:30 CEST
+    long fixedNow = 1761519600000L; // 2025-10-27 00:00 CET
+    long expectedTimestamp = 1761535800000L; // 2025-10-27 04:30 CET
+    assertTrue(SystemClock.setCurrentTimeMillis(fixedNow));
 
     TimestampTriggerModel trigger =
         buildRepeatingTrigger(originalTimestamp, REPEAT_FREQUENCY_DAILY);
     trigger.setNextTimestamp();
     long next = trigger.getTimestamp();
 
+    // Calendar days preserve 04:30 across fall-back; fixed 24-hour steps reach 03:30.
+    assertEquals("next timestamp must match the fixed DST fixture", expectedTimestamp, next);
+    assertTrue("next timestamp must be >= fixed now", next >= fixedNow);
     Calendar nextCal = Calendar.getInstance(rome);
     nextCal.setTimeInMillis(next);
-    assertTrue("next timestamp must be >= now", next >= now);
     assertEquals(
         "wall-clock hour must remain 4 after crossing fall-back",
         4,

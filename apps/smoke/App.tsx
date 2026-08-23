@@ -80,8 +80,14 @@ type SmokeDeepLinkRequest = SmokeDeepLinkCallback &
     | { scenario: 'listener-only' }
     | { scenario: 'local-display'; id?: string }
     | { scenario: 'verify-displayed'; id?: string }
+    | { scenario: 'issue69-post-a'; correlationId?: string }
+    | { scenario: 'issue69-post-b'; correlationId?: string }
     | { scenario: 'deep-link'; status: 'FAIL'; reason: string; path?: string }
   );
+
+const ISSUE69_NOTIFICATION_A_ID = 'issue69-a';
+const ISSUE69_NOTIFICATION_B_ID = 'issue69-b';
+const ISSUE69_ACTION_ID = 'issue69-done';
 
 type DisplayedSmokeNotification = {
   id?: string | null;
@@ -148,6 +154,28 @@ function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
         return { scenario: 'listener-only', callbackUrl };
       case 'local-display':
         return { scenario: 'local-display', id: query.id, callbackUrl };
+      case 'issue69':
+        if (parts[2] === 'post-a') {
+          return {
+            scenario: 'issue69-post-a',
+            correlationId: query.correlationId,
+            callbackUrl,
+          };
+        }
+        if (parts[2] === 'post-b') {
+          return {
+            scenario: 'issue69-post-b',
+            correlationId: query.correlationId,
+            callbackUrl,
+          };
+        }
+        return {
+          scenario: 'deep-link',
+          status: 'FAIL',
+          reason: 'unsupported_issue69_scenario',
+          path,
+          callbackUrl,
+        };
       default:
         return {
           scenario: 'deep-link',
@@ -478,10 +506,14 @@ function App() {
           `input=${detail.input ?? 'n/a'} ` +
           `data=${JSON.stringify(detail.notification?.data)}`,
       );
+      const smokeNotification = {
+        id: detail.notification?.id ?? null,
+        data: detail.notification?.data ?? null,
+      };
       logSmokeEvent({
         source: 'foreground',
         type: typeName,
-        notification: { id: detail.notification?.id ?? null },
+        notification: smokeNotification,
         pressAction: { id: detail.pressAction?.id ?? null },
       });
       if (type === EventType.PRESS || type === EventType.ACTION_PRESS) {
@@ -910,6 +942,86 @@ function App() {
     [readDisplayedNotificationsForSmoke],
   );
 
+  const runIssue69Post = useCallback(
+    async (which: 'a' | 'b', rawCorrelationId?: string) => {
+      const scenario = `issue69-post-${which}`;
+      const correlationId = normalizeSmokeCorrelationId(rawCorrelationId);
+      const notificationId = which === 'a' ? ISSUE69_NOTIFICATION_A_ID : ISSUE69_NOTIFICATION_B_ID;
+      const title = which === 'a' ? 'Issue 69 A' : 'Issue 69 B';
+
+      if (correlationId == null) {
+        logSmokeResult({
+          scenario,
+          status: 'FAIL',
+          id: notificationId,
+          reason: 'correlation_id_missing',
+        });
+        return;
+      }
+
+      if (Platform.OS !== 'android') {
+        logSmokeResult({
+          scenario,
+          status: 'FAIL',
+          id: notificationId,
+          correlationId,
+          reason: 'android_only',
+        });
+        return;
+      }
+
+      try {
+        await ensureDefaultAndroidChannel();
+
+        if (which === 'a') {
+          await notifee.cancelNotification(ISSUE69_NOTIFICATION_A_ID);
+          await notifee.cancelNotification(ISSUE69_NOTIFICATION_B_ID);
+        }
+
+        await notifee.displayNotification({
+          id: notificationId,
+          title,
+          body: `Run ${correlationId}: tap Done on ${title}`,
+          data: {
+            smokeScenario: 'issue69',
+            which: notificationId,
+            correlationId,
+          },
+          android: {
+            channelId: 'default',
+            pressAction: null,
+            actions: [
+              {
+                title: 'Done',
+                pressAction: { id: ISSUE69_ACTION_ID },
+              },
+            ],
+          },
+        });
+
+        logSmokeResult({
+          scenario,
+          status: 'PASS',
+          id: notificationId,
+          which: notificationId,
+          correlationId,
+          pressActionId: ISSUE69_ACTION_ID,
+        });
+      } catch (e: unknown) {
+        logSmokeResult({
+          scenario,
+          status: 'FAIL',
+          id: notificationId,
+          which: notificationId,
+          correlationId,
+          pressActionId: ISSUE69_ACTION_ID,
+          reason: smokeErrorReason(e),
+        });
+      }
+    },
+    [ensureDefaultAndroidChannel],
+  );
+
   const runSmokeListenerOnly = useCallback(async () => {
     let unsubscribeForeground: (() => void) | undefined;
 
@@ -983,6 +1095,12 @@ function App() {
           case 'verify-displayed':
             await runSmokeVerifyDisplayed(request.id);
             break;
+          case 'issue69-post-a':
+            await runIssue69Post('a', request.correlationId);
+            break;
+          case 'issue69-post-b':
+            await runIssue69Post('b', request.correlationId);
+            break;
           case 'deep-link':
             logSmokeResult({
               scenario: 'deep-link',
@@ -1002,6 +1120,7 @@ function App() {
       runSmokeListenerOnly,
       runSmokeLocalDisplay,
       runSmokeVerifyDisplayed,
+      runIssue69Post,
     ],
   );
 
@@ -1011,6 +1130,8 @@ function App() {
   // notifykit://smoke/run/listener-only
   // notifykit://smoke/run/local-display?id=<correlationId>&callback=<encoded-url>
   // notifykit://smoke/verify/displayed?id=<correlationId>&callback=<encoded-url>
+  // notifykit://smoke/run/issue69/post-a?correlationId=<correlationId>
+  // notifykit://smoke/run/issue69/post-b?correlationId=<correlationId>
   useEffect(() => {
     const smokeGlobal = globalThis as SmokeGlobal;
     const handleUrl = (url: string): Promise<void> | null => {

@@ -1,4 +1,5 @@
 import type { NotifyKitPayloadInput } from '../types';
+import { buildNotifyKitPayload } from '../buildPayload';
 import { validateInput } from '../validation';
 
 function base(overrides: Partial<NotifyKitPayloadInput> = {}): NotifyKitPayloadInput {
@@ -303,6 +304,82 @@ describe('validateInput — iOS attachments (Rule 11)', () => {
         }),
       ),
     ).toThrow(/http:\/\/bad\.example\.com/);
+  });
+});
+
+describe('buildNotifyKitPayload — Android action pressAction ID uniqueness', () => {
+  it('rejects duplicate sibling action pressAction IDs', () => {
+    expect(() =>
+      buildNotifyKitPayload(
+        base({
+          notification: {
+            title: 'a',
+            body: 'b',
+            android: {
+              actions: [
+                { title: 'Done', pressAction: { id: 'done' } },
+                { title: 'Snooze', pressAction: { id: 'done' } },
+              ],
+            },
+          },
+        }),
+      ),
+    ).toThrow(
+      "[react-native-notify-kit/server] Android: 'notification.android.actions' pressAction IDs must be unique within the notification",
+    );
+  });
+
+  it('accepts distinct sibling action pressAction IDs', () => {
+    expect(() =>
+      buildNotifyKitPayload(
+        base({
+          notification: {
+            title: 'a',
+            body: 'b',
+            android: {
+              actions: [
+                { title: 'Done', pressAction: { id: 'done' } },
+                { title: 'Snooze', pressAction: { id: 'snooze' } },
+              ],
+            },
+          },
+        }),
+      ),
+    ).not.toThrow();
+  });
+
+  it('accepts the same action pressAction ID across separate payload builds', () => {
+    const notification = {
+      title: 'a',
+      body: 'b',
+      android: {
+        actions: [{ title: 'Done', pressAction: { id: 'done' } }],
+      },
+    };
+
+    expect(() => buildNotifyKitPayload(base({ notification }))).not.toThrow();
+    expect(() => buildNotifyKitPayload(base({ notification }))).not.toThrow();
+  });
+
+  it('rejects duplicate action pressAction IDs with input metadata', () => {
+    expect(() =>
+      buildNotifyKitPayload(
+        base({
+          notification: {
+            title: 'a',
+            body: 'b',
+            android: {
+              actions: [
+                { title: 'Reply', pressAction: { id: 'reply' }, input: true },
+                { title: 'Quick reply', pressAction: { id: 'reply' }, input: false },
+              ],
+            },
+          },
+        }),
+      ),
+    ).toThrow(
+      "[react-native-notify-kit/server] Android: 'notification.android.actions' pressAction IDs must be unique within the notification",
+    );
   });
 });
 

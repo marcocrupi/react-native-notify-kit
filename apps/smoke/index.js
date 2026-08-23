@@ -39,10 +39,14 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
       `input=${detail.input ?? 'n/a'} ` +
       `data=${JSON.stringify(detail.notification?.data)}`,
   );
+  const smokeNotification = {
+    id: detail.notification?.id ?? null,
+    data: detail.notification?.data ?? null,
+  };
   logSmokeEvent({
     source: 'background',
     type: typeName,
-    notification: { id: detail.notification?.id ?? null },
+    notification: smokeNotification,
     pressAction: { id: detail.pressAction?.id ?? null },
   });
   Alert.alert(

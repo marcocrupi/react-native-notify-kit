@@ -148,6 +148,8 @@ useEffect(() => {
 
 > **Android event reliability:** Registering `onForegroundEvent()` initializes the native event relay. Pending events received while the `ReactContext` is unavailable are buffered. If the context becomes unavailable after a flush takes its buffer snapshot, undelivered events are requeued so a later native event relay flush can deliver them without duplication in the validated recovery path, while preserving FIFO, the 10-event capacity, and drop-oldest behavior. No application code changes or warm-up calls such as `getDisplayedNotifications()` are required; continue registering foreground and background handlers at the recommended points shown above. This hardens the Android event path investigated in [react-native-notify-kit#47](https://github.com/marcocrupi/react-native-notify-kit/issues/47) and relates to the event reliability and buffering problem tracked in [invertase/notifee#1279](https://github.com/invertase/notifee/issues/1279); the scenarios are not necessarily identical.
 
+<!-- Keep these callouts separate. -->
+
 > **Which handler fires when (iOS):**
 >
 > - Tap a notification while the app is **active in foreground** → `onForegroundEvent` receives `PRESS`.
@@ -155,6 +157,42 @@ useEffect(() => {
 > - Foreground delivery of a Notifee-owned notification → `onForegroundEvent` receives `DELIVERED`.
 >
 > Register **both** handlers if you need to react to taps in every app state. Resolves the confusion reported in upstream [invertase/notifee#1155](https://github.com/invertase/notifee/issues/1155).
+
+### Android notification numbers and launcher badges
+
+For notifications displayed through `notifee.displayNotification()`, use `android.badgeCount` to associate a number with
+an individual Android notification:
+
+```ts
+await notifee.createChannel({
+  id: 'messages',
+  name: 'Messages',
+  badge: true,
+});
+
+await notifee.displayNotification({
+  id: 'messages',
+  title: 'New messages',
+  body: 'You have 5 unread messages',
+  android: {
+    channelId: 'messages',
+    badgeCount: 5,
+  },
+});
+```
+
+`android.badgeCount` belongs to that notification and maps conceptually to AndroidX
+`NotificationCompat.Builder.setNumber(...)`. Display the notification again with the same `id` and a new `badgeCount`
+to update or replace it. The notification number itself is not limited to API level 26.
+
+On Android 8.0 (API level 26) and above, `badge: true` allows notifications in the channel to contribute to launcher
+badging; it does not set a count. Launcher and OEM behavior determines whether a number, only a notification dot, or a
+different aggregation is shown, so a numeric badge on the app icon is not guaranteed.
+
+Unlike the global iOS `notifee.setBadgeCount()` API, Android has no equivalent standard public API independent of posted
+notifications. `badgeCount: 0` neither cancels the posted notification nor provides a portable way to clear a global
+Android badge. See [Android Appearance: Badges](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/appearance#badges)
+for complete details.
 
 ## Notifee FCM Mode (NEW in 10.0.0, Expo CNG in 10.4.0)
 
@@ -503,7 +541,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 >
 > **Reserved keys filtered from `data`** (custom payload keys matching these are dropped): prefixes `android.`, `google.`, `gcm.`, `fcm.` (with trailing dot — `fcmRegion`, `googleish` survive), `notifee` (no trailing dot — library's reserved namespace, `notifeeFoo` is also filtered), plus exact keys `from`, `collapse_key`, `message_type`, `message_id`, `aps`, `fcm_options`. The `fcm_options` exact-match matches iOS behavior on the Firebase analytics-label key. **Cross-platform note**: bare-`fcm` keys other than `fcm_options` (e.g. `fcmRegion`, `fcmToken`) are preserved on Android but filtered on iOS — rename server-side if you need strict parity.
 
-<!-- markdownlint-disable-line MD028 -->
+<!-- Keep these callouts separate. -->
 
 > **Note for policy-eligible apps requiring exact alarm APIs (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's

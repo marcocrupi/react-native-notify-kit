@@ -208,8 +208,10 @@ In the example above, we provided the action an `pressAction` object with an `id
 should do _something_, whether it's opening the application on a specific screen or performing a background task (e.g. snoozing
 an alarm without opening the alarm application).
 
-At a minimum, each `pressAction` requires a unique ID, which can be used with [events](/react-native/events) to
-hook into what action was pressed. When pressed, an action sends the `ACTION_PRESS` event type to any subscribers:
+Each action in a notification's `android.actions` array must use a unique `pressAction.id` within that array. The same
+ID may be reused by actions in different notifications, and the notification body's `android.pressAction.id` may match
+an action ID. Use action IDs with [events](/react-native/events) to hook into what action was pressed. When pressed, an
+action sends the `ACTION_PRESS` event type to any subscribers:
 
 ```js
 import notifee, { EventType } from 'react-native-notify-kit';

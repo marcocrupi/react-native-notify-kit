@@ -131,4 +131,24 @@ export function validateInput(input: NotifyKitPayloadInput): void {
       throw err('Validation', "'options.collapseKey' must be a non-empty string");
     }
   }
+
+  const actions = notification.android?.actions;
+  if (Array.isArray(actions)) {
+    const pressActionIds = new Set<string>();
+
+    for (const action of actions) {
+      const pressActionId = action?.pressAction?.id;
+      if (typeof pressActionId !== 'string') {
+        continue;
+      }
+
+      if (pressActionIds.has(pressActionId)) {
+        throw err(
+          'Android',
+          "'notification.android.actions' pressAction IDs must be unique within the notification",
+        );
+      }
+      pressActionIds.add(pressActionId);
+    }
+  }
 }

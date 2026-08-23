@@ -24,7 +24,6 @@ export default tseslint.config(
       'sendPushNotification.js',
       '**/version.ts',
       '**/version.js',
-      'apps/smoke/**',
       'apps/expo-smoke/**',
     ],
   },
@@ -72,6 +71,15 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
+  {
+    files: ['apps/smoke/jest.setup.js'],
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+      },
     },
   },
 

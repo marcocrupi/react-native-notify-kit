@@ -26,6 +26,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -39,14 +40,16 @@ import app.notifee.core.model.NotificationAndroidModel;
 import app.notifee.core.model.NotificationAndroidPressActionModel;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.utility.IntentUtils;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ReceiverService extends Service {
   private static final String TAG = "ReceiverService";
   public static final String REMOTE_INPUT_RECEIVER_KEY =
       "app.notifee.core.ReceiverService.REMOTE_INPUT_RECEIVER_KEY";
 
-  private static final AtomicInteger uniqueIds = new AtomicInteger(0);
+  private static final int PENDING_INTENT_REQUEST_CODE = 0;
+  private static final String PENDING_INTENT_URI_SCHEME = "notifee";
+  private static final String PENDING_INTENT_URI_AUTHORITY = "receiver-service";
+  private static final String PENDING_INTENT_URI_PATH = "pending-intent";
 
   static final String DELETE_INTENT = "app.notifee.core.ReceiverService.DELETE_INTENT";
   static final String PRESS_INTENT = "app.notifee.core.ReceiverService.PRESS_INTENT";
@@ -76,9 +79,43 @@ public class ReceiverService extends Service {
       }
     }
 
-    int uniqueInt = uniqueIds.getAndIncrement();
+    intent.setData(createPendingIntentData(intent));
+
     return PendingIntent.getService(
-        context, uniqueInt, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        context,
+        PENDING_INTENT_REQUEST_CODE,
+        intent,
+        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+  }
+
+  private static Uri createPendingIntentData(Intent intent) {
+    Bundle notification = intent.getBundleExtra("notification");
+    Bundle android = notification == null ? null : notification.getBundle("android");
+    Bundle pressAction = intent.getBundleExtra("pressAction");
+
+    String notificationId = notification == null ? null : notification.getString("id");
+    String notificationTag = android == null ? null : android.getString("tag");
+    String pressActionId = pressAction == null ? null : pressAction.getString("id");
+
+    Uri.Builder builder =
+        new Uri.Builder()
+            .scheme(PENDING_INTENT_URI_SCHEME)
+            .authority(PENDING_INTENT_URI_AUTHORITY)
+            .appendPath(PENDING_INTENT_URI_PATH);
+
+    appendNullableIdentityValue(builder, "interactionType", intent.getAction());
+    appendNullableIdentityValue(builder, "notificationTag", notificationTag);
+    appendNullableIdentityValue(builder, "notificationId", notificationId);
+    appendNullableIdentityValue(builder, "pressActionId", pressActionId);
+    return builder.build();
+  }
+
+  private static void appendNullableIdentityValue(
+      Uri.Builder builder, String name, @Nullable String value) {
+    builder.appendQueryParameter(name + "Present", value == null ? "0" : "1");
+    if (value != null) {
+      builder.appendQueryParameter(name, value);
+    }
   }
 
   @Nullable
