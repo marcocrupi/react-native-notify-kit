@@ -277,7 +277,8 @@ export interface NotificationPressAction {
 /**
  * The interface used to describe a full-screen action for a notification.
  *
- * By setting a `fullScreenAction`, when the notification is displayed, it will launch a full-screen intent.
+ * Setting a `fullScreenAction` configures the notification to request Full-Screen Intent presentation from Android.
+ * Actual full-screen presentation depends on the app's Full-Screen Intent access and Android platform conditions.
  *
  * On Android; when provided to a notification action, the action will only open you application if
  * a `launchActivity` and/or a `mainComponent` is provided.

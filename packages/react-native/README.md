@@ -838,6 +838,24 @@ await notifee.displayNotification({
 
 ## New APIs
 
+### Full-Screen Intent availability (Android)
+
+Use `getNotificationSettings()` to check whether the app currently has access to use Full-Screen Intents:
+
+```typescript
+import notifee, { AndroidNotificationSetting } from 'react-native-notify-kit';
+
+const settings = await notifee.getNotificationSettings();
+
+if (settings.android.fullScreenIntent === AndroidNotificationSetting.DISABLED) {
+  // Full-Screen Intent access is currently unavailable.
+}
+```
+
+`AndroidNotificationSetting.ENABLED` reports Full-Screen Intent access; it does not guarantee that a particular
+notification will be presented full-screen. See [Android Behaviour: Full-screen](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/behaviour#full-screen)
+for the full requirements and presentation behavior.
+
 ### `setNotificationConfig` (iOS)
 
 Controls whether Notifee intercepts remote (push) notification tap events on iOS.

@@ -6,7 +6,7 @@
 
 # Interface: AndroidNotificationSettings
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:495](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L495)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:497](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L497)
 
 ## Properties
 
@@ -14,10 +14,26 @@ Defined in: [packages/react-native/src/types/NotificationAndroid.ts:495](https:/
 
 > **alarm**: [`AndroidNotificationSetting`](react-native/reference/Enumeration.AndroidNotificationSetting)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:503](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L503)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:505](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L505)
 
 Enum describing if you can create triggers
 
 For Android < 12 / API < 31, this will default to true
 
 View the [Trigger](/react-native/android/triggers#android-12-limitations) documentation for more information.
+
+---
+
+### fullScreenIntent?
+
+> `optional` **fullScreenIntent?**: [`AndroidNotificationSetting`](react-native/reference/Enumeration.AndroidNotificationSetting)
+
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:516](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L516)
+
+Enum describing whether the app currently has the Android access required to use full-screen intents.
+
+API < 29 reports `ENABLED` because the later permission model does not apply. API 29–33 reflects
+`USE_FULL_SCREEN_INTENT`. API 34+ reflects Android's full-screen intent special app access,
+which may be restricted or revoked by the system, installer, or user.
+
+`ENABLED` does not guarantee that a particular notification will be presented full-screen.

@@ -228,7 +228,7 @@ Set any additional flags
 
 > `optional` **foregroundServiceBehavior?**: [`AndroidForegroundServiceBehavior`](react-native/reference/Enumeration.AndroidForegroundServiceBehavior)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:310](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L310)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:312](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L312)
 
 Controls the display behavior of the foreground service notification on Android 12+.
 
@@ -252,7 +252,7 @@ android API 31+
 
 > `optional` **foregroundServiceTypes?**: [`AndroidForegroundServiceType`](react-native/reference/Enumeration.AndroidForegroundServiceType)\[]
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:293](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L293)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:295](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L295)
 
 Set the foreground service types identifying the work done by the service
 
@@ -265,10 +265,12 @@ more.
 
 > `optional` **fullScreenAction?**: [`NotificationFullScreenAction`](react-native/reference/Interface.NotificationFullScreenAction)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:285](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L285)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:287](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L287)
 
-The `fullScreenAction` property allows you to show a custom UI
-in full screen when the notification is displayed.
+The `fullScreenAction` property requests Full-Screen Intent presentation from Android
+when the notification is displayed.
+
+Actual full-screen presentation depends on the app's Full-Screen Intent access and Android platform conditions.
 
 View the [FullScreenAction](/react-native/android/behaviour#full-screen) documentation to learn
 more.
@@ -327,7 +329,7 @@ Defaults to `false`.
 
 > `optional` **importance?**: [`AndroidImportance`](react-native/reference/Enumeration.AndroidImportance)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:327](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L327)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:329](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L329)
 
 Set a notification importance for devices without channel support.
 
@@ -489,7 +491,7 @@ more.
 
 > `optional` **progress?**: [`AndroidProgress`](react-native/reference/Interface.AndroidProgress)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:336](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L336)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:338](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L338)
 
 A notification can show current progress of a task. The progress state can either be fixed or
 indeterminate (unknown).
@@ -503,7 +505,7 @@ to learn more.
 
 > `optional` **showChronometer?**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:411](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L411)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:413](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L413)
 
 Shows a counting timer on the notification, useful for on-going notifications such as a phone call.
 
@@ -520,7 +522,7 @@ View the [Timers](/react-native/android/timers#timers) documentation to learn mo
 
 > `optional` **showTimestamp?**: `boolean`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:348](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L348)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:350](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L350)
 
 Sets whether the `timestamp` provided is shown in the notification.
 
@@ -537,7 +539,7 @@ View the [Timestamps](/react-native/android/timers#timestamps) documentation to 
 
 > `optional` **smallIcon?**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:356](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L356)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:358](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L358)
 
 The small icon to show in the heads-up notification.
 
@@ -550,7 +552,7 @@ more.
 
 > `optional` **smallIconLevel?**: `number`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:361](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L361)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:363](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L363)
 
 An additional level parameter for when the icon is an instance of a Android `LevelListDrawable`.
 
@@ -560,7 +562,7 @@ An additional level parameter for when the icon is an instance of a Android `Lev
 
 > `optional` **sortKey?**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:374](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L374)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:376](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L376)
 
 Set a sort key that orders this notification among other notifications from the same package.
 This can be useful if an external sort was already applied and an app would like to preserve
@@ -578,7 +580,7 @@ documentation to learn more.
 
 > `optional` **sound?**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:463](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L463)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:465](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L465)
 
 Overrides the sound the notification is displayed with.
 
@@ -599,7 +601,7 @@ android API Level < 26
 
 > `optional` **style?**: [`AndroidBigPictureStyle`](react-native/reference/Interface.AndroidBigPictureStyle) | [`AndroidBigTextStyle`](react-native/reference/Interface.AndroidBigTextStyle) | [`AndroidInboxStyle`](react-native/reference/Interface.AndroidInboxStyle) | [`AndroidMessagingStyle`](react-native/reference/Interface.AndroidMessagingStyle)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:384](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L384)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:386](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L386)
 
 Styled notifications provide users with more informative content and additional functionality.
 
@@ -614,7 +616,7 @@ view usage examples.
 
 > `optional` **tag?**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:437](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L437)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:439](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L439)
 
 Sets a tag on the notification.
 
@@ -627,7 +629,7 @@ impact on the notification itself.
 
 > `optional` **ticker?**: `string`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:393](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L393)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:395](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L395)
 
 Text that summarizes this notification for accessibility services. As of the Android L release, this
 text is no longer shown on screen, but it is still useful to accessibility services
@@ -641,7 +643,7 @@ Ticker text does not show in the notification.
 
 > `optional` **timeoutAfter?**: `number`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:399](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L399)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:401](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L401)
 
 Sets the time in milliseconds at which the notification should be
 automatically cancelled once displayed, if it is not already cancelled.
@@ -652,7 +654,7 @@ automatically cancelled once displayed, if it is not already cancelled.
 
 > `optional` **timestamp?**: `number`
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:449](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L449)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:451](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L451)
 
 The timestamp in milliseconds for this notification. Notifications in the panel are sorted by this time.
 
@@ -669,7 +671,7 @@ View the [Timers](/react-native/android/timers) documentation to learn more.
 
 > `optional` **vibrationPattern?**: `number`\[]
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:418](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L418)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:420](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L420)
 
 Sets the vibration pattern the notification uses when displayed. Must be an even amount of numbers.
 
@@ -681,7 +683,7 @@ View the [Vibration](/react-native/android/behaviour#vibration) documentation to
 
 > `optional` **visibility?**: [`AndroidVisibility`](react-native/reference/Enumeration.AndroidVisibility)
 
-Defined in: [packages/react-native/src/types/NotificationAndroid.ts:429](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L429)
+Defined in: [packages/react-native/src/types/NotificationAndroid.ts:431](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/NotificationAndroid.ts#L431)
 
 Sets the visibility for this notification. This may be used for apps which show user
 sensitive information (e.g. a banking app).

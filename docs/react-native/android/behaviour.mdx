@@ -214,6 +214,22 @@ Running this code, Notify Kit will attempt to launch the activity when the notif
 
 > Please note that the notification may be shown as a heads-up notification, instead of a full-screen notification, while the user is using the device.
 
+To check whether the app currently has Full-Screen Intent access:
+
+```js
+import notifee, { AndroidNotificationSetting } from 'react-native-notify-kit';
+
+const settings = await notifee.getNotificationSettings();
+
+if (settings.android.fullScreenIntent === AndroidNotificationSetting.DISABLED) {
+  // Full-Screen Intent access is currently unavailable.
+}
+```
+
+`AndroidNotificationSetting.ENABLED` indicates that Full-Screen Intent access is available; it does not guarantee that
+a particular notification will be presented full-screen. Android determines actual presentation based on the
+notification configuration, device state, and other platform conditions.
+
 Full-screen actions have the same properties as press actions, with the same `Advanced` concepts of specifying a Custom Component or an Android Custom Activity:
 
 ```js
