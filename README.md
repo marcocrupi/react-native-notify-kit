@@ -148,6 +148,8 @@ useEffect(() => {
 
 > **Android event reliability:** Registering `onForegroundEvent()` initializes the native event relay. Pending events received while the `ReactContext` is unavailable are buffered. If the context becomes unavailable after a flush takes its buffer snapshot, undelivered events are requeued so a later native event relay flush can deliver them without duplication in the validated recovery path, while preserving FIFO, the 10-event capacity, and drop-oldest behavior. No application code changes or warm-up calls such as `getDisplayedNotifications()` are required; continue registering foreground and background handlers at the recommended points shown above. This hardens the Android event path investigated in [react-native-notify-kit#47](https://github.com/marcocrupi/react-native-notify-kit/issues/47) and relates to the event reliability and buffering problem tracked in [invertase/notifee#1279](https://github.com/invertase/notifee/issues/1279); the scenarios are not necessarily identical.
 
+<!-- Keep these callouts separate. -->
+
 > **Which handler fires when (iOS):**
 >
 > - Tap a notification while the app is **active in foreground** → `onForegroundEvent` receives `PRESS`.
@@ -539,7 +541,7 @@ This fork fixes the following bugs that were never resolved in the original Noti
 >
 > **Reserved keys filtered from `data`** (custom payload keys matching these are dropped): prefixes `android.`, `google.`, `gcm.`, `fcm.` (with trailing dot — `fcmRegion`, `googleish` survive), `notifee` (no trailing dot — library's reserved namespace, `notifeeFoo` is also filtered), plus exact keys `from`, `collapse_key`, `message_type`, `message_id`, `aps`, `fcm_options`. The `fcm_options` exact-match matches iOS behavior on the Firebase analytics-label key. **Cross-platform note**: bare-`fcm` keys other than `fcm_options` (e.g. `fcmRegion`, `fcmToken`) are preserved on Android but filtered on iOS — rename server-side if you need strict parity.
 
-<!-- markdownlint-disable-line MD028 -->
+<!-- Keep these callouts separate. -->
 
 > **Note for policy-eligible apps requiring exact alarm APIs (alarm clocks, timers, calendars):**
 > Add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` to your app's

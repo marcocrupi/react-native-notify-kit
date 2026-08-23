@@ -659,7 +659,7 @@ Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages
 
 > **Note on `ttl: 0`.** Zero is rejected because it's semantically ambiguous ("never expire" vs "expire immediately"). Omit `ttl` entirely to use FCM's default (4 weeks), or pass a positive integer in seconds.
 
-<!-- markdownlint-disable-next-line MD028 -->
+<!-- Keep these callouts separate. -->
 
 > **Note on `firebase-admin` TTL compatibility.** `options.ttl` remains expressed in seconds. `buildNotifyKitPayload()` converts the Android value to the millisecond duration required by Firebase Admin (`ttl: 3600` becomes `android.ttl: 3_600_000`), so the message can be passed directly to `admin.messaging().send()`. APNs expiration remains an absolute UNIX epoch timestamp in seconds.
 
