@@ -90,25 +90,25 @@ public class NotificationAndroidStyleModel {
 
           if (personBundle.containsKey("icon")) {
             String personIcon = Objects.requireNonNull(personBundle.getString("icon"));
-            Bitmap personIconBitmap = null;
 
             try {
-              personIconBitmap =
+              Bitmap personIconBitmap =
                   ResourceUtils.getImageBitmapFromUrl(personIcon).get(10, TimeUnit.SECONDS);
+
+              if (personIconBitmap != null) {
+                personBuilder.setIcon(IconCompat.createWithAdaptiveBitmap(personIconBitmap));
+              }
             } catch (TimeoutException e) {
               Logger.e(
                   TAG,
                   "Timeout occurred whilst trying to retrieve a person icon: " + personIcon,
                   e);
-            } catch (Exception e) {
+            } catch (ExecutionException | RuntimeException e) {
               Logger.e(
                   TAG,
-                  "An error occurred whilst trying to retrieve a person icon: " + personIcon,
+                  "An error occurred whilst trying to retrieve or create a person icon: "
+                      + personIcon,
                   e);
-            }
-
-            if (personIconBitmap != null) {
-              personBuilder.setIcon(IconCompat.createWithAdaptiveBitmap(personIconBitmap));
             }
           }
 
@@ -117,23 +117,23 @@ public class NotificationAndroidStyleModel {
   }
 
   /**
-   * Awaits a person, degrading to an icon-less one if it cannot be delivered.
+   * Awaits a person, degrading to an icon-less one only if the outer deadline expires.
    *
-   * <p>getPerson() already bounds its own icon fetch, so the deadline expires only when the process
-   * was frozen mid-fetch, and it can still fail outright on the icon decode. Either way the loss is
-   * an avatar; letting the exception escape loses the entire notification.
+   * <p>The icon lookup has a shorter timeout, but scheduling delays, process suspension, or other
+   * task stalls can still exhaust this outer deadline. The runtime cause is not inferred here.
    *
-   * <p>InterruptedException deliberately propagates: it means this thread is being torn down, not
-   * that the person is unavailable.
+   * <p>ExecutionException and InterruptedException propagate because neither proves that only the
+   * icon failed.
    */
   private static Person awaitPerson(ListenableFuture<Person> personTask, Bundle personBundle)
-      throws InterruptedException {
+      throws InterruptedException, ExecutionException {
     try {
       return personTask.get(20, TimeUnit.SECONDS);
     } catch (TimeoutException e) {
       Logger.e(TAG, "Timeout occurred whilst trying to retrieve a messaging style person", e);
     } catch (ExecutionException e) {
-      Logger.e(TAG, "An error occurred whilst trying to retrieve a messaging style person", e);
+      Logger.e(TAG, "Unexpected failure whilst building a messaging style person", e);
+      throw e;
     }
 
     return getPersonBuilder(personBundle).build();
