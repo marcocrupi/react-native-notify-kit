@@ -34,6 +34,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -50,6 +51,31 @@ public class NotificationAndroidStyleModel {
     return new NotificationAndroidStyleModel(styleBundle);
   }
 
+  /** Builds a person from everything in its bundle except the remotely fetched icon. */
+  private static Person.Builder getPersonBuilder(Bundle personBundle) {
+    Person.Builder personBuilder = new Person.Builder();
+
+    personBuilder.setName(personBundle.getString("name"));
+
+    if (personBundle.containsKey("id")) {
+      personBuilder.setKey(personBundle.getString("id"));
+    }
+
+    if (personBundle.containsKey("bot")) {
+      personBuilder.setBot(personBundle.getBoolean("bot"));
+    }
+
+    if (personBundle.containsKey("important")) {
+      personBuilder.setImportant(personBundle.getBoolean("important"));
+    }
+
+    if (personBundle.containsKey("uri")) {
+      personBuilder.setUri(personBundle.getString("uri"));
+    }
+
+    return personBuilder;
+  }
+
   /**
    * Converts a person bundle from JS into a Person
    *
@@ -60,21 +86,7 @@ public class NotificationAndroidStyleModel {
       ListeningExecutorService lExecutor, Bundle personBundle) {
     return lExecutor.submit(
         () -> {
-          Person.Builder personBuilder = new Person.Builder();
-
-          personBuilder.setName(personBundle.getString("name"));
-
-          if (personBundle.containsKey("id")) {
-            personBuilder.setKey(personBundle.getString("id"));
-          }
-
-          if (personBundle.containsKey("bot")) {
-            personBuilder.setBot(personBundle.getBoolean("bot"));
-          }
-
-          if (personBundle.containsKey("important")) {
-            personBuilder.setImportant(personBundle.getBoolean("important"));
-          }
+          Person.Builder personBuilder = getPersonBuilder(personBundle);
 
           if (personBundle.containsKey("icon")) {
             String personIcon = Objects.requireNonNull(personBundle.getString("icon"));
@@ -100,12 +112,31 @@ public class NotificationAndroidStyleModel {
             }
           }
 
-          if (personBundle.containsKey("uri")) {
-            personBuilder.setUri(personBundle.getString("uri"));
-          }
-
           return personBuilder.build();
         });
+  }
+
+  /**
+   * Awaits a person, degrading to an icon-less one if it cannot be delivered.
+   *
+   * <p>getPerson() already bounds its own icon fetch, so the deadline expires only when the process
+   * was frozen mid-fetch, and it can still fail outright on the icon decode. Either way the loss is
+   * an avatar; letting the exception escape loses the entire notification.
+   *
+   * <p>InterruptedException deliberately propagates: it means this thread is being torn down, not
+   * that the person is unavailable.
+   */
+  private static Person awaitPerson(ListenableFuture<Person> personTask, Bundle personBundle)
+      throws InterruptedException {
+    try {
+      return personTask.get(20, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      Logger.e(TAG, "Timeout occurred whilst trying to retrieve a messaging style person", e);
+    } catch (ExecutionException e) {
+      Logger.e(TAG, "An error occurred whilst trying to retrieve a messaging style person", e);
+    }
+
+    return getPersonBuilder(personBundle).build();
   }
 
   public Bundle toBundle() {
@@ -291,11 +322,9 @@ public class NotificationAndroidStyleModel {
       ListeningExecutorService lExecutor) {
     return lExecutor.submit(
         () -> {
-          Person person =
-              getPerson(
-                      lExecutor,
-                      Objects.requireNonNull(mNotificationAndroidStyleBundle.getBundle("person")))
-                  .get(20, TimeUnit.SECONDS);
+          Bundle personBundle =
+              Objects.requireNonNull(mNotificationAndroidStyleBundle.getBundle("person"));
+          Person person = awaitPerson(getPerson(lExecutor, personBundle), personBundle);
 
           NotificationCompat.MessagingStyle messagingStyle =
               new NotificationCompat.MessagingStyle(person);
@@ -322,9 +351,9 @@ public class NotificationAndroidStyleModel {
             long timestamp = BundleValueReader.getLongPreserving(message, "timestamp");
 
             if (message.containsKey("person")) {
+              Bundle messagePersonBundle = Objects.requireNonNull(message.getBundle("person"));
               messagePerson =
-                  getPerson(lExecutor, Objects.requireNonNull(message.getBundle("person")))
-                      .get(20, TimeUnit.SECONDS);
+                  awaitPerson(getPerson(lExecutor, messagePersonBundle), messagePersonBundle);
             }
 
             messagingStyle =
