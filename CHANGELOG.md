@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android**: fixed a failure path that could drop `MessagingStyle` notifications when `Person` resolution timed out or an icon could not be loaded or created. These recoverable failures now use an icon-less fallback that preserves the remaining `Person` fields and allows notification construction to continue.
+
 - **Android**: fixed validation in the React Native client and Server SDK so duplicate `pressAction.id` values within a single notification's `android.actions` array are rejected, preventing ambiguous action configurations.
 
 - **Android**: fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`, preventing later notification build, drawing, or parceling paths from depending on Fresco's bitmap lifetime.
@@ -18,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **iOS / Communication Notifications**: valid `file://` sender avatars now display their image instead of a placeholder, and HTTPS group avatars are now materialized before the communication intent is built in both direct and Notification Service Extension (NSE) paths.
 
 ### Tests
+
+- **Android**: added deterministic regression coverage for `MessagingStyle` `Person` timeouts and icon failures, verifying an icon-less fallback that preserves the remaining `Person` fields while unexpected person-construction failures continue to propagate.
 
 - **Android**: added deterministic Robolectric regression coverage for Fresco bitmap ownership, verifying that the source bitmap can be released while the bitmap returned by `ResourceUtils` remains independent and usable.
 
