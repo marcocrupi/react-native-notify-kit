@@ -19,53 +19,35 @@ package app.notifee.core.utility;
 
 import static app.notifee.core.ContextHolder.getApplicationContext;
 
-import android.app.NotificationManager;
 import android.content.Context;
-import android.os.Build;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
+import androidx.core.app.NotificationManagerCompat;
 
 public class FullScreenIntentUtils {
 
-  @Nullable
-  private static NotificationManager getNotificationManager() {
-    Context context = getApplicationContext();
-    if (context == null) {
-      return null;
-    }
-    return (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-  }
-
   /**
-   * Whether a notification posted with a full screen action will actually be shown full screen.
+   * Whether the app currently has the Android access required to use full-screen intents.
    *
-   * <p>On Android 14 / API 34 and above, {@code USE_FULL_SCREEN_INTENT} is a user-revocable special
-   * app access rather than a normal install-time permission: the Play Store revokes it on install
-   * for apps outside the calling and alarm categories, and the user can toggle it at any time. When
-   * it is denied the notification still posts normally and nothing throws — only the full screen
-   * presentation is dropped — so this is the sole reliable way to detect it.
+   * <p>API levels below 29 do not use the full-screen intent permission model. API levels 29
+   * through 33 require {@code USE_FULL_SCREEN_INTENT}. API level 34 and above use Android's
+   * full-screen intent special app access.
    *
-   * <p>Below API 34 the manifest permission is granted at install and always honoured.
-   *
-   * @return true when a full screen intent will be honoured, false when the user or the system has
-   *     denied it.
+   * @return true when the required access is currently available. This does not guarantee that a
+   *     particular notification will be presented full-screen.
    */
   public static boolean canUseFullScreenIntent() {
-    return canUseFullScreenIntent(getNotificationManager());
+    return canUseFullScreenIntent(getApplicationContext());
   }
 
   @VisibleForTesting
-  static boolean canUseFullScreenIntent(@Nullable NotificationManager notificationManager) {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+  static boolean canUseFullScreenIntent(@Nullable Context context) {
+    // The application context is expected to exist on the public path. Preserve the existing
+    // defensive fail-open behavior for an internal state that cannot prove access is denied.
+    if (context == null) {
       return true;
     }
 
-    // Fail open: an absent NotificationManager tells us nothing, and reporting a denial we
-    // cannot prove would have apps nag the user about a setting that may well be granted.
-    if (notificationManager == null) {
-      return true;
-    }
-
-    return notificationManager.canUseFullScreenIntent();
+    return NotificationManagerCompat.from(context).canUseFullScreenIntent();
   }
 }
