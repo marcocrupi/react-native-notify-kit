@@ -21,66 +21,63 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import android.Manifest;
 import android.app.NotificationManager;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 /**
- * Unit coverage for {@link FullScreenIntentUtils#canUseFullScreenIntent(NotificationManager)},
- * which backs the {@code android.fullScreenIntent} field of {@code getNotificationSettings()}.
- *
- * <p>Android 14 / API 34 turned {@code USE_FULL_SCREEN_INTENT} into a user-revocable special app
- * access. The interesting behavior is therefore the API level boundary, so each case pins the SDK
- * with {@link Config} and injects the {@link NotificationManager} rather than relying on a shadow —
- * Robolectric does not implement {@code canUseFullScreenIntent()}.
+ * Unit coverage for the cross-version access contract backing the {@code android.fullScreenIntent}
+ * field of {@code getNotificationSettings()}.
  */
 @RunWith(RobolectricTestRunner.class)
 public class FullScreenIntentUtilsTest {
 
   @Test
+  @Config(sdk = 28)
+  public void returnsTrueBelowApi29WithoutPermission() {
+    Context context = mock(Context.class);
+    when(context.checkSelfPermission(Manifest.permission.USE_FULL_SCREEN_INTENT))
+        .thenReturn(PackageManager.PERMISSION_DENIED);
+
+    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(context));
+  }
+
+  @Test
   @Config(sdk = 33)
-  public void returnsTrueBelowApi34WithoutConsultingNotificationManager() {
-    // Deliberately unstubbed: an unstubbed boolean mock answers false, so a true result proves
-    // the version guard short-circuited. The method is not referenced by name here because it
-    // does not exist on the API 33 android-all jar Robolectric loads for this case.
-    NotificationManager notificationManager = mock(NotificationManager.class);
+  public void reflectsPermissionAndRereadsItFromApi29Through33() {
+    Context context = mock(Context.class);
+    when(context.checkSelfPermission(Manifest.permission.USE_FULL_SCREEN_INTENT))
+        .thenReturn(PackageManager.PERMISSION_GRANTED, PackageManager.PERMISSION_DENIED);
 
-    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(notificationManager));
+    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(context));
+    assertFalse(FullScreenIntentUtils.canUseFullScreenIntent(context));
   }
 
   @Test
   @Config(sdk = 34)
-  public void returnsTrueOnApi34WhenGranted() {
+  public void reflectsAccessChangesOnApi34() {
+    Context context = mock(Context.class);
     NotificationManager notificationManager = mock(NotificationManager.class);
-    when(notificationManager.canUseFullScreenIntent()).thenReturn(true);
+    when(context.getSystemService(Context.NOTIFICATION_SERVICE)).thenReturn(notificationManager);
+    when(notificationManager.canUseFullScreenIntent()).thenReturn(true, false);
 
-    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(notificationManager));
-  }
-
-  @Test
-  @Config(sdk = 34)
-  public void returnsFalseOnApi34WhenDenied() {
-    NotificationManager notificationManager = mock(NotificationManager.class);
-    when(notificationManager.canUseFullScreenIntent()).thenReturn(false);
-
-    assertFalse(FullScreenIntentUtils.canUseFullScreenIntent(notificationManager));
+    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(context));
+    assertFalse(FullScreenIntentUtils.canUseFullScreenIntent(context));
   }
 
   @Test
   @Config(sdk = 35)
   public void keepsConsultingNotificationManagerAboveApi34() {
-    // Guards against the version check regressing into an equality test against 34.
+    Context context = mock(Context.class);
     NotificationManager notificationManager = mock(NotificationManager.class);
-    when(notificationManager.canUseFullScreenIntent()).thenReturn(false);
+    when(context.getSystemService(Context.NOTIFICATION_SERVICE)).thenReturn(notificationManager);
+    when(notificationManager.canUseFullScreenIntent()).thenReturn(true);
 
-    assertFalse(FullScreenIntentUtils.canUseFullScreenIntent(notificationManager));
-  }
-
-  @Test
-  @Config(sdk = 34)
-  public void failsOpenWhenNotificationManagerIsUnavailable() {
-    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(null));
+    assertTrue(FullScreenIntentUtils.canUseFullScreenIntent(context));
   }
 }

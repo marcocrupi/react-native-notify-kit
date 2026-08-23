@@ -287,6 +287,54 @@ describe('Notifee Api Module', () => {
     });
   });
 
+  describe('requestPermission', () => {
+    test('passes Android full-screen intent access through from the native module', async () => {
+      setPlatform('android');
+      mockNotifeeNativeModule.requestPermission.mockResolvedValue({
+        authorizationStatus: AuthorizationStatus.AUTHORIZED,
+        android: {
+          alarm: AndroidNotificationSetting.ENABLED,
+          fullScreenIntent: AndroidNotificationSetting.DISABLED,
+        },
+      });
+
+      const settings = await apiModule.requestPermission();
+
+      expect(settings.android).toEqual({
+        alarm: AndroidNotificationSetting.ENABLED,
+        fullScreenIntent: AndroidNotificationSetting.DISABLED,
+      });
+    });
+
+    test('includes Android full-screen intent defaults on iOS', async () => {
+      setPlatform('ios');
+      mockNotifeeNativeModule.requestPermission.mockResolvedValue({
+        authorizationStatus: AuthorizationStatus.AUTHORIZED,
+        ios: {},
+      });
+
+      const settings = await apiModule.requestPermission();
+
+      expect(settings.android).toEqual({
+        alarm: AndroidNotificationSetting.ENABLED,
+        fullScreenIntent: AndroidNotificationSetting.ENABLED,
+      });
+      expect(mockNotifeeNativeModule.requestPermission).toBeCalledTimes(1);
+    });
+
+    test('includes Android full-screen intent defaults on web', async () => {
+      setPlatform('web');
+
+      const settings = await apiModule.requestPermission();
+
+      expect(settings.android).toEqual({
+        alarm: AndroidNotificationSetting.ENABLED,
+        fullScreenIntent: AndroidNotificationSetting.ENABLED,
+      });
+      expect(mockNotifeeNativeModule.requestPermission).not.toBeCalled();
+    });
+  });
+
   describe('getNotificationSettings', () => {
     describe('on Android', () => {
       beforeEach(() => {
@@ -345,10 +393,10 @@ describe('Notifee Api Module', () => {
 
     describe('on iOS', () => {
       beforeEach(() => {
-        setPlatform('iOS');
+        setPlatform('ios');
       });
 
-      test('return web settings with AndroidNotificationSettings set to default values', async () => {
+      test('returns iOS settings with AndroidNotificationSettings set to default values', async () => {
         mockNotifeeNativeModule.getNotificationSettings.mockResolvedValue({
           authorizationStatus: AuthorizationStatus.NOT_DETERMINED,
           ios: {
@@ -388,6 +436,23 @@ describe('Notifee Api Module', () => {
           },
           web: {},
         });
+        expect(mockNotifeeNativeModule.getNotificationSettings).toBeCalledTimes(1);
+      });
+    });
+
+    describe('on web', () => {
+      beforeEach(() => {
+        setPlatform('web');
+      });
+
+      test('returns AndroidNotificationSettings default values', async () => {
+        const settings = await apiModule.getNotificationSettings();
+
+        expect(settings.android).toEqual({
+          alarm: AndroidNotificationSetting.ENABLED,
+          fullScreenIntent: AndroidNotificationSetting.ENABLED,
+        });
+        expect(mockNotifeeNativeModule.getNotificationSettings).not.toBeCalled();
       });
     });
   });

@@ -503,19 +503,15 @@ export interface AndroidNotificationSettings {
   alarm: AndroidNotificationSetting;
 
   /**
-   * Enum describing if a notification with a `fullScreenAction` will actually be shown full screen.
+   * Enum describing whether the app currently has the Android access required to use full-screen intents.
    *
-   * For Android < 14 / API < 34, this will default to enabled.
+   * API < 29 reports `ENABLED` because the later permission model does not apply. API 29–33 reflects
+   * `USE_FULL_SCREEN_INTENT`. API 34+ reflects Android's full-screen intent special app access,
+   * which may be restricted or revoked by the system, installer, or user.
    *
-   * On Android 14 / API 34 and above, `USE_FULL_SCREEN_INTENT` is a user-revocable special app
-   * access rather than a normal install-time permission. It is revoked on install for apps outside
-   * the calling and alarm categories, and the user can toggle it at any time. While it is disabled
-   * the notification still posts and no error is raised — only the full screen presentation is
-   * dropped, so this setting is the only way to detect it.
-   *
-   * Send the user to `Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT` to have it granted.
+   * `ENABLED` does not guarantee that a particular notification will be presented full-screen.
    */
-  fullScreenIntent: AndroidNotificationSetting;
+  fullScreenIntent?: AndroidNotificationSetting;
 }
 
 /**
