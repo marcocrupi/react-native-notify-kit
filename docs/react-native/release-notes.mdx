@@ -5,6 +5,38 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.6.0] (2026-08-23)
+
+This 10.6.0 update adds Android full-screen intent access reporting and fixes notification reliability across MessagingStyle person resolution, action validation, Fresco bitmap ownership, PendingIntent identity, and iOS Communication Notification avatar handling.
+
+### Android Notification Settings
+
+- Added `getNotificationSettings().android.fullScreenIntent` reporting for the Android access required to use full-screen intents.
+- API < 29 reports `ENABLED`, API 29-33 reflects `USE_FULL_SCREEN_INTENT`, and API 34+ reflects Android's full-screen intent special app access.
+- `ENABLED` does not guarantee that a particular notification will be presented full-screen.
+
+### Android Notification Reliability
+
+- Fixed a failure path that could drop `MessagingStyle` notifications when `Person` resolution timed out or an icon could not be loaded or created.
+- Recoverable `MessagingStyle` person failures now use an icon-less fallback that preserves the remaining `Person` fields and allows notification construction to continue.
+- Fixed notification image handling so Fresco-owned bitmaps are copied before leaving `BaseBitmapDataSubscriber`.
+- Fixed `ReceiverService` `PendingIntent` identity collisions across app process restarts that could route action buttons or dismiss/delete intents from older live notifications to another notification's payload.
+
+### Android Action Validation
+
+- Fixed validation in the React Native client and Server SDK so duplicate `pressAction.id` values within a single notification's `android.actions` array are rejected.
+
+### iOS Communication Notifications
+
+- Fixed valid `file://` sender avatars so they display their image instead of a placeholder.
+- Materialized HTTPS group avatars before the communication intent is built in both direct and Notification Service Extension (NSE) paths.
+
+### Validation
+
+- Added deterministic regression coverage for `MessagingStyle` `Person` timeouts and icon failures, Fresco bitmap ownership, full-screen intent access reporting, and `ReceiverService` `PendingIntent` identity.
+- Added a physical-device smoke harness covering a notification surviving a process restart, a second notification posted from the new process, real action-button presses, and real dismiss routing; the device scenarios were validated on a Pixel 9 Pro XL running Android 17/API 37.
+- Added iOS harness coverage for avatar resolution and materialization in Communication Notifications, deadline and media-cutoff handling, and one-shot NSE completion.
+
 ## [10.5.0] (2026-07-24)
 
 This 10.5.0 update fixes Firebase Admin compatibility in the Server SDK payload builder while preserving the public TTL input in seconds.

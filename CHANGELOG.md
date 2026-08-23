@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.6.0] - 2026-08-23
+
 ### Added
 
 - **Android**: `getNotificationSettings().android.fullScreenIntent` now reports whether the app currently has the Android access required to use full-screen intents. API < 29 reports `ENABLED`, API 29–33 reflects `USE_FULL_SCREEN_INTENT`, and API 34+ reflects Android's full-screen intent special app access. `ENABLED` does not guarantee that a particular notification will be presented full-screen.
