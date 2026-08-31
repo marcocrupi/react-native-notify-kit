@@ -5,6 +5,16 @@ description: react-native-notify-kit API releases
 
 ## Unreleased (next release)
 
+## [10.7.0] (2026-08-31)
+
+This 10.7.0 update adds Expo CNG support for generating Android small notification icon resources from project-relative PNG files.
+
+### Expo Android Notification Icons
+
+- Added `android.icons` config-plugin support for generating one or more density-specific Android small notification icon resources during CNG/prebuild.
+- Each configured resource name can be used with `notification.android.smallIcon`.
+- The plugin writes an Android resource-shrinker keep rule for generated icons. Only `type: 'small'` is supported.
+
 ## [10.6.0] (2026-08-23)
 
 This 10.6.0 update adds Android full-screen intent access reporting and fixes notification reliability across MessagingStyle person resolution, action validation, Fresco bitmap ownership, PendingIntent identity, and iOS Communication Notification avatar handling.
