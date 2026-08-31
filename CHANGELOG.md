@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Expo / Android**: added `android.icons` config-plugin support for generating one or more density-specific small notification icon resources from project-relative PNG files during CNG/prebuild. Each configured resource name can be used with `notification.android.smallIcon`, and the plugin writes an Android resource-shrinker keep rule for the generated icons. Only `type: 'small'` is supported.
+
 ## [10.6.0] - 2026-08-23
 
 ### Added

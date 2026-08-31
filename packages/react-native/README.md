@@ -242,6 +242,54 @@ export default {
 
 On Android, FCM Mode stays data-only. Configure Firebase and RNFirebase in the app, create the Android channel used by your payloads, then call `notifee.handleFcmMessage(remoteMessage)` from RNFirebase `onMessage` and `setBackgroundMessageHandler`. The Expo smoke app validates foreground and background delivery with the `android-expo-smoke` scenario on a real device.
 
+#### Android notification small icons
+
+For Expo CNG/prebuild projects, the config plugin can generate small notification icon resources without manually editing generated `android/` directories. This resource-generation option is independent of FCM Mode:
+
+```ts
+export default {
+  expo: {
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          android: {
+            icons: [
+              {
+                name: 'notification_message',
+                path: './assets/notification-message.png',
+                type: 'small',
+              },
+              {
+                name: 'notification_warning',
+                path: './assets/notification-warning.png',
+                type: 'small',
+              },
+            ],
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+During prebuild, each entry generates density-specific PNG drawable resources (`mdpi` 24×24, `hdpi` 36×36, `xhdpi` 48×48, `xxhdpi` 72×72, and `xxxhdpi` 96×96) with a transparent background and `cover` resizing. The source `path` must be a project-relative PNG inside the project root. The `name` must start with a lowercase letter and contain only `a-z`, `0-9`, and `_`; invalid names are rejected rather than normalized. The array supports multiple icons and preserves their order. Each entry must include `type: 'small'`; omitting it or using another type fails during configuration/prebuild. The plugin also writes an Android resource-shrinker keep rule for the generated icons.
+
+`android.icons` generates resources; it does not select an icon for a notification. Pass the configured resource `name`—not its file path—to `android.smallIcon`:
+
+```ts
+await notifee.displayNotification({
+  title: 'New message',
+  android: {
+    channelId: 'messages',
+    smallIcon: 'notification_message',
+  },
+});
+```
+
+This option does not configure Firebase or set `com.google.firebase.messaging.default_notification_icon`.
+
 Android foreground service manifest configuration is also available through the NotifyKit config plugin, but it is explicit opt-in:
 
 ```ts
@@ -925,6 +973,8 @@ Three causes account for the vast majority of reports:
 ```
 
 **Naming mismatch.** Android resource names are case-sensitive and only accept `[a-z0-9_]`. A string like `smallIcon: 'icNotification'` will not resolve `ic_notification.png`. Rename the `smallIcon` value to match the file on disk exactly.
+
+For Expo CNG/prebuild apps, use the NotifyKit config plugin's `android.icons` option instead of editing generated `android/` directories. It generates the density-specific drawables and writes a resource-shrinker keep rule during prebuild; continue to pass the configured resource `name` to `android.smallIcon`.
 
 For the full procedure on creating a small-icon asset via Android Studio, see [docs/react-native/android/appearance.mdx](docs/react-native/android/appearance.mdx).
 

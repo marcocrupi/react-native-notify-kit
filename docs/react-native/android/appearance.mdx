@@ -49,7 +49,9 @@ Small Icons are primarily used for users to identify your app, typically matchin
 
 The small icon must have a transparent background, otherwise Android will display a solid square.
 
-To create a small icon, you must add the resource directly from Android studio, which will take care of device compatibility and format:
+#### Bare React Native
+
+For a bare React Native project, add the resource through Android Studio, which will take care of device compatibility and format:
 
 1. Using Android Studio, open your project's `android` directory.
 2. Open the `app/main` directory in the file tree.
@@ -58,18 +60,60 @@ To create a small icon, you must add the resource directly from Android studio, 
 5. Once finished, Android Studio will inject multiple icon files into your projects resource (`res`) directory.
    ![android-small-icon-2](https://user-images.githubusercontent.com/14185925/86519517-67a99d00-be33-11ea-9ecb-c0b413d5acd0.png)
 
-To set a small icon, add a `smallIcon` property to the notification body:
+The image file used in the example can be downloaded [here](https://user-images.githubusercontent.com/14185925/86519462-cde1f000-be32-11ea-8ae6-cdec95754866.png).
 
-```js
-notifee.displayNotification({
-  title: 'Small Icon',
-  body: 'A notification using the small icon!.',
+#### Expo CNG / prebuild
+
+For Expo CNG/prebuild projects, configure the NotifyKit config plugin to generate the Android resources during prebuild instead of editing the generated `android/app/src/main/res` directory:
+
+```ts
+// app.config.ts
+export default {
+  expo: {
+    plugins: [
+      [
+        'react-native-notify-kit',
+        {
+          android: {
+            icons: [
+              {
+                name: 'notification_message',
+                path: './assets/notification-message.png',
+                type: 'small',
+              },
+            ],
+          },
+        },
+      ],
+    ],
+  },
+};
+```
+
+Each `android.icons` entry generates PNG drawables with a transparent background and `cover` resizing:
+
+| Resource folder    | Size  |
+| ------------------ | ----- |
+| `drawable-mdpi`    | 24×24 |
+| `drawable-hdpi`    | 36×36 |
+| `drawable-xhdpi`   | 48×48 |
+| `drawable-xxhdpi`  | 72×72 |
+| `drawable-xxxhdpi` | 96×96 |
+
+The source must be a PNG at a project-relative path inside the project root. The Android resource `name` must start with a lowercase letter and then contain only `a-z`, `0-9`, or `_`; invalid names are rejected during configuration/prebuild rather than normalized. The array supports multiple icons and preserves their order. Each entry must include `type: 'small'`; omitting it or using another type fails during configuration/prebuild. The config plugin also writes an Android resource-shrinker keep rule for the generated icons.
+
+This option generates resources only. It does not set an icon on notifications and does not configure Firebase's `com.google.firebase.messaging.default_notification_icon` metadata.
+
+#### Use the resource name
+
+Set `android.smallIcon` to the configured Android resource `name`, not the source file path:
+
+```ts
+await notifee.displayNotification({
+  title: 'New message',
   android: {
-    // Reference the name created (Optional, defaults to 'ic_launcher')
-    smallIcon: 'ic_small_icon',
-
-    // Set color of icon (Optional, defaults to white)
-    color: '#9c27b0',
+    channelId: 'messages',
+    smallIcon: 'notification_message',
   },
 });
 ```
@@ -77,8 +121,6 @@ notifee.displayNotification({
 **Note (from 10.1.0):** if the `smallIcon` name cannot be resolved at runtime (asset missing from release builds, R8 resource shrinking, naming mismatch), the library falls back to your app's launcher icon and logs a warning at level `w` instead of failing the notification display. See the [README Troubleshooting section](https://github.com/marcocrupi/react-native-notify-kit#small-icon-not-showing-in-android-release-builds-falls-back-to-launcher-icon) for diagnosis tips.
 
 <Vimeo id="435859310" caption="Android Small Icon Example" />
-
-The image file used in the example can be downloaded [here](https://user-images.githubusercontent.com/14185925/86519462-cde1f000-be32-11ea-8ae6-cdec95754866.png).
 
 ### Large Icons
 
