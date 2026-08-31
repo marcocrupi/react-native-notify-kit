@@ -2,33 +2,28 @@
 
 const { createRunOncePlugin } = requireExpoConfigPlugins();
 const { normalizeNotifyKitPluginOptions } = require('./options');
+const { withNotifyKitAndroidManifest } = require('./android/withNotifyKitAndroidManifest');
 const {
-  withNotifyKitAndroidManifest,
-} = require('./android/withNotifyKitAndroidManifest');
-const {
-  withNotifyKitIosNseAppExtension,
-} = require('./ios/withNotifyKitIosNseAppExtension');
-const {
-  withNotifyKitIosNseFiles,
-} = require('./ios/withNotifyKitIosNseFiles');
-const {
-  withNotifyKitIosNsePodfile,
-} = require('./ios/withNotifyKitIosNsePodfile');
-const {
-  withNotifyKitIosNseXcodeProject,
-} = require('./ios/withNotifyKitIosNseXcodeProject');
+  withNotifyKitAndroidNotificationIcons,
+} = require('./android/withNotifyKitAndroidNotificationIcons');
+const { withNotifyKitIosNseAppExtension } = require('./ios/withNotifyKitIosNseAppExtension');
+const { withNotifyKitIosNseFiles } = require('./ios/withNotifyKitIosNseFiles');
+const { withNotifyKitIosNsePodfile } = require('./ios/withNotifyKitIosNsePodfile');
+const { withNotifyKitIosNseXcodeProject } = require('./ios/withNotifyKitIosNseXcodeProject');
 const pkg = require('../../package.json');
 
 function withNotifyKit(config, props = {}) {
   const options = normalizeNotifyKitPluginOptions(props);
   const foregroundServiceOptions = options.android.foregroundService;
+  const notificationIcons = options.android.icons;
   const nseOptions = options.ios.notificationServiceExtension;
-  const configWithAndroidManifest = withNotifyKitAndroidManifest(
-    config,
-    foregroundServiceOptions,
+  const configWithAndroidManifest = withNotifyKitAndroidManifest(config, foregroundServiceOptions);
+  const configWithAndroidNotificationIcons = withNotifyKitAndroidNotificationIcons(
+    configWithAndroidManifest,
+    notificationIcons,
   );
   const configWithAppExtension = withNotifyKitIosNseAppExtension(
-    configWithAndroidManifest,
+    configWithAndroidNotificationIcons,
     nseOptions,
   );
   const configWithFiles = withNotifyKitIosNseFiles(configWithAppExtension, nseOptions);

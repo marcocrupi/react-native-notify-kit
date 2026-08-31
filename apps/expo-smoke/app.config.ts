@@ -10,26 +10,17 @@ const LOCAL_IOS_GOOGLE_SERVICES_FILE = './firebase/GoogleService-Info.plist';
 const LOCAL_ANDROID_GOOGLE_SERVICES_FILE = './firebase/google-services.json';
 const isFcmModeEnabled = process.env[FCM_ENV] === '1';
 
-const resolveConfigFilePath = (candidate) =>
+const resolveConfigFilePath = candidate =>
   path.isAbsolute(candidate) ? candidate : path.join(__dirname, candidate);
 
-const createGoogleServicesFileError = (
-  localGoogleServicesFile,
-  envName,
-  platformName,
-  reason,
-) =>
+const createGoogleServicesFileError = (localGoogleServicesFile, envName, platformName, reason) =>
   new Error(
     `apps/expo-smoke FCM mode requires the Firebase ${platformName} config file. ${reason} ` +
       `Set ${envName} as an EAS file environment variable, place ${localGoogleServicesFile} locally, ` +
       `or unset ${FCM_ENV}.`,
   );
 
-const requireGoogleServicesFile = (
-  localGoogleServicesFile,
-  envName,
-  platformName,
-) => {
+const requireGoogleServicesFile = (localGoogleServicesFile, envName, platformName) => {
   const rawEnvValue = process.env[envName];
   const googleServicesFile =
     rawEnvValue === undefined ? localGoogleServicesFile : rawEnvValue.trim();
@@ -152,6 +143,20 @@ module.exports = ({ config }) => ({
     [
       'react-native-notify-kit',
       {
+        android: {
+          icons: [
+            {
+              name: 'notification_message',
+              path: './assets/notification-icon.png',
+              type: 'small',
+            },
+            {
+              name: 'notification_warning',
+              path: './assets/notification-icon.png',
+              type: 'small',
+            },
+          ],
+        },
         ios: {
           notificationServiceExtension: {
             enabled: true,

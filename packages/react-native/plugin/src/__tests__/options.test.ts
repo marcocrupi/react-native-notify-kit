@@ -2,9 +2,16 @@ import {
   DEFAULT_IOS_NSE_BUNDLE_SUFFIX,
   DEFAULT_IOS_NSE_TARGET_NAME,
   normalizeAndroidForegroundServiceOptions,
+  normalizeAndroidNotificationIcons,
   normalizeIosNotificationServiceExtensionOptions,
   normalizeNotifyKitPluginOptions,
 } from '../options';
+
+const VALID_ANDROID_NOTIFICATION_ICON = {
+  name: 'notification_message',
+  path: './assets/notification-icon.png',
+  type: 'small',
+} as const;
 
 describe('NotifyKit Expo plugin option normalization', () => {
   it('normalizes undefined as disabled', () => {
@@ -21,6 +28,7 @@ describe('NotifyKit Expo plugin option normalization', () => {
           enabled: false,
           types: [],
         },
+        icons: [],
       },
     });
   });
@@ -183,5 +191,217 @@ describe('NotifyKit Expo plugin option normalization', () => {
       types: ['specialUse'],
       specialUseSubtype: 'User-visible special use case',
     });
+  });
+
+  it('normalizes missing Android notification icons as an empty array', () => {
+    expect(normalizeAndroidNotificationIcons()).toEqual([]);
+  });
+
+  it('normalizes an empty Android notification icons array as an empty array', () => {
+    expect(normalizeAndroidNotificationIcons([])).toEqual([]);
+  });
+
+  it('normalizes one valid Android notification icon', () => {
+    expect(normalizeAndroidNotificationIcons([VALID_ANDROID_NOTIFICATION_ICON])).toEqual([
+      VALID_ANDROID_NOTIFICATION_ICON,
+    ]);
+  });
+
+  it('preserves multiple Android notification icons in configured order', () => {
+    expect(
+      normalizeAndroidNotificationIcons([
+        VALID_ANDROID_NOTIFICATION_ICON,
+        {
+          name: 'notification_warning',
+          path: './assets/notification-warning.png',
+          type: 'small',
+        },
+      ]),
+    ).toEqual([
+      VALID_ANDROID_NOTIFICATION_ICON,
+      {
+        name: 'notification_warning',
+        path: './assets/notification-warning.png',
+        type: 'small',
+      },
+    ]);
+  });
+
+  it('does not mutate Android notification icon input', () => {
+    const input = [
+      {
+        ...VALID_ANDROID_NOTIFICATION_ICON,
+      },
+    ];
+    const before = JSON.stringify(input);
+    const normalized = normalizeAndroidNotificationIcons(input);
+
+    expect(JSON.stringify(input)).toBe(before);
+    expect(normalized).not.toBe(input);
+    expect(normalized[0]).not.toBe(input[0]);
+  });
+
+  it('rejects a non-array Android notification icons value', () => {
+    expect(() => normalizeAndroidNotificationIcons({})).toThrow(/android\.icons must be an array/);
+  });
+
+  it.each([null, 'notification_message', []])(
+    'rejects a non-object Android notification icon entry %#',
+    entry => {
+      expect(() => normalizeAndroidNotificationIcons([entry])).toThrow(
+        /android\.icons\[0\] must be an object/,
+      );
+    },
+  );
+
+  it('rejects a missing Android notification icon name', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          path: VALID_ANDROID_NOTIFICATION_ICON.path,
+          type: VALID_ANDROID_NOTIFICATION_ICON.type,
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.name must be a non-empty string/);
+  });
+
+  it('rejects a non-string Android notification icon name', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          name: 42,
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.name must be a non-empty string/);
+  });
+
+  it('rejects an empty Android notification icon name', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          name: '',
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.name must be a non-empty string/);
+  });
+
+  it.each([
+    'Notification_message',
+    'notification-message',
+    'notification_message.png',
+    'drawable/notification_message',
+    '@drawable/notification_message',
+    '1_notification_message',
+  ])('rejects invalid Android notification resource name %s', name => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          name,
+        },
+      ]),
+    ).toThrow(/Invalid android\.icons\[0\]\.name/);
+  });
+
+  it('rejects a missing Android notification icon path', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          name: VALID_ANDROID_NOTIFICATION_ICON.name,
+          type: VALID_ANDROID_NOTIFICATION_ICON.type,
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.path must be a non-empty string/);
+  });
+
+  it('rejects a non-string Android notification icon path', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          path: 42,
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.path must be a non-empty string/);
+  });
+
+  it('rejects an empty Android notification icon path', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          path: '',
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.path must be a non-empty string/);
+  });
+
+  it('rejects an absolute Android notification icon path', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          path: '/tmp/notification-icon.png',
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.path must be project-relative/);
+  });
+
+  it('rejects a publicly unsupported Android notification icon source format', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          path: './assets/notification-icon.jpg',
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.path must reference a lowercase \.png file/);
+  });
+
+  it('rejects a missing Android notification icon type', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          name: VALID_ANDROID_NOTIFICATION_ICON.name,
+          path: VALID_ANDROID_NOTIFICATION_ICON.path,
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.type must be the string 'small'/);
+  });
+
+  it('rejects a non-string Android notification icon type', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          type: true,
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.type must be the string 'small'/);
+  });
+
+  it('rejects an unsupported Android notification icon type', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          type: 'large',
+        },
+      ]),
+    ).toThrow(/android\.icons\[0\]\.type 'large' is unsupported/);
+  });
+
+  it('rejects duplicate Android notification icon names', () => {
+    expect(() =>
+      normalizeAndroidNotificationIcons([
+        VALID_ANDROID_NOTIFICATION_ICON,
+        {
+          ...VALID_ANDROID_NOTIFICATION_ICON,
+          path: './assets/notification-icon-alternate.png',
+        },
+      ]),
+    ).toThrow(/Duplicate android\.icons name 'notification_message'/);
   });
 });

@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 export const DEFAULT_IOS_NSE_TARGET_NAME = 'NotifyKitNSE';
 export const DEFAULT_IOS_NSE_BUNDLE_SUFFIX = '.NotifyKitNSE';
 
@@ -19,6 +21,7 @@ export const ANDROID_FOREGROUND_SERVICE_TYPES = [
 
 const TARGET_NAME_PATTERN = /^[A-Za-z0-9_\-.]+$/;
 const BUNDLE_SUFFIX_PATTERN = /^\.[A-Za-z0-9\-.]+$/;
+const ANDROID_RESOURCE_NAME_PATTERN = /^[a-z][a-z0-9_]*$/;
 
 export interface NotifyKitPluginOptions {
   ios?: {
@@ -26,6 +29,7 @@ export interface NotifyKitPluginOptions {
   };
   android?: {
     foregroundService?: AndroidForegroundServiceInput;
+    icons?: AndroidNotificationIconInput[];
   };
 }
 
@@ -42,6 +46,12 @@ export interface AndroidForegroundServiceInput {
   specialUseSubtype?: unknown;
 }
 
+export interface AndroidNotificationIconInput {
+  name: string;
+  path: string;
+  type: 'small';
+}
+
 export type AndroidForegroundServiceType = (typeof ANDROID_FOREGROUND_SERVICE_TYPES)[number];
 
 export interface NormalizedNotifyKitPluginOptions {
@@ -50,6 +60,7 @@ export interface NormalizedNotifyKitPluginOptions {
   };
   android: {
     foregroundService: NormalizedAndroidForegroundServiceOptions;
+    icons: NormalizedAndroidNotificationIconOptions[];
   };
 }
 
@@ -65,6 +76,8 @@ export interface NormalizedAndroidForegroundServiceOptions {
   specialUseSubtype?: string;
 }
 
+export type NormalizedAndroidNotificationIconOptions = AndroidNotificationIconInput;
+
 export function normalizeNotifyKitPluginOptions(
   options: NotifyKitPluginOptions = {},
 ): NormalizedNotifyKitPluginOptions {
@@ -78,6 +91,7 @@ export function normalizeNotifyKitPluginOptions(
       foregroundService: normalizeAndroidForegroundServiceOptions(
         options.android?.foregroundService,
       ),
+      icons: normalizeAndroidNotificationIcons(options.android?.icons),
     },
   };
 }
@@ -194,6 +208,87 @@ export function normalizeAndroidForegroundServiceOptions(
     types,
     ...(specialUseSubtype === undefined ? {} : { specialUseSubtype }),
   };
+}
+
+export function normalizeAndroidNotificationIcons(
+  input?: unknown,
+): NormalizedAndroidNotificationIconOptions[] {
+  if (input === undefined) {
+    return [];
+  }
+
+  if (!Array.isArray(input)) {
+    throw new Error('[react-native-notify-kit] android.icons must be an array.');
+  }
+
+  const names = new Set<string>();
+  const icons: NormalizedAndroidNotificationIconOptions[] = [];
+
+  for (const [index, value] of input.entries()) {
+    if (!isPlainObject(value)) {
+      throw new Error(`[react-native-notify-kit] android.icons[${index}] must be an object.`);
+    }
+
+    if (typeof value.name !== 'string' || value.name.trim().length === 0) {
+      throw new Error(
+        `[react-native-notify-kit] android.icons[${index}].name must be a non-empty string.`,
+      );
+    }
+
+    if (!ANDROID_RESOURCE_NAME_PATTERN.test(value.name)) {
+      throw new Error(
+        `[react-native-notify-kit] Invalid android.icons[${index}].name '${value.name}'. ` +
+          'It must start with a lowercase letter and contain only lowercase letters, digits, and underscores.',
+      );
+    }
+
+    if (typeof value.path !== 'string' || value.path.trim().length === 0) {
+      throw new Error(
+        `[react-native-notify-kit] android.icons[${index}].path must be a non-empty string.`,
+      );
+    }
+
+    if (path.isAbsolute(value.path) || path.win32.isAbsolute(value.path)) {
+      throw new Error(
+        `[react-native-notify-kit] android.icons[${index}].path must be project-relative.`,
+      );
+    }
+
+    if (path.extname(value.path) !== '.png') {
+      throw new Error(
+        `[react-native-notify-kit] android.icons[${index}].path must reference a lowercase .png file.`,
+      );
+    }
+
+    if (typeof value.type !== 'string') {
+      throw new Error(
+        `[react-native-notify-kit] android.icons[${index}].type must be the string 'small'.`,
+      );
+    }
+
+    if (value.type !== 'small') {
+      throw new Error(
+        `[react-native-notify-kit] android.icons[${index}].type '${value.type}' is unsupported. ` +
+          "Only 'small' is supported.",
+      );
+    }
+
+    if (names.has(value.name)) {
+      throw new Error(
+        `[react-native-notify-kit] Duplicate android.icons name '${value.name}'. ` +
+          'Each Android notification icon name must be unique.',
+      );
+    }
+
+    names.add(value.name);
+    icons.push({
+      name: value.name,
+      path: value.path,
+      type: value.type,
+    });
+  }
+
+  return icons;
 }
 
 function disabledAndroidForegroundServiceOptions(): NormalizedAndroidForegroundServiceOptions {

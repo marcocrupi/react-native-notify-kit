@@ -40,6 +40,9 @@
     "format:ios": "npm_config_yes=true npx clang-format -i --glob=\"ios/**/*.{h,cpp,m,mm}\" --style=Google",
     "format:ios:check": "npm_config_yes=true npx clang-format --glob=\"ios/**/*.{h,cpp,m,mm}\" --style=Google -n -Werror"
   },
+  "dependencies": {
+    "@expo/image-utils": "^0.8.14"
+  },
   "devDependencies": {
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",

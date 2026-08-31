@@ -17221,6 +17221,7 @@ __metadata:
   dependencies:
     "@babel/preset-env": "npm:^7.25.3"
     "@babel/runtime": "npm:^7.25.0"
+    "@expo/image-utils": "npm:^0.8.14"
     "@react-native/babel-preset": "npm:0.85.3"
     "@react-native/jest-preset": "npm:0.85.3"
     "@types/jest": "npm:^29.5.13"

@@ -1,5 +1,6 @@
 import { normalizeNotifyKitPluginOptions, type NotifyKitPluginOptions } from './options';
 import { withNotifyKitAndroidManifest } from './android/withNotifyKitAndroidManifest';
+import { withNotifyKitAndroidNotificationIcons } from './android/withNotifyKitAndroidNotificationIcons';
 import {
   withNotifyKitIosNseAppExtension,
   type ExpoConfigLike,
@@ -28,10 +29,15 @@ export const withNotifyKit: ConfigPlugin<NotifyKitPluginOptions | undefined> = (
 ) => {
   const options = normalizeNotifyKitPluginOptions(props);
   const foregroundServiceOptions = options.android.foregroundService;
+  const notificationIcons = options.android.icons;
   const nseOptions = options.ios.notificationServiceExtension;
   const configWithAndroidManifest = withNotifyKitAndroidManifest(config, foregroundServiceOptions);
-  const configWithAppExtension = withNotifyKitIosNseAppExtension(
+  const configWithAndroidNotificationIcons = withNotifyKitAndroidNotificationIcons(
     configWithAndroidManifest,
+    notificationIcons,
+  );
+  const configWithAppExtension = withNotifyKitIosNseAppExtension(
+    configWithAndroidNotificationIcons,
     nseOptions,
   );
   const configWithFiles = withNotifyKitIosNseFiles(configWithAppExtension, nseOptions);
