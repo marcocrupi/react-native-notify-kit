@@ -3,6 +3,7 @@ package app.notifee.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -17,6 +18,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Bundle;
 import androidx.core.app.NotificationCompat;
+import app.notifee.core.event.ForegroundServiceEvent;
 import app.notifee.core.event.NotificationEvent;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -35,6 +37,7 @@ import org.robolectric.android.controller.ServiceController;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.Implementation;
 import org.robolectric.annotation.Implements;
+import org.robolectric.shadows.ShadowNotificationManager;
 import org.robolectric.shadows.ShadowService;
 
 @RunWith(RobolectricTestRunner.class)
@@ -328,6 +331,473 @@ public class ForegroundServiceTest {
     assertEquals(id.hashCode(), hashField.getInt(null));
   }
 
+  @Test
+  @Config(sdk = 28)
+  public void onStartCommand_sameIdUpdate_refreshesRegisteredNotificationAndCachedState()
+      throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    FgsRunnerCapture runnerCapture = new FgsRunnerCapture();
+    EventBus.register(runnerCapture);
+    try {
+      service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 1);
+      service.onStartCommand(buildStartIntent(id, id.hashCode(), "B"), 0, 2);
+
+      Notification registered =
+          org.robolectric.Shadows.shadowOf(service).getLastForegroundNotification();
+      NotificationManager manager =
+          (NotificationManager)
+              RuntimeEnvironment.getApplication().getSystemService(Context.NOTIFICATION_SERVICE);
+      Notification visible =
+          org.robolectric.Shadows.shadowOf(manager).getNotification(id.hashCode());
+      assertEquals("B", visible.extras.getString(Notification.EXTRA_TITLE));
+      assertEquals(1, org.robolectric.Shadows.shadowOf(manager).size());
+      assertEquals("B", registered.extras.getString(Notification.EXTRA_TITLE));
+      assertTrue((registered.flags & Notification.FLAG_ONLY_ALERT_ONCE) != 0);
+      assertEquals(
+          id.hashCode(),
+          org.robolectric.Shadows.shadowOf(service).getLastForegroundNotificationId());
+      assertEquals(
+          "B",
+          ((Notification) getPrivateStatic("mCurrentNotification"))
+              .extras.getString(Notification.EXTRA_TITLE));
+      assertEquals(
+          "B", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+      assertEquals(id, ForegroundService.mCurrentNotificationId);
+      assertEquals(id.hashCode(), getPrivateStatic("mCurrentHashCode"));
+      assertEquals(1, runnerCapture.events.size());
+    } finally {
+      EventBus.unregister(runnerCapture);
+    }
+  }
+
+  @Test
+  @Config(sdk = 29)
+  public void onStartCommand_sameIdUpdateApi29_preservesExplicitNoneTypeAndRegistration()
+      throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "A", ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE), 0, 1);
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "B", ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE), 0, 2);
+
+    assertEquals(
+        "B",
+        org.robolectric.Shadows.shadowOf(service)
+            .getLastForegroundNotification()
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    assertEquals(ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE, getLastForegroundServiceType(service));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE, ForegroundService.mCurrentForegroundServiceType);
+    assertEquals("B", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+  }
+
+  @Test
+  @Config(sdk = 30)
+  public void onStartCommand_sameIdUpdateApi30_keepsTypedForegroundService() throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "A", ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC),
+        0,
+        1);
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "B", ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC),
+        0,
+        2);
+
+    assertEquals(
+        "B",
+        org.robolectric.Shadows.shadowOf(service)
+            .getLastForegroundNotification()
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC, getLastForegroundServiceType(service));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        ForegroundService.mCurrentForegroundServiceType);
+  }
+
+  @Test
+  @Config(sdk = 29)
+  public void onStartCommand_sameIdUpdateApi29_preservesManifestFallbackType() throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 1);
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "B"), 0, 2);
+
+    assertEquals(
+        "B",
+        org.robolectric.Shadows.shadowOf(service)
+            .getLastForegroundNotification()
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST, getLastForegroundServiceType(service));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST,
+        ForegroundService.mCurrentForegroundServiceType);
+  }
+
+  @Test
+  @Config(sdk = 34)
+  public void onStartCommand_sameIdTypeChange_usesLatestTypedNotificationAndCache()
+      throws Exception {
+    createChannel();
+    declareForegroundServiceTypes(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            | ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "A", ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC),
+        0,
+        1);
+    service.onStartCommand(
+        buildStartIntent(
+            id, id.hashCode(), "B", ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK),
+        0,
+        2);
+
+    assertEquals(
+        "B",
+        org.robolectric.Shadows.shadowOf(service)
+            .getLastForegroundNotification()
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK, getLastForegroundServiceType(service));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+        ForegroundService.mCurrentForegroundServiceType);
+    assertEquals(
+        "B",
+        ((Notification) getPrivateStatic("mCurrentNotification"))
+            .extras.getString(Notification.EXTRA_TITLE));
+    assertEquals("B", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+  }
+
+  @Test
+  @Config(sdk = 33)
+  public void receiverDeleteAfterSameIdUpdate_repostsLatestNotificationWithoutDismissEvent()
+      throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 1);
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "B"), 0, 2);
+
+    NotificationManager manager =
+        (NotificationManager)
+            RuntimeEnvironment.getApplication().getSystemService(Context.NOTIFICATION_SERVICE);
+    manager.cancel(id.hashCode());
+    ReceiverService receiver = Robolectric.buildService(ReceiverService.class).create().get();
+    Intent delete = new Intent();
+    delete.setAction(ReceiverService.DELETE_INTENT);
+    delete.putExtra("notification", buildNotificationBundle(id));
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      receiver.onStartCommand(delete, 0, 3);
+      Notification reposted =
+          org.robolectric.Shadows.shadowOf(manager).getNotification(id.hashCode());
+      assertNotNull(reposted);
+      assertEquals("B", reposted.extras.getString(Notification.EXTRA_TITLE));
+      assertEquals(1, org.robolectric.Shadows.shadowOf(manager).size());
+      assertEquals(0, capture.events.size());
+    } finally {
+      EventBus.unregister(capture);
+    }
+  }
+
+  @Test
+  @Config(sdk = 34)
+  public void onTimeout_afterShortServiceSameIdUpdate_emitsLatestBundleWithoutRestart()
+      throws Exception {
+    createChannel();
+    declareForegroundServiceTypes(ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "A", ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE),
+        0,
+        1);
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "B", ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE),
+        0,
+        2);
+
+    NotificationManager manager =
+        (NotificationManager)
+            RuntimeEnvironment.getApplication().getSystemService(Context.NOTIFICATION_SERVICE);
+    assertEquals(
+        "B",
+        org.robolectric.Shadows.shadowOf(manager)
+            .getNotification(id.hashCode())
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    // Robolectric does not model Android 12+ notify-to-FGS synchronization. Its service shadow
+    // remains at A here, which also guards against resetting shortService's timer via a repeat
+    // startForeground call.
+    assertEquals(
+        "A",
+        org.robolectric.Shadows.shadowOf(service)
+            .getLastForegroundNotification()
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      service.onTimeout(42);
+      assertEquals(1, capture.events.size());
+      assertEquals(NotificationEvent.TYPE_FG_TIMEOUT, capture.events.get(0).getType());
+      assertEquals("B", capture.events.get(0).getNotification().getTitle());
+    } finally {
+      EventBus.unregister(capture);
+    }
+  }
+
+  @Test
+  @Config(sdk = 33)
+  public void onStartCommand_differentId_emitsAlreadyExistsAndKeepsActiveState() throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 1);
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      service.onStartCommand(buildStartIntent("other", "other".hashCode(), "B"), 0, 2);
+      assertEquals(1, capture.events.size());
+      assertEquals(NotificationEvent.TYPE_FG_ALREADY_EXIST, capture.events.get(0).getType());
+      assertEquals(id, ForegroundService.mCurrentNotificationId);
+      assertEquals(
+          "A", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+      NotificationManager manager =
+          (NotificationManager)
+              RuntimeEnvironment.getApplication().getSystemService(Context.NOTIFICATION_SERVICE);
+      assertEquals(1, org.robolectric.Shadows.shadowOf(manager).size());
+    } finally {
+      EventBus.unregister(capture);
+    }
+  }
+
+  @Test
+  @Config(sdk = 28, shadows = RejectBStartForegroundShadowService.class)
+  public void onStartCommand_sameTypeStartForegroundFailure_keepsPreviousCache() throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 1);
+
+    SecurityException failure =
+        assertThrows(
+            SecurityException.class,
+            () -> service.onStartCommand(buildStartIntent(id, id.hashCode(), "B"), 0, 2));
+    assertEquals("posting B rejected", failure.getMessage());
+
+    assertEquals(id, ForegroundService.mCurrentNotificationId);
+    assertEquals(id.hashCode(), getPrivateStatic("mCurrentHashCode"));
+    assertEquals("A", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+    assertEquals(
+        "A",
+        ((Notification) getPrivateStatic("mCurrentNotification"))
+            .extras.getString(Notification.EXTRA_TITLE));
+  }
+
+  @Test
+  @Config(sdk = 28, shadows = RejectBStartForegroundShadowService.class)
+  public void onStartCommand_initialStartForegroundFailure_doesNotClaimActiveService()
+      throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    FgsRunnerCapture runnerCapture = new FgsRunnerCapture();
+    EventBus.register(runnerCapture);
+    try {
+      SecurityException failure =
+          assertThrows(
+              SecurityException.class,
+              () -> service.onStartCommand(buildStartIntent(id, id.hashCode(), "B"), 0, 1));
+      assertEquals("posting B rejected", failure.getMessage());
+      assertNull(ForegroundService.mCurrentNotificationId);
+      assertNull(getPrivateStatic("mCurrentNotification"));
+      assertNull(getPrivateStatic("mCurrentNotificationBundle"));
+      assertEquals(0, getPrivateStatic("mCurrentHashCode"));
+      assertEquals(0, runnerCapture.events.size());
+
+      service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 2);
+      assertEquals(1, runnerCapture.events.size());
+      assertEquals(
+          "A", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+    } finally {
+      EventBus.unregister(runnerCapture);
+    }
+  }
+
+  @Test
+  @Config(sdk = 34, shadows = RejectBStartForegroundShadowService.class)
+  public void onStartCommand_typeChangeStartForegroundFailure_keepsPreviousTypeAndCache()
+      throws Exception {
+    createChannel();
+    declareForegroundServiceTypes(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            | ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "A", ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC),
+        0,
+        1);
+
+    SecurityException failure =
+        assertThrows(
+            SecurityException.class,
+            () ->
+                service.onStartCommand(
+                    buildStartIntent(
+                        id, id.hashCode(), "B", ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK),
+                    0,
+                    2));
+    assertEquals("posting B rejected", failure.getMessage());
+
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+        ForegroundService.mCurrentForegroundServiceType);
+    assertEquals("A", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+    assertEquals(
+        "A",
+        ((Notification) getPrivateStatic("mCurrentNotification"))
+            .extras.getString(Notification.EXTRA_TITLE));
+  }
+
+  @Test
+  @Config(sdk = 33, shadows = RejectBNotificationShadowManager.class)
+  public void onStartCommand_notifyFailure_keepsPreviousCache() throws Exception {
+    createChannel();
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(buildStartIntent(id, id.hashCode(), "A"), 0, 1);
+
+    SecurityException failure =
+        assertThrows(
+            SecurityException.class,
+            () -> service.onStartCommand(buildStartIntent(id, id.hashCode(), "B"), 0, 2));
+    assertEquals("posting B rejected", failure.getMessage());
+
+    assertEquals(id, ForegroundService.mCurrentNotificationId);
+    assertEquals(id.hashCode(), getPrivateStatic("mCurrentHashCode"));
+    assertEquals("A", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+    assertEquals(
+        "A",
+        ((Notification) getPrivateStatic("mCurrentNotification"))
+            .extras.getString(Notification.EXTRA_TITLE));
+  }
+
+  @Test
+  @Config(sdk = 34, shadows = SilentlyRejectMissingChannelShadowManager.class)
+  public void onStartCommand_notifyReturnsNormallyWithoutPosting_keepsLatestSubmittedState()
+      throws Exception {
+    createChannel();
+    declareForegroundServiceTypes(ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);
+    ForegroundService service = Robolectric.buildService(ForegroundService.class).create().get();
+    String id = "live";
+    service.onStartCommand(
+        buildStartIntent(id, id.hashCode(), "A", ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE),
+        0,
+        1);
+
+    Intent update =
+        buildStartIntent(id, id.hashCode(), "B", ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE);
+    String missingChannelId = "missing-channel";
+    Notification rejected =
+        new NotificationCompat.Builder(RuntimeEnvironment.getApplication(), missingChannelId)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("B")
+            .setOnlyAlertOnce(true)
+            .build();
+    update.putExtra("notification", rejected);
+    update
+        .getBundleExtra("notificationBundle")
+        .getBundle("android")
+        .putString("channelId", missingChannelId);
+
+    NotificationManager manager =
+        (NotificationManager)
+            RuntimeEnvironment.getApplication().getSystemService(Context.NOTIFICATION_SERVICE);
+    assertNull(manager.getNotificationChannel(missingChannelId));
+    SilentlyRejectMissingChannelShadowManager.rejectedPosts = 0;
+    SilentlyRejectMissingChannelShadowManager.lastRejectedNotification = null;
+    service.onStartCommand(update, 0, 2);
+
+    // This shadow models the platform's normal-return, no-post outcome. Robolectric does not
+    // reproduce the separate Android foreground-service record update in this sequence.
+    assertEquals(1, SilentlyRejectMissingChannelShadowManager.rejectedPosts);
+    assertEquals(
+        "B",
+        SilentlyRejectMissingChannelShadowManager.lastRejectedNotification.extras.getString(
+            Notification.EXTRA_TITLE));
+    assertEquals(
+        "A",
+        org.robolectric.Shadows.shadowOf(manager)
+            .getNotification(id.hashCode())
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+    // The simulated visible card remains A while NotifyKit's latest submitted state is B.
+    assertEquals("B", ((Bundle) getPrivateStatic("mCurrentNotificationBundle")).getString("title"));
+    assertEquals(
+        "B",
+        ((Notification) getPrivateStatic("mCurrentNotification"))
+            .extras.getString(Notification.EXTRA_TITLE));
+    assertEquals(
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_SHORT_SERVICE,
+        ForegroundService.mCurrentForegroundServiceType);
+    assertEquals(id, ForegroundService.mCurrentNotificationId);
+    assertEquals(id.hashCode(), getPrivateStatic("mCurrentHashCode"));
+    // The service shadow remains at A because the unchanged-type path did not call
+    // startForeground() again, which could extend a shortService timeout on Android.
+    assertEquals(
+        "A",
+        org.robolectric.Shadows.shadowOf(service)
+            .getLastForegroundNotification()
+            .extras
+            .getString(Notification.EXTRA_TITLE));
+
+    manager.cancel(id.hashCode());
+    ReceiverService receiver = Robolectric.buildService(ReceiverService.class).create().get();
+    Intent delete = new Intent();
+    delete.setAction(ReceiverService.DELETE_INTENT);
+    delete.putExtra("notification", buildNotificationBundle(id));
+    FgsEventCapture capture = new FgsEventCapture();
+    EventBus.register(capture);
+    try {
+      receiver.onStartCommand(delete, 0, 3);
+      assertEquals(2, SilentlyRejectMissingChannelShadowManager.rejectedPosts);
+      assertEquals(
+          "B",
+          SilentlyRejectMissingChannelShadowManager.lastRejectedNotification.extras.getString(
+              Notification.EXTRA_TITLE));
+      assertNull(org.robolectric.Shadows.shadowOf(manager).getNotification(id.hashCode()));
+      assertEquals(0, capture.events.size());
+
+      service.onTimeout(42);
+      assertEquals(1, capture.events.size());
+      assertEquals(NotificationEvent.TYPE_FG_TIMEOUT, capture.events.get(0).getType());
+      assertEquals("B", capture.events.get(0).getNotification().getTitle());
+    } finally {
+      EventBus.unregister(capture);
+    }
+  }
+
   /**
    * Regression guard for the 9.1.13 {@code onTimeout(int)} fix (upstream invertase/notifee#703). On
    * API 34, Android's single-argument {@code onTimeout} fires when a {@code shortService} FGS
@@ -473,11 +943,35 @@ public class ForegroundServiceTest {
   }
 
   private static Intent buildStartIntent(String id, int hashCode) {
+    return buildStartIntent(id, hashCode, "FGS test");
+  }
+
+  private static Intent buildStartIntent(String id, int hashCode, String title) {
     Intent intent = new Intent();
     intent.setAction(ForegroundService.START_FOREGROUND_SERVICE_ACTION);
     intent.putExtra("hashCode", hashCode);
-    intent.putExtra("notification", buildNotification());
-    intent.putExtra("notificationBundle", buildNotificationBundle(id));
+    Notification notification =
+        new NotificationCompat.Builder(RuntimeEnvironment.getApplication(), TEST_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(title)
+            .setOnlyAlertOnce(true)
+            .build();
+    intent.putExtra("notification", notification);
+    Bundle bundle = buildNotificationBundle(id);
+    bundle.putString("title", title);
+    intent.putExtra("notificationBundle", bundle);
+    return intent;
+  }
+
+  private static Intent buildStartIntent(
+      String id, int hashCode, String title, int foregroundServiceType) {
+    Intent intent = buildStartIntent(id, hashCode, title);
+    Bundle bundle = intent.getBundleExtra("notificationBundle");
+    Bundle android = bundle.getBundle("android");
+    ArrayList<Integer> types = new ArrayList<>();
+    types.add(foregroundServiceType);
+    android.putIntegerArrayList("foregroundServiceTypes", types);
+    intent.putExtra("notificationBundle", bundle);
     return intent;
   }
 
@@ -536,6 +1030,67 @@ public class ForegroundServiceTest {
     Field field = ForegroundService.class.getDeclaredField(name);
     field.setAccessible(true);
     field.set(null, value);
+  }
+
+  private static Object getPrivateStatic(String name) throws Exception {
+    Field field = ForegroundService.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(null);
+  }
+
+  public static class FgsRunnerCapture {
+    final List<ForegroundServiceEvent> events = new ArrayList<>();
+
+    @Subscribe(threadMode = ThreadMode.POSTING)
+    public void onForegroundServiceEvent(ForegroundServiceEvent event) {
+      events.add(event);
+    }
+  }
+
+  @Implements(Service.class)
+  public static class RejectBStartForegroundShadowService extends ShadowService {
+    @Implementation
+    protected void startForeground(int id, Notification notification) {
+      if ("B".equals(notification.extras.getString(Notification.EXTRA_TITLE))) {
+        throw new SecurityException("posting B rejected");
+      }
+      super.startForeground(id, notification);
+    }
+
+    @Implementation
+    protected void startForeground(int id, Notification notification, int foregroundServiceType) {
+      if ("B".equals(notification.extras.getString(Notification.EXTRA_TITLE))) {
+        throw new SecurityException("posting B rejected");
+      }
+      super.startForeground(id, notification, foregroundServiceType);
+    }
+  }
+
+  @Implements(NotificationManager.class)
+  public static class RejectBNotificationShadowManager extends ShadowNotificationManager {
+    @Implementation
+    protected void notify(String tag, int id, Notification notification) {
+      if ("B".equals(notification.extras.getString(Notification.EXTRA_TITLE))) {
+        throw new SecurityException("posting B rejected");
+      }
+      super.notify(tag, id, notification);
+    }
+  }
+
+  @Implements(NotificationManager.class)
+  public static class SilentlyRejectMissingChannelShadowManager extends ShadowNotificationManager {
+    static int rejectedPosts;
+    static Notification lastRejectedNotification;
+
+    @Implementation
+    protected void notify(String tag, int id, Notification notification) {
+      if ("missing-channel".equals(notification.getChannelId())) {
+        rejectedPosts++;
+        lastRejectedNotification = notification;
+        return;
+      }
+      super.notify(tag, id, notification);
+    }
   }
 
   /**

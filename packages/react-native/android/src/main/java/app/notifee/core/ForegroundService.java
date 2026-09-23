@@ -63,6 +63,8 @@ public class ForegroundService extends Service {
    */
   private volatile boolean mStartForegroundCalled = false;
 
+  // While active, mCurrent* tracks the latest state submitted by a platform call that returned
+  // normally. Android does not acknowledge that the notification was displayed.
   public static String mCurrentNotificationId = null;
 
   public static int mCurrentForegroundServiceType = -1;
@@ -72,12 +74,11 @@ public class ForegroundService extends Service {
   private static int mCurrentHashCode = 0;
 
   /**
-   * Re-posts the foreground service notification if the given notification ID matches the active
-   * foreground service. On Android 14+, users can dismiss ongoing foreground service notifications
-   * for most service types; this method restores the notification so the user remains aware of the
-   * running service.
+   * Submits the latest foreground service notification again if the given notification ID matches
+   * the active foreground service. On Android 14+, users can dismiss ongoing foreground service
+   * notifications for most service types.
    *
-   * @return true if the notification was re-posted, false otherwise
+   * @return true if a re-post was submitted without a synchronous exception, false otherwise
    */
   @SuppressLint("MissingPermission")
   static boolean repostIfActive(String notificationId) {
@@ -87,7 +88,7 @@ public class ForegroundService extends Service {
           || mCurrentNotification == null) {
         return false;
       }
-      Logger.w(TAG, "Re-posting foreground service notification dismissed by user");
+      Logger.w(TAG, "Submitting dismissed foreground service notification for re-post");
       NotificationManagerCompat.from(ContextHolder.getApplicationContext())
           .notify(mCurrentHashCode, mCurrentNotification);
       return true;
@@ -193,17 +194,13 @@ public class ForegroundService extends Service {
 
         if (notification != null && bundle != null) {
           NotificationModel notificationModel = NotificationModel.fromBundle(bundle);
+          String notificationId = notificationModel.getId();
 
           Object pendingEvent = null;
           boolean noneEarlyReturn = false;
 
           synchronized (sLock) {
             if (mCurrentNotificationId == null) {
-              mCurrentNotificationId = notificationModel.getId();
-              mCurrentNotificationBundle = bundle;
-              mCurrentNotification = notification;
-              mCurrentHashCode = hashCode;
-
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 int foregroundServiceType =
                     notificationModel.getAndroid().getForegroundServiceType();
@@ -216,12 +213,6 @@ public class ForegroundService extends Service {
                       TAG,
                       "Resolved foreground service type is NONE on API 34+; aborting"
                           + " startForeground to avoid InvalidForegroundServiceTypeException.");
-                  // Reset stale state while still holding the lock.
-                  mCurrentNotificationId = null;
-                  mCurrentForegroundServiceType = -1;
-                  mCurrentNotificationBundle = null;
-                  mCurrentNotification = null;
-                  mCurrentHashCode = 0;
                   // Set flag to call the helper AFTER releasing sLock — it performs
                   // Binder IPC (PackageManager + startForeground) and must not hold sLock.
                   noneEarlyReturn = true;
@@ -246,6 +237,10 @@ public class ForegroundService extends Service {
               }
 
               if (!noneEarlyReturn) {
+                mCurrentNotificationId = notificationId;
+                mCurrentNotificationBundle = bundle;
+                mCurrentNotification = notification;
+                mCurrentHashCode = hashCode;
                 // On headless task complete
                 final MethodCallResult<Void> methodCallResult =
                     (e, aVoid) -> {
@@ -262,37 +257,50 @@ public class ForegroundService extends Service {
                 pendingEvent = new ForegroundServiceEvent(notificationModel, methodCallResult);
               }
             } else {
-              if (mCurrentNotificationId.equals(notificationModel.getId())) {
-                boolean shouldPostNotificationAgain = true;
-                // find if we need to start the service again if the type was changed
+              if (mCurrentNotificationId.equals(notificationId)) {
+                // Before API 31, updating the service's registered notification requires
+                // startForeground(). API 31+ processes a same-ID notify() against the foreground
+                // service record. Keep that path for an unchanged type: repeating
+                // startForeground() can extend a shortService timeout on API 34+.
+                boolean shouldStartForeground = Build.VERSION.SDK_INT < Build.VERSION_CODES.S;
+                int foregroundServiceType = mCurrentForegroundServiceType;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                  int foregroundServiceType =
-                      notificationModel.getAndroid().getForegroundServiceType();
-                  if (foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
-                    foregroundServiceType = resolveManifestServiceType();
+                  int requestedType = notificationModel.getAndroid().getForegroundServiceType();
+                  if (requestedType == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+                    requestedType = resolveManifestServiceType();
                   }
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-                      && foregroundServiceType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
+                      && requestedType == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
                     Logger.e(
                         TAG,
                         "Resolved foreground service type is NONE on API 34+; skipping type"
                             + " change.");
-                  } else if (foregroundServiceType != mCurrentForegroundServiceType) {
-                    Trace.beginSection("notifee:startForeground");
-                    try {
-                      startForeground(hashCode, notification, foregroundServiceType);
-                    } finally {
-                      Trace.endSection();
-                    }
-                    mStartForegroundCalled = true;
-                    mCurrentForegroundServiceType = foregroundServiceType;
-                    shouldPostNotificationAgain = false;
+                  } else if (requestedType != mCurrentForegroundServiceType) {
+                    foregroundServiceType = requestedType;
+                    shouldStartForeground = true;
                   }
                 }
-                if (shouldPostNotificationAgain) {
+                if (shouldStartForeground) {
+                  Trace.beginSection("notifee:startForeground");
+                  try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                      startForeground(mCurrentHashCode, notification, foregroundServiceType);
+                    } else {
+                      startForeground(mCurrentHashCode, notification);
+                    }
+                  } finally {
+                    Trace.endSection();
+                  }
+                  mStartForegroundCalled = true;
+                } else {
                   NotificationManagerCompat.from(ContextHolder.getApplicationContext())
-                      .notify(hashCode, notification);
+                      .notify(mCurrentHashCode, notification);
                 }
+                // The platform call returned normally, so cache the latest submitted state for
+                // re-post and timeout. A normal return does not acknowledge display.
+                mCurrentForegroundServiceType = foregroundServiceType;
+                mCurrentNotification = notification;
+                mCurrentNotificationBundle = bundle;
               } else {
                 pendingEvent =
                     new NotificationEvent(
