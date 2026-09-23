@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Android**: fixed long-lived foreground-service notifications updated repeatedly with the same ID retaining stale first-notification state, which could leave later re-post and timeout paths using obsolete content. Same-ID updates now keep the current foreground-service state aligned with the latest update submitted to Android by a platform call that returned normally. [Issue #75](https://github.com/marcocrupi/react-native-notify-kit/issues/75).
+
 ## [10.7.1] - 2026-09-07
 
 ### Fixed

@@ -124,9 +124,10 @@ notifee.registerForegroundService(notification => {
 });
 ```
 
-Above we've updated the callback handler for the `onTaskUpdate` method. Each `task.update` call would update the current notification with a new progress indicator
-position. It is important we update the existing notification by ID, otherwise the foreground service would stop and restart. Only a single foreground service
-notification can exist for your application at any one time.
+Above we've updated the callback handler for the `onTaskUpdate` method. Each `task.update` call submits a new progress indicator
+position. Repeated `displayNotification()` calls with the same ID update the active foreground-service notification and keep the same service runner.
+NotifyKit tracks the latest update whose Android platform call returned normally for re-post and timeout handling; a normal return does not confirm that Android rendered the update. See [Issue #75](https://github.com/marcocrupi/react-native-notify-kit/issues/75).
+Only a single foreground-service notification can exist for your application at any one time.
 
 ### Handling interactions
 
