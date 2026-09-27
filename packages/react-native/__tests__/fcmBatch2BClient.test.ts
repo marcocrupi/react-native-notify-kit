@@ -1,4 +1,4 @@
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import NotifeeApiModule from 'react-native-notify-kit/src/NotifeeApiModule';
 import * as Notifee from 'react-native-notify-kit/src';
 import {
@@ -29,6 +29,7 @@ function messageWithAndroid(android: Record<string, unknown>): FcmRemoteMessage 
 
 beforeEach(async () => {
   setPlatform('android');
+  Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
   Object.defineProperty(AppState, 'currentState', { get: () => 'active', configurable: true });
   await apiModule.setFcmConfig({});
   mockNotifeeNativeModule.displayNotification.mockClear();
@@ -114,6 +115,101 @@ describe('FCM Mode Batch 2B Android interaction reconstruction', () => {
       mockNotifeeNativeModule.displayNotification.mock.calls[0][0].android.pressAction,
     ).toEqual(pressAction);
   });
+
+  it.each([
+    ['string', 'open'],
+    ['number', 7],
+    ['boolean', false],
+    ['array', [{ id: 'open' }]],
+    ['invalid object', { id: 7 }],
+    ['invalid later flag', { id: 'open', launchActivityFlags: [2, 'bad'] }],
+  ])('rejects malformed body pressAction %s before native display', async (_kind, pressAction) => {
+    const message = messageWithAndroid({ channelId: 'news', pressAction });
+
+    expect(() => apiModule.buildFcmNotification(message)).toThrow(
+      /pressAction|launchActivityFlags/,
+    );
+    await expect(apiModule.handleFcmMessage(message)).rejects.toThrow(
+      /pressAction|launchActivityFlags/,
+    );
+    expect(mockNotifeeNativeModule.displayNotification).not.toHaveBeenCalled();
+  });
+
+  it('keeps absent actions absent and accepts an empty wire array', async () => {
+    const absent = messageWithAndroid({ channelId: 'news' });
+    expect(apiModule.buildFcmNotification(absent)?.android).not.toHaveProperty('actions');
+    await apiModule.handleFcmMessage(absent);
+    expect(mockNotifeeNativeModule.displayNotification.mock.calls[0][0].android).not.toHaveProperty(
+      'actions',
+    );
+
+    mockNotifeeNativeModule.displayNotification.mockClear();
+    const empty = messageWithAndroid({ channelId: 'news', actions: [] });
+    expect(apiModule.buildFcmNotification(empty)?.android?.actions).toEqual([]);
+    await apiModule.handleFcmMessage(empty);
+    expect(mockNotifeeNativeModule.displayNotification.mock.calls[0][0].android).not.toHaveProperty(
+      'actions',
+    );
+  });
+
+  it.each([
+    ['string', 'Open'],
+    ['number', 7],
+    ['object', { title: 'Open', pressAction: { id: 'open' } }],
+    ['null', null],
+    ['boolean', false],
+  ])('rejects non-array actions %s before native display', async (_kind, actions) => {
+    const message = messageWithAndroid({ channelId: 'news', actions });
+
+    expect(() => apiModule.buildFcmNotification(message)).toThrow(/actions/);
+    await expect(apiModule.handleFcmMessage(message)).rejects.toThrow(/actions/);
+    expect(mockNotifeeNativeModule.displayNotification).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['null', null],
+    ['string', 'Open'],
+    ['array', [{ title: 'Open' }]],
+    ['missing title', { pressAction: { id: 'open' } }],
+    ['missing pressAction', { title: 'Open' }],
+  ])('rejects malformed actions entry %s at the normal validator', async (_kind, action) => {
+    const message = messageWithAndroid({ channelId: 'news', actions: [action] });
+
+    const reconstructed = apiModule.buildFcmNotification(message);
+    expect(reconstructed?.android?.actions).toEqual([action]);
+    expect(() => validateAndroidNotification(reconstructed?.android)).toThrow(/actions/);
+    await expect(apiModule.handleFcmMessage(message)).rejects.toThrow(/actions/);
+    expect(mockNotifeeNativeModule.displayNotification).not.toHaveBeenCalled();
+  });
+
+  it('rejects a sparse actions array after wire serialization turns its slot into null', async () => {
+    const message = messageWithAndroid({ channelId: 'news', actions: Array(1) });
+
+    expect(JSON.parse(message.data?.notifee_options as string).android.actions).toEqual([null]);
+    await expect(apiModule.handleFcmMessage(message)).rejects.toThrow(/actions/);
+    expect(mockNotifeeNativeModule.displayNotification).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['null', null],
+    ['string', 'open'],
+    ['number', 7],
+    ['boolean', false],
+    ['array', [{ id: 'open' }]],
+    ['invalid object', { id: 7 }],
+    ['invalid later flag', { id: 'open', launchActivityFlags: [2, 'bad'] }],
+  ])(
+    'rejects malformed action pressAction %s before native display',
+    async (_kind, pressAction) => {
+      const message = messageWithAndroid({
+        channelId: 'news',
+        actions: [{ title: 'Open', pressAction }],
+      });
+
+      await expect(apiModule.handleFcmMessage(message)).rejects.toThrow(/pressAction|actions/);
+      expect(mockNotifeeNativeModule.displayNotification).not.toHaveBeenCalled();
+    },
+  );
 
   it('maps a legacy input:false to no input before normal validation', async () => {
     const message = messageWithAndroid({

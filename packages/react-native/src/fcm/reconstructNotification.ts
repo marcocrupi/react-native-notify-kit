@@ -28,14 +28,36 @@ const ANDROID_INPUT_KEYS = new Set([
   'placeholder',
 ]);
 
-function rejectReservedPressActionId(value: unknown, path: string): void {
-  if (
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    (value as Record<string, unknown>).id === '__NOTIFEE_OPT_OUT__'
-  ) {
+function assertFcmPressAction(
+  value: unknown,
+  path: string,
+): asserts value is NonNullable<NotificationAndroid['pressAction']> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`${PREFIX} ${path} must be an object`);
+  }
+
+  const pressAction = value as Record<string, unknown>;
+  if (typeof pressAction.id !== 'string' || pressAction.id.length === 0) {
+    throw new Error(`${PREFIX} ${path}.id must be a non-empty string`);
+  }
+  if (pressAction.id === '__NOTIFEE_OPT_OUT__') {
     throw new Error(`${PREFIX} ${path}.id is reserved for explicit null`);
+  }
+  if (pressAction.launchActivity !== undefined && typeof pressAction.launchActivity !== 'string') {
+    throw new Error(`${PREFIX} ${path}.launchActivity must be a string`);
+  }
+  if (pressAction.mainComponent !== undefined && typeof pressAction.mainComponent !== 'string') {
+    throw new Error(`${PREFIX} ${path}.mainComponent must be a string`);
+  }
+  if (pressAction.launchActivityFlags !== undefined) {
+    if (!Array.isArray(pressAction.launchActivityFlags)) {
+      throw new Error(`${PREFIX} ${path}.launchActivityFlags must be an array`);
+    }
+    for (const flag of pressAction.launchActivityFlags) {
+      if (typeof flag !== 'number' || !Number.isInteger(flag) || flag < 0 || flag > 20) {
+        throw new Error(`${PREFIX} ${path}.launchActivityFlags contains an invalid flag`);
+      }
+    }
   }
 }
 
@@ -140,12 +162,11 @@ function buildAndroidConfig(
 
   // Explicit null opts out of the body tap; only absence uses the configured default.
   const pressAction = raw?.pressAction === undefined ? config.defaultPressAction : raw.pressAction;
-  rejectReservedPressActionId(pressAction, 'android.pressAction');
-  if (
-    pressAction === null ||
-    (pressAction && typeof pressAction === 'object' && !Array.isArray(pressAction))
-  ) {
-    android.pressAction = pressAction as Exclude<NotificationAndroid['pressAction'], undefined>;
+  if (pressAction === null) {
+    android.pressAction = null;
+  } else if (pressAction !== undefined) {
+    assertFcmPressAction(pressAction, 'android.pressAction');
+    android.pressAction = pressAction;
   }
 
   // Direct string copies
@@ -164,12 +185,17 @@ function buildAndroidConfig(
 
   // Legacy input:false means no reply. Other malformed inputs must fail here:
   // the normal validator accepts some of them as a default RemoteInput.
-  if (Array.isArray(raw?.actions)) {
+  if (raw?.actions !== undefined) {
+    if (!Array.isArray(raw.actions)) {
+      throw new Error(`${PREFIX} android.actions must be an array`);
+    }
     android.actions = raw.actions.map((action, index) => {
       if (action === null || typeof action !== 'object' || Array.isArray(action)) {
         return action;
       }
-      rejectReservedPressActionId(action.pressAction, `android.actions[${index}].pressAction`);
+      if (action.pressAction !== undefined) {
+        assertFcmPressAction(action.pressAction, `android.actions[${index}].pressAction`);
+      }
       const input = action.input;
       if (input === false) {
         const withoutInput = { ...action };
