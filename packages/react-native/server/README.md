@@ -66,7 +66,7 @@ Builds the iOS APNs half only: `{ headers, payload }` with the `aps` object, `no
 
 ### `serializeNotifeeOptions(input): string`
 
-Returns the JSON-serialized `notifee_options` blob: `{ _v: 1, title, body, subtitle?, android?, ios? }`. The optional `subtitle` is top-level; supported Android fields include `circularLargeIcon`, `BIG_TEXT` `title` / `summary`, `BIG_PICTURE` `title` / `summary` / `largeIcon` (string or explicit `null`), body `pressAction` (including explicit `null`), and actions with `icon`, the supported press-action fields, and `input: true` or an `AndroidInput` object. See the [interaction contract](../../../docs/fcm-mode.mdx#body-press-actions-and-action-buttons) for the exact fields and reply semantics. Use when you want the blob string directly (e.g., to send via a non-FCM transport while preserving the wire contract).
+Returns the JSON-serialized `notifee_options` blob: `{ _v: 1, id?, title, body, subtitle?, android?, ios? }`. Optional `id` is the public NotifyKit notification identity, separate from the transport collapse key. The optional `subtitle` is top-level; supported Android fields include `circularLargeIcon`, `BIG_TEXT` `title` / `summary`, `BIG_PICTURE` `title` / `summary` / `largeIcon` (string or explicit `null`), body `pressAction` (including explicit `null`), and actions with `icon`, the supported press-action fields, and `input: true` or an `AndroidInput` object. See the [interaction contract](../../../docs/fcm-mode.mdx#body-press-actions-and-action-buttons) for the exact fields and reply semantics. Use when you want the blob string directly (e.g., to send via a non-FCM transport while preserving the wire contract).
 
 ### Types
 
@@ -107,7 +107,7 @@ Full type definitions are in [`docs/fcm-mode.mdx#server-sdk-reference`](../../..
 - **Android** messages are delivered **data-only** — the FCM SDK never auto-displays them. The client handler owns rendering.
 - **iOS** messages use APNs alert delivery with `mutable-content: 1`, so the Notification Service Extension always activates and reads `notifee_options`.
 - All payloads carry a `_v: 1` version field in `notifee_options` for forward compatibility.
-- Collapse key precedence: `options.collapseKey` > `notification.id` > omitted (no collapse).
+- `notification.id` is preserved in `notifee_options` as the public NotifyKit identity for display, events, readback, and cancel. Collapse is separate: the effective transport key is `options.collapseKey ?? notification.id`, or omitted when both are absent. Transport coalescing does not guarantee replacement of a notification already delivered. See [identity and collapse](../../../docs/fcm-mode.mdx#notification-identity-and-transport-collapse).
 - If the serialized payload approaches FCM's 4 KB limit, a `console.warn` is emitted (non-fatal). The exact byte count is also available via `output.sizeBytes` — non-enumerable, so it doesn't serialize into the FCM wire payload.
 
 ## Validation
@@ -121,6 +121,7 @@ All validation happens synchronously in `buildNotifyKitPayload`. Errors thrown a
 - `options.ttl` must be a **positive** integer in seconds (zero is rejected — omit to use FCM default).
 - iOS attachments require `https://` URLs.
 - `options.iosBadgeCount` must be a non-negative integer.
+- The effective APNs collapse ID (`options.collapseKey ?? notification.id`) must be at most **64 UTF-8 bytes**; a separate valid `collapseKey` does not impose this limit on `notification.id`.
 - Android body `pressAction` accepts absence, explicit `null`, or a supported object. Actions require a `title` and press action; `input: false` is rejected for new payloads.
 
 ## Limitations

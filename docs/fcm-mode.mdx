@@ -516,7 +516,7 @@ type NotifyKitPayloadInput = {
 };
 
 type NotifyKitNotification = {
-  id?: string; // also used as collapse key unless options.collapseKey is set
+  id?: string; // public NotifyKit notification ID; also defaults the transport collapse key
   title: string; // required, non-empty
   subtitle?: string;
   body: string; // required, non-empty
@@ -594,6 +594,25 @@ These are the Batch 2A additions to the supported FCM Mode input, `_v: 1` wire b
 | `notification.android.style` `BIG_PICTURE` | Required `picture`; optional `title`, `summary`, and `largeIcon` (string or null) retained | Android expanded style; `largeIcon: null` hides the expanded large icon and differs from omission.                     |
 
 This is a limited FCM Mode contract, not full parity with the public `Notification` / `NotificationAndroid` APIs. Batch 2B adds only the [Android interactions described below](#body-press-actions-and-action-buttons); it does not add further style types or other notification fields.
+
+### Notification identity and transport collapse
+
+FCM Mode keeps four identities separate:
+
+| Concept                                    | Meaning                                                                                                          |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `notification.id` (N)                      | Logical/public NotifyKit notification identity for display, events, readback, and cancel.                        |
+| `options.collapseKey` (C, when set)        | FCM/APNs transport collapse or coalescing identity. The effective C is `options.collapseKey ?? notification.id`. |
+| Firebase `messageId` (M)                   | Identity of an FCM transport message, not the requested NotifyKit notification ID.                               |
+| iOS `UNNotificationRequest.identifier` (R) | Physical request identity assigned on the APNs/iOS delivery path, separate from NotifyKit's logical ID.          |
+
+When you provide `notification.id`, the Server SDK serializes N in the unchanged `_v: 1` `notifee_options` blob. Android uses N to display or replace a delivered notification with the same ID; `PRESS` / `ACTION_PRESS` events, `getDisplayedNotifications()`, and `cancelNotification(N)` use N. `buildFcmNotification()` also returns N so a manual `displayNotification()` call retains it. On iOS, foreground NotifyKit display uses N. The NSE preserves N as the logical ID without changing R; NotifyKit `PRESS` / `ACTION_PRESS` events, readback, and cancel use N. If several delivered iOS requests have different R values but the same N, `cancelNotification(N)` removes all of them. iOS `ACTION_PRESS` identity was not run on a physical device.
+
+For example, `notification: { id: 'order-42', ... }` with `options: { collapseKey: 'order-updates' }` keeps `order-42` as the public notification ID while using `order-updates` for transport coalescing. When `collapseKey` is omitted, C defaults to N; when both are absent, no collapse key is emitted. If N is absent from a legacy `_v: 1` payload, the existing path-specific fallback remains: Firebase M in client reconstruction when available, physical R for iOS NSE notifications, or a generated ID where applicable.
+
+Collapse can coalesce or replace messages still awaiting delivery. **Transport collapse does not guarantee replacement of a notification already displayed.** On iOS, APNs retains its own physical request identity tied to delivery and collapse; when N differs from C, N still governs NotifyKit events, readback, and cancel, but N alone does not control APNs physical merging. In a physical iOS run, the NSE processed a second push with the same N and C while Notification Center still showed the first push's content. A separate offline-device check confirmed transport coalescing: only the second message arrived after reconnection.
+
+The effective APNs collapse ID, `options.collapseKey ?? notification.id`, must be at most **64 UTF-8 bytes**. This is a limit on C, not a general limit on N when a valid separate `collapseKey` is provided.
 
 The returned value is a Firebase Admin-compatible message with exactly one routing target:
 
@@ -678,42 +697,43 @@ import type {
 
 Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages are prefixed with `[react-native-notify-kit/server]` so they're grep-able in Cloud Functions logs.
 
-| Rule                                             | Error message                                                                                                                                        |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Input must be an object                          | `Validation: input must be an object`                                                                                                                |
-| Exactly one of `token` / `topic` / `condition`   | `Routing: exactly one of 'token', 'topic', or 'condition' must be provided. Got: <n>`                                                                |
-| `token` non-empty string                         | `Routing: 'token' must be a non-empty string`                                                                                                        |
-| `topic` non-empty string                         | `Routing: 'topic' must be a non-empty string`                                                                                                        |
-| `condition` non-empty string                     | `Routing: 'condition' must be a non-empty string`                                                                                                    |
-| `notification` required                          | `Validation: 'notification' is required and must be an object`                                                                                       |
-| `notification.id` non-empty when provided        | `Validation: notification.id must be a non-empty string when provided`                                                                               |
-| `notification.title` required                    | `Validation: notification.title is required and must be a non-empty string`                                                                          |
-| `notification.body` required                     | `Validation: notification.body is required and must be a non-empty string`                                                                           |
-| `notification.subtitle` string when provided     | `Validation: notification.subtitle must be a string when provided`                                                                                   |
-| `notification.data` must be an object            | `Validation: 'notification.data' must be an object`                                                                                                  |
-| `data` values must be strings                    | `Validation: FCM data values must be strings. Got <type> for key '<key>'. Use JSON.stringify() if you need to pass complex values.`                  |
-| Reserved keys rejected                           | `Validation: 'notifee_options' and 'notifee_data' are reserved keys and cannot be used in notification.data`                                         |
-| `android.circularLargeIcon` boolean              | `Android: notification.android.circularLargeIcon must be a boolean when provided`                                                                    |
-| Body `android.pressAction` object                | `Android: notification.android.pressAction.id must be a non-empty string` or a field-specific error; explicit `null` is accepted                     |
-| Action shape and `pressAction`                   | `Android: notification.android.actions must be an array` or an action/press-action field-specific error                                              |
-| Action `icon`                                    | `Android: notification.android.actions[<index>].icon must be a non-empty string`                                                                     |
-| Action `input`                                   | `Android: notification.android.actions[<index>].input must be true or an AndroidInput object` or an input-field-specific error                       |
-| `android.style` supported object and type        | `Android: notification.android.style must be a supported style object` or `Android: notification.android.style type must be BIG_TEXT or BIG_PICTURE` |
-| `android.style` supported keys only              | `Android: notification.android.style.<key> is not supported`                                                                                         |
-| `BIG_TEXT.text` / `BIG_PICTURE.picture` required | `Android: notification.android.style.text must be a non-empty string` or `Android: notification.android.style.picture must be a non-empty string`    |
-| Style `title` / `summary` strings                | `Android: notification.android.style.title must be a string when provided` or the corresponding `summary` error                                      |
-| `BIG_PICTURE.largeIcon` string or null           | `Android: notification.android.style.largeIcon must be a string or null`                                                                             |
-| iOS attachments array                            | `iOS: 'notification.ios.attachments' must be an array`                                                                                               |
-| iOS attachment shape                             | `iOS: each attachment must be an object with a string 'url' field`                                                                                   |
-| iOS attachment https-only                        | `iOS: iOS attachments require https:// URLs. Got: <url>`                                                                                             |
-| iOS interruptionLevel enum                       | `Validation: invalid interruptionLevel '<value>'. Expected one of: passive, active, timeSensitive, critical`                                         |
-| `options` must be an object                      | `Validation: 'options' must be an object`                                                                                                            |
-| `options.androidPriority` enum                   | `Validation: 'options.androidPriority' must be 'high' or 'normal'. Got: <value>`                                                                     |
-| `options.iosBadgeCount` non-negative int         | `Validation: 'options.iosBadgeCount' must be a non-negative integer`                                                                                 |
-| `options.ttl` positive int                       | `Validation: options.ttl must be a positive integer (seconds). Got: <value>`                                                                         |
-| `options.collapseKey` non-empty                  | `Validation: 'options.collapseKey' must be a non-empty string`                                                                                       |
-| `pressAction.id` unique in `android.actions`     | `Android: 'notification.android.actions' pressAction IDs must be unique within the notification`                                                     |
-| Blob must be serializable                        | `Serialization: notifee_options contains circular references or non-serializable values`                                                             |
+| Rule                                              | Error message                                                                                                                                        |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Input must be an object                           | `Validation: input must be an object`                                                                                                                |
+| Exactly one of `token` / `topic` / `condition`    | `Routing: exactly one of 'token', 'topic', or 'condition' must be provided. Got: <n>`                                                                |
+| `token` non-empty string                          | `Routing: 'token' must be a non-empty string`                                                                                                        |
+| `topic` non-empty string                          | `Routing: 'topic' must be a non-empty string`                                                                                                        |
+| `condition` non-empty string                      | `Routing: 'condition' must be a non-empty string`                                                                                                    |
+| `notification` required                           | `Validation: 'notification' is required and must be an object`                                                                                       |
+| `notification.id` non-empty when provided         | `Validation: notification.id must be a non-empty string when provided`                                                                               |
+| `notification.title` required                     | `Validation: notification.title is required and must be a non-empty string`                                                                          |
+| `notification.body` required                      | `Validation: notification.body is required and must be a non-empty string`                                                                           |
+| `notification.subtitle` string when provided      | `Validation: notification.subtitle must be a string when provided`                                                                                   |
+| `notification.data` must be an object             | `Validation: 'notification.data' must be an object`                                                                                                  |
+| `data` values must be strings                     | `Validation: FCM data values must be strings. Got <type> for key '<key>'. Use JSON.stringify() if you need to pass complex values.`                  |
+| Reserved keys rejected                            | `Validation: 'notifee_options' and 'notifee_data' are reserved keys and cannot be used in notification.data`                                         |
+| `android.circularLargeIcon` boolean               | `Android: notification.android.circularLargeIcon must be a boolean when provided`                                                                    |
+| Body `android.pressAction` object                 | `Android: notification.android.pressAction.id must be a non-empty string` or a field-specific error; explicit `null` is accepted                     |
+| Action shape and `pressAction`                    | `Android: notification.android.actions must be an array` or an action/press-action field-specific error                                              |
+| Action `icon`                                     | `Android: notification.android.actions[<index>].icon must be a non-empty string`                                                                     |
+| Action `input`                                    | `Android: notification.android.actions[<index>].input must be true or an AndroidInput object` or an input-field-specific error                       |
+| `android.style` supported object and type         | `Android: notification.android.style must be a supported style object` or `Android: notification.android.style type must be BIG_TEXT or BIG_PICTURE` |
+| `android.style` supported keys only               | `Android: notification.android.style.<key> is not supported`                                                                                         |
+| `BIG_TEXT.text` / `BIG_PICTURE.picture` required  | `Android: notification.android.style.text must be a non-empty string` or `Android: notification.android.style.picture must be a non-empty string`    |
+| Style `title` / `summary` strings                 | `Android: notification.android.style.title must be a string when provided` or the corresponding `summary` error                                      |
+| `BIG_PICTURE.largeIcon` string or null            | `Android: notification.android.style.largeIcon must be a string or null`                                                                             |
+| iOS attachments array                             | `iOS: 'notification.ios.attachments' must be an array`                                                                                               |
+| iOS attachment shape                              | `iOS: each attachment must be an object with a string 'url' field`                                                                                   |
+| iOS attachment https-only                         | `iOS: iOS attachments require https:// URLs. Got: <url>`                                                                                             |
+| iOS interruptionLevel enum                        | `Validation: invalid interruptionLevel '<value>'. Expected one of: passive, active, timeSensitive, critical`                                         |
+| `options` must be an object                       | `Validation: 'options' must be an object`                                                                                                            |
+| `options.androidPriority` enum                    | `Validation: 'options.androidPriority' must be 'high' or 'normal'. Got: <value>`                                                                     |
+| `options.iosBadgeCount` non-negative int          | `Validation: 'options.iosBadgeCount' must be a non-negative integer`                                                                                 |
+| `options.ttl` positive int                        | `Validation: options.ttl must be a positive integer (seconds). Got: <value>`                                                                         |
+| `options.collapseKey` non-empty                   | `Validation: 'options.collapseKey' must be a non-empty string`                                                                                       |
+| Effective APNs collapse ID at most 64 UTF-8 bytes | `Validation: apns-collapse-id must be at most 64 UTF-8 bytes`                                                                                        |
+| `pressAction.id` unique in `android.actions`      | `Android: 'notification.android.actions' pressAction IDs must be unique within the notification`                                                     |
+| Blob must be serializable                         | `Serialization: notifee_options contains circular references or non-serializable values`                                                             |
 
 > **Note on `ttl: 0`.** Zero is rejected because it's semantically ambiguous ("never expire" vs "expire immediately"). Omit `ttl` entirely to use FCM's default (4 weeks), or pass a positive integer in seconds.
 
@@ -864,7 +884,7 @@ if (notification) {
 }
 ```
 
-The return value is a pre-validation notification. Its `id` may be absent until it is passed to `displayNotification`; `displayNotification` continues to apply final validation and defaults.
+The return value is a pre-validation notification. When `notifee_options` contains `id`, the returned notification keeps it. For a legacy payload without `id`, the client uses Firebase `messageId` when available; otherwise `id` may be absent until `displayNotification` applies final validation and defaults.
 
 It returns `null` only when the FCM payload parser returns `null` and `fallbackBehavior` is `'ignore'`.
 
@@ -1217,6 +1237,7 @@ messaging().onMessage(async remoteMessage => {
 ```jsonc
 {
   "_v": 1,
+  "id": "order-42",
   "title": "Order received",
   "subtitle": "Order update",
   "body": "We're preparing your food.",
@@ -1264,7 +1285,7 @@ messaging().onMessage(async remoteMessage => {
 
 ### `_v` version field
 
-Every blob still carries `_v: 1`, including Batch 2A and 2B fields; the wire version did not change. When a future client encounters `_v > 1`, it parses what it understands and logs:
+Every blob still carries `_v: 1`, including the Batch 2A, 2B, and 3 fields; the wire version did not change. When a future client encounters `_v > 1`, it parses what it understands and logs:
 
 ```text
 [react-native-notify-kit] notifee_options version 2 is newer than supported version 1. Display may be incomplete.
