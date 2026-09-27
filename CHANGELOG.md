@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **FCM Mode / iOS**: the Notification Service Extension now preserves Server SDK `notification.data` in the delivered notification and event data while keeping APNs/FCM/NotifyKit metadata authoritative and legacy `options.data` behavior intact.
 - **FCM Mode / iOS**: the extension now preserves positive and zero `aps.badge` values, leaves an absent badge absent, and honors an explicit `notifee_options.ios.badgeCount` override.
 - **FCM Mode / Android interactions**: legacy `_v: 1` `input: false` now means no reply; other malformed legacy inputs are rejected instead of silently dropped. The internal body-tap opt-out ID is rejected as a public or wire `pressAction.id`.
+- **FCM Mode / Android interactions**: malformed body and action `pressAction` values are rejected instead of treating a malformed body value as absent. Present non-array `actions` and malformed action entries are rejected, and every `launchActivityFlags` value is validated.
 
 ### Tests
 
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **FCM Mode / Batch 2A**: added Server SDK serialization and validation, client reconstruction, and Firebase Admin compatibility coverage, including `_v: 1`, omitted fields, explicit `circularLargeIcon: false`, and `BIG_PICTURE.largeIcon: null`.
 - **FCM Mode / Android**: qualified Batch 2A display on a physical Pixel 9 Pro XL running Android 17/API 37, including `subtitle`, both circular icon settings, the absent default, both expanded styles, explicit `BIG_PICTURE.largeIcon: null`, and a legacy payload without the new fields. iOS `subtitle` device runtime was not run.
 - **FCM Mode / Batch 2B**: added Server SDK serialization/validation, client reconstruction, normal-validator, and Firebase Admin compatibility coverage for Android interactions. Physical Pixel 9 Pro XL / Android 17/API 37 checks passed for default body tap, `pressAction: null` (`contentIntent=null`, no app opening or `PRESS`), configured press actions with launch flags, `ACTION_PRESS` without input, and direct replies (`input: true` and configured choices). Action `icon` passed the data/native path, but was not visibly rendered in the shade; an alternate `mainComponent` was not run on device.
+- **FCM Mode / Android interactions**: added host regression coverage across wire serialization, reconstruction, and normal validation for malformed interaction payloads; invalid payloads do not invoke the native display module.
 - **FCM Mode / iOS**: replaced the synthetic NSE stand-in with shared Server SDK-to-NSE fixtures and a native harness that exercises the production extension helper.
 
 ## [10.7.2] - 2026-09-23
