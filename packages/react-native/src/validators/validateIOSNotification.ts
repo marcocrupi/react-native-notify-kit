@@ -133,7 +133,7 @@ export default function validateIOSNotification(ios?: NotificationIOS): Notifica
   /**
    * badgeCount
    */
-  if (objectHasProperty(ios, 'badgeCount')) {
+  if (objectHasProperty(ios, 'badgeCount') && ios.badgeCount !== null) {
     if (!isNumber(ios.badgeCount) || ios.badgeCount < 0) {
       throw new Error("'notification.ios.badgeCount' expected a number value >=0.");
     }

@@ -144,6 +144,39 @@ describe('Validate IOS Notification', () => {
       );
     });
 
+    test('treats absent and null badgeCount as the same no-change value', () => {
+      const absent = validateIOSNotification({ categoryId: 'badge-category' });
+      const explicitNull = validateIOSNotification({
+        badgeCount: null,
+        categoryId: 'badge-category',
+      });
+
+      expect(explicitNull).toEqual(absent);
+      expect(explicitNull).not.toHaveProperty('badgeCount');
+      expect(explicitNull.categoryId).toBe('badge-category');
+    });
+
+    test.each([0, 7])('preserves numeric badgeCount %s', badgeCount => {
+      const validated = validateIOSNotification({ badgeCount });
+
+      expect(validated).toHaveProperty('badgeCount', badgeCount);
+    });
+
+    test('rejects a negative badgeCount', () => {
+      expect(() => validateIOSNotification({ badgeCount: -1 })).toThrowError(
+        "'notification.ios.badgeCount' expected a number value >=0.",
+      );
+    });
+
+    test('still rejects an explicitly present undefined badgeCount', () => {
+      const notification: NotificationIOS = { badgeCount: undefined };
+      expect(Object.hasOwn(notification, 'badgeCount')).toBe(true);
+
+      expect(() => validateIOSNotification(notification)).toThrowError(
+        "'notification.ios.badgeCount' expected a number value >=0.",
+      );
+    });
+
     test('returns invalid when an invalid categoryId property is provided', () => {
       const notification: NotificationIOS = {
         categoryId: {} as any,
