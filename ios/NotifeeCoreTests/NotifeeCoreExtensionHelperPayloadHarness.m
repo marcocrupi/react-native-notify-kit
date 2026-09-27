@@ -819,6 +819,35 @@ static HarnessResult *HarnessInvokeFcmPayload(NSDictionary *apnsPayload) {
   return HarnessStartInvocationWithUserInfo(userInfo, badge, kHarnessRequestIdentifier, NO);
 }
 
+static void TestFcmLogicalIdSurvivesProductionHelper(void) {
+  NSString *testName = @"testFcmLogicalIdSurvivesProductionHelper";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *userInfo = @{
+    @"aps" : @{@"mutable-content" : @1},
+    @"notifee_options" : @"{\"_v\":1,\"id\":\"logical-42\",\"title\":\"Title\",\"body\":\"Body\"}"
+  };
+  HarnessResult *result =
+      HarnessStartInvocationWithUserInfo(userInfo, nil, @"physical-request-99", NO);
+  HarnessAssertDeliveredOnce(result, testName);
+  HarnessAssert([result.builtNotification[@"id"] isEqualToString:@"logical-42"], testName,
+                @"NSE builder replaced logical N with physical R");
+  HarnessAssert([result.deliveredContent.userInfo[kNotifeeUserInfoNotification][@"id"]
+                    isEqualToString:@"logical-42"],
+                testName, @"NSE delivered metadata lost logical N");
+
+  HarnessResult *legacy = HarnessStartInvocationWithUserInfo(
+      @{
+        @"aps" : @{@"mutable-content" : @1},
+        @"notifee_options" : @"{\"_v\":1,\"title\":\"Title\",\"body\":\"Body\"}"
+      },
+      nil, @"legacy-physical-R", NO);
+  HarnessAssertDeliveredOnce(legacy, testName);
+  HarnessAssert([legacy.deliveredContent.userInfo[kNotifeeUserInfoNotification][@"id"]
+                    isEqualToString:@"legacy-physical-R"],
+                testName, @"legacy _v:1 no longer falls back to R");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
 static void HarnessAssertFcmMetadata(HarnessResult *result, NSDictionary *apnsPayload,
                                      NSString *testName) {
   NSDictionary *userInfo = result.deliveredContent.userInfo;
@@ -1638,6 +1667,7 @@ int main(int argc, const char *argv[]) {
     } else {
       NSDictionary *fcmFixtures = HarnessLoadFcmFixtures(argv[1]);
       TestFcmDataAndPositiveBadgeSurviveProductionHelper(fcmFixtures);
+      TestFcmLogicalIdSurvivesProductionHelper();
       TestFcmZeroAndAbsentBadgeRemainDistinct(fcmFixtures);
       TestExplicitLegacyBadgeRemainsAuthoritative();
       TestFcmServerAcceptedCollisionKeysSurviveNestedData(fcmFixtures);

@@ -58,6 +58,54 @@ function makeMessage(overrides: Partial<FcmRemoteMessage> = {}): FcmRemoteMessag
   };
 }
 
+describe('FCM logical notification identity', () => {
+  const withId = (messageId: string): FcmRemoteMessage => ({
+    messageId,
+    data: {
+      notifee_options: JSON.stringify({
+        _v: 1,
+        id: 'logical-42',
+        title: 'Title',
+        body: 'Body',
+        android: { channelId: 'default' },
+      }),
+    },
+  });
+
+  it('reconstructs, builds and displays N when M differs', async () => {
+    setPlatform('android');
+    const first = withId('transport-1');
+    const second = withId('transport-2');
+    expect(reconstructNotification(parseFcmPayload(first.data), first, {} as any).id).toBe(
+      'logical-42',
+    );
+    expect(apiModule.buildFcmNotification(first)?.id).toBe('logical-42');
+    expect(apiModule.buildFcmNotification(second)?.id).toBe('logical-42');
+    expect(await apiModule.handleFcmMessage(first)).toBe('logical-42');
+    expect(await apiModule.handleFcmMessage(second)).toBe('logical-42');
+    expect(displaySpy).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: 'logical-42' }));
+    expect(displaySpy).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: 'logical-42' }));
+  });
+
+  it('keeps legacy M and generated-ID fallbacks when _v:1 omits N', async () => {
+    setPlatform('android');
+    expect(apiModule.buildFcmNotification(makeMessage())?.id).toBe('msg-1');
+    expect(await apiModule.handleFcmMessage(makeMessage())).toBe('msg-1');
+    expect(
+      apiModule.buildFcmNotification(makeMessage({ messageId: undefined }))?.id,
+    ).toBeUndefined();
+    expect(await apiModule.handleFcmMessage(makeMessage({ messageId: undefined }))).toBe('auto-id');
+  });
+
+  it('uses N for foreground iOS display while preserving legacy M', async () => {
+    setPlatform('ios');
+    expect(apiModule.buildFcmNotification(withId('transport-1'))?.id).toBe('logical-42');
+    expect(await apiModule.handleFcmMessage(withId('transport-1'))).toBe('logical-42');
+    expect(displaySpy).toHaveBeenCalledWith(expect.objectContaining({ id: 'logical-42' }));
+    expect(apiModule.buildFcmNotification(makeMessage())?.id).toBe('msg-1');
+  });
+});
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function makeFullMessage(): FcmRemoteMessage {
   return {

@@ -21,6 +21,7 @@ export function buildNotifyKitPayload(input: NotifyKitPayloadInput): NotifyKitPa
   }
 
   const notifeeOptions = serializeNotifeeOptions({
+    ...(notification.id !== undefined ? { id: notification.id } : {}),
     title: notification.title,
     body: notification.body,
     ...(notification.subtitle !== undefined ? { subtitle: notification.subtitle } : {}),

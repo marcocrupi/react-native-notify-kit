@@ -21,6 +21,7 @@ import static app.notifee.core.event.NotificationEvent.TYPE_ACTION_PRESS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import android.Manifest;
 import android.app.Activity;
@@ -34,10 +35,13 @@ import android.content.pm.ActivityInfo;
 import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.Bundle;
+import androidx.work.impl.WorkManagerImpl;
 import app.notifee.core.event.MainComponentEvent;
 import app.notifee.core.model.NotificationModel;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Before;
@@ -80,6 +84,39 @@ public class NotificationManagerActionRoutingTest {
   public void tearDown() {
     EventBus.removeStickEvent(MainComponentEvent.class);
     ShadowPendingIntent.reset();
+  }
+
+  @Test
+  public void sameLogicalId_isNativeDisplayReadbackAndCancelIdentity() throws Exception {
+    String logicalId = "logical-42";
+    NotificationModel first =
+        buildNotificationModel(logicalId, buildPressAction("open", null, null));
+    NotificationModel second =
+        buildNotificationModel(logicalId, buildPressAction("reply", null, null));
+
+    displayNotification(first);
+    displayNotification(second);
+
+    android.app.NotificationManager nativeManager =
+        (android.app.NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+    assertEquals(1, nativeManager.getActiveNotifications().length);
+    assertEquals(logicalId.hashCode(), nativeManager.getActiveNotifications()[0].getId());
+
+    List<Bundle> displayed =
+        NotificationManager.getDisplayedNotifications().get(5, TimeUnit.SECONDS);
+    assertEquals(1, displayed.size());
+    assertEquals(logicalId, displayed.get(0).getString("id"));
+    assertEquals(logicalId, displayed.get(0).getBundle("notification").getString("id"));
+
+    WorkManagerImpl.setDelegate(mock(WorkManagerImpl.class));
+    try {
+      NotificationManager.cancelAllNotificationsWithIds(
+              1, Collections.singletonList(logicalId), null)
+          .get(5, TimeUnit.SECONDS);
+      assertEquals(0, nativeManager.getActiveNotifications().length);
+    } finally {
+      WorkManagerImpl.setDelegate(null);
+    }
   }
 
   @Test

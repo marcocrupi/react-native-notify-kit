@@ -98,17 +98,17 @@ export type NotifyKitIosConfig = {
 
 export type NotifyKitNotification = {
   /**
-   * Optional notification identifier. When provided, it is also used as the
-   * FCM collapse key (Android `collapseKey`, iOS `apns-collapse-id`) unless
-   * `options.collapseKey` is explicitly set. Collapse key precedence (Rule 7):
+   * Optional public notification identifier. It is serialized in the _v:1
+   * options blob and used by NotifyKit display, events, readback and cancel.
+   * It also defaults the FCM transport collapse key (Android `collapseKey`,
+   * iOS `apns-collapse-id`) unless `options.collapseKey` is explicitly set.
+   * Collapse key precedence (Rule 7):
    *   1. `options.collapseKey` if set
    *   2. `notification.id` if set
    *   3. Omitted (no collapse behaviour)
    *
-   * This means setting `id` implicitly enables notification replacement on the
-   * device: a new notification with the same `id` replaces the previous one.
-   * If you need `id` for local deduplication without collapse behaviour, set a
-   * distinct `options.collapseKey` or leave both unset.
+   * Collapse controls transport coalescing. It does not guarantee replacement
+   * of a notification that has already been delivered.
    */
   id?: string;
   title: string;
@@ -184,6 +184,7 @@ export type NotifyKitPayloadOutput = NotifyKitPayloadTarget & {
 
 export type SerializedNotifeeOptions = {
   _v: 1;
+  id?: string;
   title: string;
   subtitle?: string;
   body: string;

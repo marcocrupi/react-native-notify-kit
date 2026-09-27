@@ -24,6 +24,7 @@
 #import "NotifeeCore.h"
 #import "NotifeeCoreDelegateHolder.h"
 #import "NotifeeCoreExtensionHelper.h"
+#import "NotifeeCoreFcmIdentity.h"
 #import "NotifeeCoreUtil.h"
 
 @interface NotifeeCoreUNUserNotificationCenter (Rechain)
@@ -144,6 +145,11 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
     return rollingPublicId;
   }
 
+  NSString *fcmLogicalId = NotifeeFcmLogicalIdForRequest(request);
+  if (fcmLogicalId != nil) {
+    return fcmLogicalId;
+  }
+
   NSString *identifier = request.identifier;
   if ([self isPotentialRollingInternalNotificationId:identifier]) {
     return nil;
@@ -193,6 +199,14 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                     deliveredNotifications:(NSArray<UNNotification *> *)deliveredNotifications
                                     record:(NSDictionary *)record {
   NSMutableOrderedSet<NSString *> *identifiers = [NSMutableOrderedSet orderedSet];
+  NSMutableArray<UNNotificationRequest *> *requests = [NSMutableArray array];
+  for (UNNotification *notification in deliveredNotifications) {
+    [requests addObject:notification.request];
+  }
+  for (NSString *physicalId in NotifeeFcmIdentifiersForLogicalId(requests, publicId)) {
+    [self addString:physicalId toOrderedSet:identifiers];
+  }
+  BOOL removeDirectIdentifier = NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, publicId);
 
   NSArray *scheduledIds = record[@"scheduledIds"];
   if ([scheduledIds isKindOfClass:NSArray.class]) {
@@ -204,7 +218,7 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
   for (UNNotification *notification in deliveredNotifications) {
     UNNotificationRequest *request = notification.request;
     NSString *identifier = request.identifier;
-    if ([identifier isEqualToString:publicId]) {
+    if (removeDirectIdentifier && [identifier isEqualToString:publicId]) {
       [self addString:identifier toOrderedSet:identifiers];
       continue;
     }
@@ -873,7 +887,13 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
           [self rollingDeliveredIdentifiersForPublicId:notificationId
                                 deliveredNotifications:deliveredNotifications
                                                 record:record];
-      [self addString:notificationId toOrderedSet:deliveredIdentifiersToRemove];
+      NSMutableArray<UNNotificationRequest *> *requests = [NSMutableArray array];
+      for (UNNotification *notification in deliveredNotifications) {
+        [requests addObject:notification.request];
+      }
+      if (NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, notificationId)) {
+        [self addString:notificationId toOrderedSet:deliveredIdentifiersToRemove];
+      }
       if ([deliveredIdentifiersToRemove count] > 0) {
         [center removeDeliveredNotificationsWithIdentifiers:[deliveredIdentifiersToRemove array]];
       }
@@ -935,7 +955,13 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
                                   deliveredNotifications:deliveredNotifications
                                                   record:record];
         [deliveredIdentifiersToRemove unionOrderedSet:rollingDeliveredIdentifiers];
-        [self addString:publicId toOrderedSet:deliveredIdentifiersToRemove];
+        NSMutableArray<UNNotificationRequest *> *requests = [NSMutableArray array];
+        for (UNNotification *notification in deliveredNotifications) {
+          [requests addObject:notification.request];
+        }
+        if (NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, publicId)) {
+          [self addString:publicId toOrderedSet:deliveredIdentifiersToRemove];
+        }
       }
 
       if (cancelTrigger) {
@@ -1047,6 +1073,13 @@ typedef NS_ENUM(NSInteger, NotifeeCoreRollingErrorCode) {
       if (rollingPublicId != nil && [notification isKindOfClass:NSDictionary.class]) {
         NSMutableDictionary *publicNotification = [notification mutableCopy];
         publicNotification[@"id"] = rollingPublicId;
+        triggerNotification[@"notification"] = publicNotification;
+      }
+
+      NSString *fcmLogicalId = NotifeeFcmLogicalIdForRequest(request);
+      if (fcmLogicalId != nil && [notification isKindOfClass:NSDictionary.class]) {
+        NSMutableDictionary *publicNotification = [notification mutableCopy];
+        publicNotification[@"id"] = fcmLogicalId;
         triggerNotification[@"notification"] = publicNotification;
       }
 

@@ -327,6 +327,50 @@ static UNNotificationResponse *HarnessNotifeeResponse(NSString *identifier) {
   return (UNNotificationResponse *)(id)response;
 }
 
+static UNNotificationResponse *HarnessFcmResponse(NSString *physicalId, NSString *logicalId,
+                                                  NSString *actionId) {
+  UNMutableNotificationContent *content = [UNMutableNotificationContent new];
+  content.userInfo = @{
+    kNotifeeUserInfoNotification : @{@"id" : logicalId, @"remote" : @YES},
+    @"notifee_options" : @"{\"_v\":1}"
+  };
+  UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:physicalId
+                                                                        content:content
+                                                                        trigger:nil];
+  HarnessNotification *notification = [HarnessNotification new];
+  notification.request = request;
+  HarnessNotificationResponse *response = [HarnessNotificationResponse new];
+  response.notification = notification;
+  response.actionIdentifier = actionId;
+  return (UNNotificationResponse *)(id)response;
+}
+
+static void HarnessTestFcmLogicalIdInPressEvents(UNUserNotificationCenter *center) {
+  NSString *testName = @"fcm-logical-id-in-press-events";
+  NSInteger failuresBefore = gFailures;
+  NotifeeCoreUNUserNotificationCenter *delegate = [NotifeeCoreUNUserNotificationCenter instance];
+  for (NSString *actionId in @[ UNNotificationDefaultActionIdentifier, @"reply-action" ]) {
+    HarnessClearCoreEvents();
+    __block NSInteger completions = 0;
+    [delegate userNotificationCenter:center
+        didReceiveNotificationResponse:HarnessFcmResponse(@"physical-R", @"logical-N", actionId)
+                 withCompletionHandler:^{
+                   completions += 1;
+                 }];
+    NSDictionary *event = HarnessLastCoreEvent();
+    HarnessAssert(completions == 1, testName, @"response completion count changed");
+    HarnessAssert(
+        [event[@"type"]
+            isEqual:@([actionId isEqualToString:UNNotificationDefaultActionIdentifier] ? 1 : 2)],
+        testName, @"PRESS/ACTION_PRESS type changed");
+    HarnessAssert([event[@"detail"][@"notification"][@"id"] isEqualToString:@"logical-N"], testName,
+                  @"event reported physical R instead of logical N");
+    HarnessAssert([delegate.notificationOpenedAppID isEqualToString:@"logical-N"], testName,
+                  @"initial notification opening ID was physical R");
+  }
+  HarnessFinishTest(testName, failuresBefore);
+}
+
 static void HarnessAssertCurrentDelegate(id actualDelegate, id expectedDelegate, NSString *testName,
                                          NSString *message) {
   HarnessAssert(actualDelegate == expectedDelegate, testName, message);
@@ -944,6 +988,7 @@ int main(void) {
     HarnessTestForwardsNonNotifeeDidReceive(center, existingDelegate);
     HarnessTestForwardsOpenSettings(center, existingDelegate);
     HarnessTestCompletionCalledOnceInCoveredPaths(center, existingDelegate);
+    HarnessTestFcmLogicalIdInPressEvents(center);
     HarnessTestLateDelegateOverridesNotifyKit(center, notifeeCenter, lateDelegate,
                                               existingDelegate);
     HarnessTestHandleRemoteFlagDoesNotRechain(center, notifeeCenter, lateDelegate,

@@ -50,6 +50,9 @@ export function buildIosApnsPayload(
     'apns-priority': '10',
   };
   if (context.collapseKey !== undefined) {
+    if (Buffer.byteLength(context.collapseKey, 'utf8') > 64) {
+      throw new Error(`${PREFIX} Validation: apns-collapse-id must be at most 64 UTF-8 bytes`);
+    }
     headers['apns-collapse-id'] = context.collapseKey;
   }
   if (context.expiration !== undefined) {

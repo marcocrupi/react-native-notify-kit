@@ -1,6 +1,7 @@
 import type { NotifyKitAndroidConfig, NotifyKitIosConfig, SerializedNotifeeOptions } from './types';
 
 type SerializeInput = {
+  id?: string;
   title: string;
   subtitle?: string;
   body: string;
@@ -12,6 +13,9 @@ const PREFIX = '[react-native-notify-kit/server]';
 
 export function serializeNotifeeOptions(input: SerializeInput): string {
   const payload: SerializedNotifeeOptions = { _v: 1, title: input.title, body: input.body };
+  if (input.id !== undefined) {
+    payload.id = input.id;
+  }
   if (input.subtitle !== undefined) {
     payload.subtitle = input.subtitle;
   }
