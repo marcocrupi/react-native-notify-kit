@@ -14,7 +14,27 @@ to control the badge count.
 
 > Remote messages from FCM/APNs can contain a badge count which will override any existing count if set on the message payload.
 
-## Updating the badge count
+## Per-notification badge count
+
+Set `ios.badgeCount` on a notification passed to `displayNotification` or `createTriggerNotification` to control how that
+notification affects the current app icon badge:
+
+| `ios.badgeCount` | Effect on current badge |
+| ---------------- | ----------------------- |
+| Absent or `null` | Leave it unchanged      |
+| `0`              | Clear it                |
+| Positive value   | Set it to that value    |
+
+`null` is allowed by the public `NotificationIOS` type. The client removes it from the notification payload before the
+native boundary, so it does not reach `UNMutableNotificationContent.badge` as `NSNull`. Readback may show an absent
+`badgeCount` property instead of the original `null`; the two forms have the same _no-change_ effect, but need not have
+the same shape.
+
+This per-notification option is distinct from the app-wide `setBadgeCount`, `getBadgeCount`, `incrementBadgeCount`, and
+`decrementBadgeCount` methods below. On iOS, bringing the badge to `0` can also cause the platform to withdraw related
+delivered notifications from Notification Center. Do not assume that clearing the badge only changes the icon number.
+
+## Updating the badge count with app-wide methods
 
 ### Setting the badge count
 

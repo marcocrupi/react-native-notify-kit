@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **iOS / per-notification badges**: `NotificationIOS.badgeCount: null` is now accepted as already specified by the public type and JSDoc. For immediate and trigger notifications, `null` leaves the current badge unchanged, just like an absent `badgeCount`; `0` still clears the badge, and positive values still set it.
 - **FCM Mode / notification identity**: preserved public `notification.id` in the unchanged `_v: 1` payload and client reconstruction. Android display/replacement, readback, events, and cancel now use that ID instead of the Firebase `messageId` when it is supplied; `buildFcmNotification()` retains it.
 - **FCM Mode / iOS identity**: the NSE keeps the logical NotifyKit notification ID separate from the physical APNs request identifier. Readback, events, and cancel use the logical ID, including cancellation of multiple delivered requests associated with it. Payloads without an ID keep their path-specific legacy fallback.
 - **FCM Mode / APNs**: validated the effective `apns-collapse-id` (`options.collapseKey ?? notification.id`) against the 64-byte UTF-8 limit. Transport collapse remains independent of public notification identity and does not guarantee replacement after delivery.
@@ -25,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Tests
 
+- **iOS / per-notification badges**: added validator, client, and trigger regression coverage for absent, `null`, zero, and positive values, including host-side rolling trigger coverage. Physical iPhone 16e / iOS 26.5 checks passed for all four values with immediate and trigger notifications; rolling trigger device runtime was not run.
 - **FCM Mode / Batch 3**: added Server SDK, client reconstruction, Android native, and iOS NSE/readback/cancel/event harness regression coverage for notification identity, distinct collapse keys, legacy `_v: 1` fallbacks, and the effective APNs 64-byte UTF-8 limit.
 - **FCM Mode / Batch 3 Android device**: on a Pixel 9 Pro XL / Android 17 API 37, qualified same-N replacement with distinct M and C values, preservation of distinct N values sharing C when both arrived, readback/cancel and `PRESS` by N, `buildFcmNotification()` identity, and the legacy no-N fallback.
 - **FCM Mode / Batch 3 iOS device**: on an iPhone 16e / iOS 26.5, qualified N=C and N≠C through the real NSE, foreground identity, readback and `PRESS` by N, cancellation of multiple R values sharing N, collision safety, and the legacy no-N fallback to R. iOS `ACTION_PRESS` device runtime was not run.
