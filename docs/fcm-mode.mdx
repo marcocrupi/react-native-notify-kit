@@ -594,6 +594,8 @@ type NotifyKitPayloadOutput = NotifyKitPayloadTarget & {
 
 Top-level `data` contains the user data keys and `notifee_options`. `notifee_data` is added only to `apns.payload` when user data is present; there is no key-count threshold.
 
+On iOS, the NSE reads `apns.payload.notifee_data` and puts those string keys into the delivered notification's NotifyKit `data` and event path. The original APNs/FCM transport fields and NotifyKit event metadata remain authoritative if a custom key has the same name. For older payloads with `notifee_options.data`, those values are preserved; when both data sources contain the same key, `notifee_data` takes precedence within the notification's `data`.
+
 `sizeBytes` is defined as **non-enumerable**: it's accessible on the returned object for your own diagnostics, but `JSON.stringify(message)` strips it, so it never leaks onto the wire.
 
 ### Other exports
@@ -901,6 +903,22 @@ iOS requires a Notification Service Extension (NSE) to rewrite incoming APNs not
 - Expo CNG / prebuild: use the config plugin.
 - Bare React Native: use the `init-nse` CLI.
 
+### iOS custom data and badge
+
+The Server SDK serializes `notification.data` as `apns.payload.notifee_data`. The production NSE merges it into the delivered notification's `data`, which is available on the NotifyKit notification/event path when the user taps. Custom data cannot replace top-level APNs/FCM fields or NotifyKit event metadata. Background delivery-to-tap was validated on a physical iPhone 16e running iOS 26.5; the killed/cold-start data path was not run.
+
+Use `options.iosBadgeCount` to set `aps.badge` through the Server SDK:
+
+| Server SDK input              | APNs field     | NSE result                                         |
+| ----------------------------- | -------------- | -------------------------------------------------- |
+| Positive integer, such as `7` | `aps.badge: 7` | Preserves `7`                                      |
+| `0`                           | `aps.badge: 0` | Preserves `0` and clears the app icon badge        |
+| Omitted                       | No `aps.badge` | Leaves the badge unset; omission does not mean `0` |
+
+If a separately authored or legacy `notifee_options` blob explicitly contains a numeric `ios.badgeCount`, that value takes precedence over `aps.badge` in the NSE. The current Server SDK `NotifyKitIosConfig` does not expose `badgeCount`; its supported badge input is `options.iosBadgeCount`. On the same physical iPhone, badge `7`, badge `0`, badge absence, and precedence of `aps.badge: 7` with explicit `ios.badgeCount: 3` (result `3`) passed.
+
+iOS can also withdraw delivered notifications when a badge is set to `0`. This is platform behavior; clearing the badge does not guarantee that a notification stays in Notification Center.
+
 ### Expo CNG setup
 
 Use the [Expo CNG / development builds](#expo-cng--development-builds) setup above. The plugin runs during prebuild and generates the Swift service, `Info.plist`, entitlements, Xcode target, host dependency, `.appex` embed phase, EAS `appExtensions` entry, and Podfile target.
@@ -1036,7 +1054,7 @@ android: {
 }
 ```
 
-Other `AndroidStyle` values (`MESSAGING`, `INBOX`, `CALL`) aren't wired through the server SDK yet — they have richer schemas that need future versioning. Build them yourself via `displayNotification` until then.
+Other `AndroidStyle` values (`MESSAGING`, `INBOX`) aren't wired through the server SDK yet — they have richer schemas that need future versioning. Build them yourself via `displayNotification` until then.
 
 ### Action buttons
 
@@ -1134,7 +1152,7 @@ The server SDK additionally rejects `notifee_options` and `notifee_data` in your
 
 FCM enforces a hard 4 KB limit on the entire serialized message. The server SDK warns at ~3500 bytes; common causes of going over:
 
-- Long `body` text — use an Android `BIG_TEXT` style instead, which doesn't contribute to the size cap if the full text is inline but the banner text is short.
+- Long `body` or Android `BIG_TEXT` text — both contribute to the serialized payload size. Shorten them or send an ID and fetch the full text when the app opens.
 - Many `data` keys — collapse nested objects into a single JSON string (`JSON.stringify`) and parse on the client. The reserved keys `notifee_options` / `notifee_data` are off-limits.
 - Long attachment URLs — shorten via a CDN or URL shortener.
 
@@ -1256,7 +1274,7 @@ If you see two notifications per push on Android, the FCM SDK is auto-displaying
 Custom sounds have platform-specific requirements that don't go through the Notify Kit JS API when FCM delivers the push.
 
 - **iOS:** the sound file must be bundled in the **NSE target's** resources, not (only) the main app. Drag the file into the `NotifyKitNSE/` folder in Xcode and verify it appears in the NSE target's Build Phases → Copy Bundle Resources.
-- **Android:** the `NotificationChannel` sound is locked at channel creation. `notifee_options.android.sound` from FCM Mode overrides the channel sound only if the channel was created with that sound already. To change the sound, create a new channel under a new ID.
+- **Android:** FCM Mode displays its data-only message through the app's Android notification channel. Configure the desired sound when creating that channel; its sound cannot be changed in place. The Server SDK's `NotifyKitAndroidConfig` has no `sound` field, and `notifee_options.android.sound` is not an FCM Mode wire option. To use another sound, create a channel with a new ID and select it via `notification.android.channelId`.
 
 See the main README's [custom sounds section](../README.md#custom-sounds-for-push-notifications-in-background-or-killed-state) for the full background.
 
@@ -1311,7 +1329,7 @@ Since [9.3.0](../CHANGELOG.md#930---2026-04-09) the library injects this default
 
 The server SDK warns at ~3500 bytes. Common fixes:
 
-- Shorten `body` or move long text to Android `BIG_TEXT` style.
+- Shorten `body` and any Android `BIG_TEXT` text; both count toward the serialized payload size.
 - Collapse nested `data` values into a single JSON string.
 - Switch to a nudge-then-fetch pattern (push an ID, fetch the payload on open).
 
@@ -1319,7 +1337,7 @@ The server SDK warns at ~3500 bytes. Common fixes:
 
 - **iOS background `DELIVERED` event gap.** When a push arrives while your app is in background/killed on iOS, `EventType.DELIVERED` is **not** emitted to `onBackgroundEvent` — the NSE draws the notification and the main app process never wakes. This is a platform limitation (no `UNUserNotificationCenterDelegate` callback fires for NSE-drawn notifications until the user taps). Android emits `DELIVERED` unconditionally. To detect background delivery on iOS, check `getDisplayedNotifications()` when the app returns to foreground, or have the NSE write to a shared App Group container.
 - **Limited deep validation of nested `android` / `ios` config.** The server SDK validates the top-level shape (routing, data value types, iOS attachment URLs, ttl, etc.) and rejects duplicate `pressAction.id` values within a single notification's `android.actions` array, but otherwise trusts TypeScript structural typing for the nested `NotifyKitAndroidConfig` / `NotifyKitIosConfig`. JavaScript callers that bypass TypeScript should validate themselves. Broader deep runtime validation is planned.
-- **Style types limited to `BIG_TEXT` / `BIG_PICTURE`.** `MESSAGING`, `INBOX`, and `CALL` styles are available via `displayNotification` but aren't wired through the server SDK yet — their schemas need versioning (person avatars, reply actions) before the wire contract is frozen.
+- **Style types limited to `BIG_TEXT` / `BIG_PICTURE`.** `MESSAGING` and `INBOX` are available via `displayNotification` but aren't wired through the server SDK yet — their schemas need versioning before the wire contract is frozen.
 - **Expo Go not supported.** Expo CNG / prebuild development builds are supported. Expo Go cannot load the native NotifyKit module, the generated iOS NSE target, or the embedded `.appex`.
 - **Firebase/RNFirebase setup is not owned by NotifyKit.** The NotifyKit config plugin does not create Firebase apps, install RNFirebase, copy `google-services.json`, configure `GoogleService-Info.plist`, or patch Gradle for Firebase.
 - **Android data-only delivery is conditional.** Background and killed-state data-only delivery depends on FCM priority, device state, Doze, and OEM policy. Use high priority for user-visible background validation, but do not treat delivery on every OEM as guaranteed.

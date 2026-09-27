@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **FCM Mode / iOS**: the Notification Service Extension now preserves Server SDK `notification.data` in the delivered notification and event data while keeping APNs/FCM/NotifyKit metadata authoritative and legacy `options.data` behavior intact.
+- **FCM Mode / iOS**: the extension now preserves positive and zero `aps.badge` values, leaves an absent badge absent, and honors an explicit `notifee_options.ios.badgeCount` override.
+
+### Tests
+
+- **FCM Mode / iOS**: replaced the synthetic NSE stand-in with shared Server SDK-to-NSE fixtures and a native harness that exercises the production extension helper.
+
 ## [10.7.2] - 2026-09-23
 
 ### Fixed
