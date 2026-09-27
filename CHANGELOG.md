@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **FCM Mode**: added top-level `subtitle` support and Android `circularLargeIcon` support in the Server SDK wire payload and client reconstruction.
+- **FCM Mode / Android**: expanded the supported `BIG_TEXT` style with `title` and `summary`, and `BIG_PICTURE` with `title`, `summary`, and `largeIcon` (including explicit `null` to hide the expanded large icon). Other notification fields and styles remain outside the FCM Mode contract.
+
 ### Fixed
 
 - **FCM Mode / iOS**: the Notification Service Extension now preserves Server SDK `notification.data` in the delivered notification and event data while keeping APNs/FCM/NotifyKit metadata authoritative and legacy `options.data` behavior intact.
@@ -14,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Tests
 
+- **FCM Mode / Batch 2A**: added Server SDK serialization and validation, client reconstruction, and Firebase Admin compatibility coverage, including `_v: 1`, omitted fields, explicit `circularLargeIcon: false`, and `BIG_PICTURE.largeIcon: null`.
+- **FCM Mode / Android**: qualified Batch 2A display on a physical Pixel 9 Pro XL running Android 17/API 37, including `subtitle`, both circular icon settings, the absent default, both expanded styles, explicit `BIG_PICTURE.largeIcon: null`, and a legacy payload without the new fields. iOS `subtitle` device runtime was not run.
 - **FCM Mode / iOS**: replaced the synthetic NSE stand-in with shared Server SDK-to-NSE fixtures and a native harness that exercises the production extension helper.
 
 ## [10.7.2] - 2026-09-23
