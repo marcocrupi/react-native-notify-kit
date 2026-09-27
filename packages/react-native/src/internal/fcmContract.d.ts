@@ -24,13 +24,20 @@ export type NotifyKitAndroidAction = {
 };
 
 export type NotifyKitAndroidStyle =
-  | { type: 'BIG_TEXT'; text: string }
-  | { type: 'BIG_PICTURE'; picture: string };
+  | { type: 'BIG_TEXT'; text: string; title?: string; summary?: string }
+  | {
+      type: 'BIG_PICTURE';
+      picture: string;
+      title?: string;
+      summary?: string;
+      largeIcon?: string | null;
+    };
 
 export type NotifyKitAndroidConfig = {
   channelId?: string;
   smallIcon?: string;
   largeIcon?: string;
+  circularLargeIcon?: boolean;
   color?: string;
   pressAction?: NotifyKitPressAction;
   actions?: NotifyKitAndroidAction[];
@@ -70,6 +77,7 @@ export type NotifyKitNotification = {
    */
   id?: string;
   title: string;
+  subtitle?: string;
   body: string;
   data?: Record<string, string>;
   android?: NotifyKitAndroidConfig;
@@ -100,7 +108,7 @@ export type NotifyKitAndroidOutput = {
 };
 
 export type NotifyKitApnsAps = {
-  alert: { title: string; body: string };
+  alert: { title: string; body: string; subtitle?: string };
   sound?: string;
   category?: string;
   'mutable-content': 1;
@@ -142,6 +150,7 @@ export type NotifyKitPayloadOutput = NotifyKitPayloadTarget & {
 export type SerializedNotifeeOptions = {
   _v: 1;
   title: string;
+  subtitle?: string;
   body: string;
   android?: NotifyKitAndroidConfig;
   ios?: NotifyKitIosConfig;

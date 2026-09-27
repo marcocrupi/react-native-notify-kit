@@ -79,6 +79,27 @@ const compatibilityCases: Array<{ name: string; input: NotifyKitPayloadInput }> 
       notification: minimalNotification,
     },
   },
+  {
+    name: 'I. Batch 2A BIG_TEXT options',
+    input: {
+      token: 'token-i',
+      notification: {
+        title: 'Main title',
+        body: 'Main body',
+        subtitle: 'Second line',
+        android: {
+          largeIcon: 'https://cdn.example.com/large.png',
+          circularLargeIcon: false,
+          style: {
+            type: 'BIG_TEXT',
+            text: 'Expanded text',
+            title: 'Expanded title',
+            summary: 'Expanded summary',
+          },
+        },
+      },
+    },
+  },
 ];
 
 describe('Firebase Admin local compatibility', () => {
@@ -139,5 +160,61 @@ describe('Firebase Admin local compatibility', () => {
     } finally {
       now.mockRestore();
     }
+  });
+
+  it('preserves Batch 2A options through Firebase Admin deepCopy and validation', () => {
+    const input: NotifyKitPayloadInput = {
+      token: 'batch-2a-token',
+      notification: {
+        title: 'Main title',
+        body: 'Main body',
+        subtitle: 'Secondary title',
+        android: {
+          channelId: 'orders',
+          largeIcon: 'https://cdn.example.com/large.png',
+          circularLargeIcon: false,
+          style: {
+            type: 'BIG_PICTURE',
+            picture: 'https://cdn.example.com/picture.png',
+            title: 'Expanded title',
+            summary: 'Expanded summary',
+            largeIcon: null,
+          },
+        },
+      },
+    };
+    const payload = buildNotifyKitPayload(input);
+    const message: Message = payload;
+    const firebaseAdminMessage = deepCopy(message);
+
+    expect(() => validateMessage(firebaseAdminMessage)).not.toThrow();
+    expect(firebaseAdminMessage.android).toEqual({ priority: 'high' });
+    expect(firebaseAdminMessage.apns?.payload?.aps).toMatchObject({
+      alert: { title: 'Main title', body: 'Main body', subtitle: 'Secondary title' },
+      'mutable-content': 1,
+    });
+    expect(firebaseAdminMessage.data?.notifee_options).toBe(
+      firebaseAdminMessage.apns?.payload?.notifee_options,
+    );
+    expect(JSON.parse(firebaseAdminMessage.data?.notifee_options as string)).toEqual({
+      _v: 1,
+      title: 'Main title',
+      body: 'Main body',
+      subtitle: 'Secondary title',
+      android: {
+        channelId: 'orders',
+        largeIcon: 'https://cdn.example.com/large.png',
+        circularLargeIcon: false,
+        style: {
+          type: 'BIG_PICTURE',
+          picture: 'https://cdn.example.com/picture.png',
+          title: 'Expanded title',
+          summary: 'Expanded summary',
+          largeIcon: null,
+        },
+      },
+    });
+    expect(payload.sizeBytes).toBe(Buffer.byteLength(JSON.stringify(payload), 'utf8'));
+    expect('sizeBytes' in firebaseAdminMessage).toBe(false);
   });
 });

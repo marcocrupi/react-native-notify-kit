@@ -2,6 +2,7 @@ import type { NotifyKitAndroidConfig, NotifyKitIosConfig, SerializedNotifeeOptio
 
 type SerializeInput = {
   title: string;
+  subtitle?: string;
   body: string;
   android?: NotifyKitAndroidConfig;
   ios?: NotifyKitIosConfig;
@@ -11,6 +12,9 @@ const PREFIX = '[react-native-notify-kit/server]';
 
 export function serializeNotifeeOptions(input: SerializeInput): string {
   const payload: SerializedNotifeeOptions = { _v: 1, title: input.title, body: input.body };
+  if (input.subtitle !== undefined) {
+    payload.subtitle = input.subtitle;
+  }
   if (input.android !== undefined) {
     payload.android = input.android;
   }

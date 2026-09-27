@@ -7,6 +7,7 @@ const PREFIX = '[react-native-notify-kit]';
 export type ParsedPayload = {
   _v?: number;
   title?: string;
+  subtitle?: string;
   body?: string;
   android?: Record<string, unknown>;
   ios?: Record<string, unknown>;

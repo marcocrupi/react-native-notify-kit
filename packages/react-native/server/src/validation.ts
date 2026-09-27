@@ -2,6 +2,8 @@ import type { NotifyKitPayloadInput } from './types';
 
 const PREFIX = '[react-native-notify-kit/server]';
 const RESERVED_DATA_KEYS = ['notifee_options', 'notifee_data'] as const;
+const BIG_TEXT_STYLE_KEYS = new Set(['type', 'text', 'title', 'summary']);
+const BIG_PICTURE_STYLE_KEYS = new Set(['type', 'picture', 'title', 'summary', 'largeIcon']);
 
 function err(category: string, message: string): Error {
   return new Error(`${PREFIX} ${category}: ${message}`);
@@ -52,6 +54,9 @@ export function validateInput(input: NotifyKitPayloadInput): void {
   if (!isNonEmptyString(notification.body)) {
     throw err('Validation', 'notification.body is required and must be a non-empty string');
   }
+  if (notification.subtitle !== undefined && typeof notification.subtitle !== 'string') {
+    throw err('Validation', 'notification.subtitle must be a string when provided');
+  }
 
   if (notification.data !== undefined) {
     if (notification.data === null || typeof notification.data !== 'object') {
@@ -72,6 +77,47 @@ export function validateInput(input: NotifyKitPayloadInput): void {
           `FCM data values must be strings. Got ${typeof value} for key '${key}'. Use JSON.stringify() if you need to pass complex values.`,
         );
       }
+    }
+  }
+
+  const circularLargeIcon = notification.android?.circularLargeIcon;
+  if (circularLargeIcon !== undefined && typeof circularLargeIcon !== 'boolean') {
+    throw err('Android', 'notification.android.circularLargeIcon must be a boolean when provided');
+  }
+
+  const style = notification.android?.style;
+  if (style !== undefined) {
+    if (style === null || typeof style !== 'object' || Array.isArray(style)) {
+      throw err('Android', 'notification.android.style must be a supported style object');
+    }
+    if (style.type !== 'BIG_TEXT' && style.type !== 'BIG_PICTURE') {
+      throw err('Android', 'notification.android.style type must be BIG_TEXT or BIG_PICTURE');
+    }
+    const supportedKeys = style.type === 'BIG_TEXT' ? BIG_TEXT_STYLE_KEYS : BIG_PICTURE_STYLE_KEYS;
+    for (const key of Object.keys(style)) {
+      if (!supportedKeys.has(key)) {
+        throw err('Android', `notification.android.style.${key} is not supported`);
+      }
+    }
+    if (style.type === 'BIG_TEXT' && !isNonEmptyString(style.text)) {
+      throw err('Android', 'notification.android.style.text must be a non-empty string');
+    }
+    if (style.type === 'BIG_PICTURE' && !isNonEmptyString(style.picture)) {
+      throw err('Android', 'notification.android.style.picture must be a non-empty string');
+    }
+    if (style.title !== undefined && typeof style.title !== 'string') {
+      throw err('Android', 'notification.android.style.title must be a string when provided');
+    }
+    if (style.summary !== undefined && typeof style.summary !== 'string') {
+      throw err('Android', 'notification.android.style.summary must be a string when provided');
+    }
+    if (
+      style.type === 'BIG_PICTURE' &&
+      style.largeIcon !== undefined &&
+      style.largeIcon !== null &&
+      typeof style.largeIcon !== 'string'
+    ) {
+      throw err('Android', 'notification.android.style.largeIcon must be a string or null');
     }
   }
 

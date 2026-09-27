@@ -23,6 +23,7 @@ export function buildNotifyKitPayload(input: NotifyKitPayloadInput): NotifyKitPa
   const notifeeOptions = serializeNotifeeOptions({
     title: notification.title,
     body: notification.body,
+    ...(notification.subtitle !== undefined ? { subtitle: notification.subtitle } : {}),
     ...(notification.android !== undefined ? { android: notification.android } : {}),
     ...(notification.ios !== undefined ? { ios: notification.ios } : {}),
   });

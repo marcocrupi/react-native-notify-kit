@@ -57,7 +57,11 @@ export function buildIosApnsPayload(
   }
 
   const aps: NotifyKitApnsAps = {
-    alert: { title: notification.title, body: notification.body },
+    alert: {
+      title: notification.title,
+      body: notification.body,
+      ...(notification.subtitle !== undefined ? { subtitle: notification.subtitle } : {}),
+    },
     'mutable-content': 1,
   };
   if (ios?.sound !== undefined) {

@@ -47,6 +47,10 @@ export function reconstructNotification(
     body,
   };
 
+  if (typeof parsed?.subtitle === 'string') {
+    notification.subtitle = parsed.subtitle;
+  }
+
   if (Object.keys(data).length > 0) {
     notification.data = data;
   }
@@ -125,6 +129,9 @@ function buildAndroidConfig(
   // Direct string copies
   if (typeof raw?.smallIcon === 'string') android.smallIcon = raw.smallIcon;
   if (typeof raw?.largeIcon === 'string') android.largeIcon = raw.largeIcon;
+  if (typeof raw?.circularLargeIcon === 'boolean') {
+    android.circularLargeIcon = raw.circularLargeIcon;
+  }
   if (typeof raw?.color === 'string') android.color = raw.color;
 
   // Timestamp fields — preserve only values accepted by the canonical Android validator
@@ -140,14 +147,27 @@ function buildAndroidConfig(
 
   // Style — enum mapping with defense-in-depth for unknown types
   if (raw?.style && typeof raw.style === 'object') {
-    const style = raw.style as { type?: string; text?: string; picture?: string };
+    const style = raw.style as Record<string, unknown>;
     if (typeof style.type === 'string') {
       const mappedType = STYLE_TYPE_MAP[style.type];
       if (mappedType !== undefined) {
         if (mappedType === AndroidStyle.BIGTEXT && typeof style.text === 'string') {
-          android.style = { type: AndroidStyle.BIGTEXT, text: style.text };
+          android.style = {
+            type: AndroidStyle.BIGTEXT,
+            text: style.text,
+            ...(typeof style.title === 'string' ? { title: style.title } : {}),
+            ...(typeof style.summary === 'string' ? { summary: style.summary } : {}),
+          };
         } else if (mappedType === AndroidStyle.BIGPICTURE && typeof style.picture === 'string') {
-          android.style = { type: AndroidStyle.BIGPICTURE, picture: style.picture };
+          android.style = {
+            type: AndroidStyle.BIGPICTURE,
+            picture: style.picture,
+            ...(typeof style.title === 'string' ? { title: style.title } : {}),
+            ...(typeof style.summary === 'string' ? { summary: style.summary } : {}),
+            ...(style.largeIcon === null || typeof style.largeIcon === 'string'
+              ? { largeIcon: style.largeIcon }
+              : {}),
+          };
         } else {
           const field = mappedType === AndroidStyle.BIGTEXT ? 'text' : 'picture';
           console.warn(
