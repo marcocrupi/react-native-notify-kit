@@ -4,6 +4,7 @@
 // The shared file is included in the server tsconfig via a relative path.
 export type {
   NotifyKitPressAction,
+  NotifyKitAndroidInput,
   NotifyKitAndroidAction,
   NotifyKitAndroidStyle,
   NotifyKitAndroidConfig,

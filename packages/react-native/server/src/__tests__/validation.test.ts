@@ -371,7 +371,11 @@ describe('buildNotifyKitPayload — Android action pressAction ID uniqueness', (
             android: {
               actions: [
                 { title: 'Reply', pressAction: { id: 'reply' }, input: true },
-                { title: 'Quick reply', pressAction: { id: 'reply' }, input: false },
+                {
+                  title: 'Quick reply',
+                  pressAction: { id: 'reply' },
+                  input: { allowGeneratedReplies: false },
+                },
               ],
             },
           },

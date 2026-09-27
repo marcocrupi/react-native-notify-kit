@@ -217,4 +217,52 @@ describe('Firebase Admin local compatibility', () => {
     expect(payload.sizeBytes).toBe(Buffer.byteLength(JSON.stringify(payload), 'utf8'));
     expect('sizeBytes' in firebaseAdminMessage).toBe(false);
   });
+
+  it('preserves Batch 2B Android interactions through Firebase Admin normalization', () => {
+    const notification = {
+      title: 'Order',
+      body: 'Ready',
+      android: {
+        channelId: 'orders',
+        pressAction: null,
+        actions: [
+          {
+            title: 'Reply',
+            pressAction: {
+              id: 'reply',
+              launchActivity: 'com.example.OrdersActivity',
+              mainComponent: 'Orders',
+              launchActivityFlags: [2, 4],
+            },
+            icon: 'https://cdn.example.com/reply.png',
+            input: {
+              allowFreeFormInput: true,
+              allowGeneratedReplies: false,
+              choices: ['Now', 'Later'],
+              editableChoices: false,
+              placeholder: '',
+            },
+          },
+          { title: 'Done', pressAction: { id: 'done' } },
+        ],
+      },
+    };
+    const payload = buildNotifyKitPayload({
+      token: 'batch-2b-token',
+      notification: notification as NotifyKitPayloadInput['notification'],
+    });
+    const message: Message = deepCopy(payload);
+
+    expect(() => validateMessage(message)).not.toThrow();
+    expect(message.android).toEqual({ priority: 'high' });
+    expect(message.data?.notifee_options).toBe(message.apns?.payload?.notifee_options);
+    expect(JSON.parse(message.data?.notifee_options as string)).toEqual({
+      _v: 1,
+      title: 'Order',
+      body: 'Ready',
+      android: notification.android,
+    });
+    expect(payload.sizeBytes).toBe(Buffer.byteLength(JSON.stringify(payload), 'utf8'));
+    expect('sizeBytes' in message).toBe(false);
+  });
 });

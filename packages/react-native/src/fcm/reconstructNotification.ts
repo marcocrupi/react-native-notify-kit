@@ -20,6 +20,24 @@ const STYLE_TYPE_MAP: Record<string, AndroidStyle | undefined> = {
   BIG_TEXT: AndroidStyle.BIGTEXT,
   BIG_PICTURE: AndroidStyle.BIGPICTURE,
 };
+const ANDROID_INPUT_KEYS = new Set([
+  'allowFreeFormInput',
+  'allowGeneratedReplies',
+  'choices',
+  'editableChoices',
+  'placeholder',
+]);
+
+function rejectReservedPressActionId(value: unknown, path: string): void {
+  if (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    (value as Record<string, unknown>).id === '__NOTIFEE_OPT_OUT__'
+  ) {
+    throw new Error(`${PREFIX} ${path}.id is reserved for explicit null`);
+  }
+}
 
 /**
  * Reconstructs a {@link Notification} object suitable for
@@ -120,10 +138,14 @@ function buildAndroidConfig(
     android.channelId = channelId;
   }
 
-  // pressAction: payload > config default
-  const pressAction = raw?.pressAction ?? config.defaultPressAction;
-  if (pressAction && typeof pressAction === 'object') {
-    android.pressAction = pressAction as NotificationAndroid['pressAction'];
+  // Explicit null opts out of the body tap; only absence uses the configured default.
+  const pressAction = raw?.pressAction === undefined ? config.defaultPressAction : raw.pressAction;
+  rejectReservedPressActionId(pressAction, 'android.pressAction');
+  if (
+    pressAction === null ||
+    (pressAction && typeof pressAction === 'object' && !Array.isArray(pressAction))
+  ) {
+    android.pressAction = pressAction as Exclude<NotificationAndroid['pressAction'], undefined>;
   }
 
   // Direct string copies
@@ -140,9 +162,36 @@ function buildAndroidConfig(
     android.timestamp = raw.timestamp;
   }
 
-  // Actions array — pass through (trust server validation)
+  // Legacy input:false means no reply. Other malformed inputs must fail here:
+  // the normal validator accepts some of them as a default RemoteInput.
   if (Array.isArray(raw?.actions)) {
-    android.actions = raw.actions as NotificationAndroid['actions'];
+    android.actions = raw.actions.map((action, index) => {
+      if (action === null || typeof action !== 'object' || Array.isArray(action)) {
+        return action;
+      }
+      rejectReservedPressActionId(action.pressAction, `android.actions[${index}].pressAction`);
+      const input = action.input;
+      if (input === false) {
+        const withoutInput = { ...action };
+        delete withoutInput.input;
+        return withoutInput;
+      }
+      if (
+        input !== undefined &&
+        input !== true &&
+        (input === null || typeof input !== 'object' || Array.isArray(input))
+      ) {
+        throw new Error(`${PREFIX} android.actions[${index}].input is invalid`);
+      }
+      if (input !== undefined && input !== true) {
+        for (const key of Object.keys(input)) {
+          if (!ANDROID_INPUT_KEYS.has(key)) {
+            throw new Error(`${PREFIX} android.actions[${index}].input.${key} is unsupported`);
+          }
+        }
+      }
+      return action;
+    }) as NonNullable<NotificationAndroid['actions']>;
   }
 
   // Style — enum mapping with defense-in-depth for unknown types

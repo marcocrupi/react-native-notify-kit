@@ -12,15 +12,50 @@
  * that are not for end users.
  */
 
+// Numeric wire values of the public AndroidLaunchActivityFlag enum (0 through 20).
+export type NotifyKitAndroidLaunchActivityFlag =
+  | 0
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 13
+  | 14
+  | 15
+  | 16
+  | 17
+  | 18
+  | 19
+  | 20;
+
 export type NotifyKitPressAction = {
   id: string;
   launchActivity?: string;
+  mainComponent?: string;
+  launchActivityFlags?: NotifyKitAndroidLaunchActivityFlag[];
+};
+
+export type NotifyKitAndroidInput = {
+  allowFreeFormInput?: boolean;
+  allowGeneratedReplies?: boolean;
+  choices?: string[];
+  editableChoices?: boolean;
+  placeholder?: string;
 };
 
 export type NotifyKitAndroidAction = {
   title: string;
   pressAction: NotifyKitPressAction;
-  input?: boolean;
+  icon?: string;
+  input?: true | NotifyKitAndroidInput;
 };
 
 export type NotifyKitAndroidStyle =
@@ -39,7 +74,7 @@ export type NotifyKitAndroidConfig = {
   largeIcon?: string;
   circularLargeIcon?: boolean;
   color?: string;
-  pressAction?: NotifyKitPressAction;
+  pressAction?: NotifyKitPressAction | null;
   actions?: NotifyKitAndroidAction[];
   style?: NotifyKitAndroidStyle;
   showTimestamp?: boolean;

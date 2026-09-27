@@ -19,6 +19,10 @@ export default function validateAndroidPressAction(
     throw new Error("'id' expected a non-empty string value.");
   }
 
+  if (pressAction.id === '__NOTIFEE_OPT_OUT__') {
+    throw new Error("'id' is reserved for an explicit null pressAction.");
+  }
+
   const out: NotificationPressAction = {
     id: pressAction.id,
   };

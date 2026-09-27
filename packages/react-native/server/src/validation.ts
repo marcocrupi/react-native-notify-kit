@@ -4,6 +4,15 @@ const PREFIX = '[react-native-notify-kit/server]';
 const RESERVED_DATA_KEYS = ['notifee_options', 'notifee_data'] as const;
 const BIG_TEXT_STYLE_KEYS = new Set(['type', 'text', 'title', 'summary']);
 const BIG_PICTURE_STYLE_KEYS = new Set(['type', 'picture', 'title', 'summary', 'largeIcon']);
+const PRESS_ACTION_KEYS = new Set(['id', 'launchActivity', 'mainComponent', 'launchActivityFlags']);
+const ACTION_KEYS = new Set(['title', 'pressAction', 'icon', 'input']);
+const INPUT_KEYS = new Set([
+  'allowFreeFormInput',
+  'allowGeneratedReplies',
+  'choices',
+  'editableChoices',
+  'placeholder',
+]);
 
 function err(category: string, message: string): Error {
   return new Error(`${PREFIX} ${category}: ${message}`);
@@ -11,6 +20,119 @@ function err(category: string, message: string): Error {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function rejectUnsupportedKeys(
+  value: Record<string, unknown>,
+  supported: Set<string>,
+  path: string,
+): void {
+  for (const key of Object.keys(value)) {
+    if (!supported.has(key)) {
+      throw err('Android', `${path}.${key} is not supported`);
+    }
+  }
+}
+
+function validatePressAction(value: unknown, path: string): void {
+  if (!isPlainObject(value)) {
+    throw err('Android', `${path} must be an object`);
+  }
+  rejectUnsupportedKeys(value, PRESS_ACTION_KEYS, path);
+  if (!isNonEmptyString(value.id)) {
+    throw err('Android', `${path}.id must be a non-empty string`);
+  }
+  if (value.id === '__NOTIFEE_OPT_OUT__') {
+    throw err('Android', `${path}.id is reserved for explicit null`);
+  }
+  if (value.launchActivity !== undefined && typeof value.launchActivity !== 'string') {
+    throw err('Android', `${path}.launchActivity must be a string`);
+  }
+  if (value.mainComponent !== undefined && typeof value.mainComponent !== 'string') {
+    throw err('Android', `${path}.mainComponent must be a string`);
+  }
+  if (value.launchActivityFlags !== undefined) {
+    if (!Array.isArray(value.launchActivityFlags)) {
+      throw err(
+        'Android',
+        `${path}.launchActivityFlags must be an array of AndroidLaunchActivityFlag values`,
+      );
+    }
+    for (const flag of value.launchActivityFlags) {
+      if (typeof flag !== 'number' || !Number.isInteger(flag) || flag < 0 || flag > 20) {
+        throw err(
+          'Android',
+          `${path}.launchActivityFlags must be an array of AndroidLaunchActivityFlag values`,
+        );
+      }
+    }
+  }
+}
+
+function validateActionInput(value: unknown, path: string): void {
+  if (value === true) {
+    return;
+  }
+  if (!isPlainObject(value)) {
+    throw err('Android', `${path} must be true or an AndroidInput object`);
+  }
+  rejectUnsupportedKeys(value, INPUT_KEYS, path);
+
+  for (const key of ['allowFreeFormInput', 'allowGeneratedReplies', 'editableChoices'] as const) {
+    if (Object.prototype.hasOwnProperty.call(value, key) && typeof value[key] !== 'boolean') {
+      throw err('Android', `${path}.${key} must be a boolean`);
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(value, 'choices')) {
+    if (!Array.isArray(value.choices) || value.choices.length === 0) {
+      throw err('Android', `${path}.choices must be a non-empty array of strings`);
+    }
+    for (const choice of value.choices) {
+      if (typeof choice !== 'string') {
+        throw err('Android', `${path}.choices must be a non-empty array of strings`);
+      }
+    }
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(value, 'placeholder') &&
+    typeof value.placeholder !== 'string'
+  ) {
+    throw err('Android', `${path}.placeholder must be a string`);
+  }
+  if (
+    value.allowFreeFormInput === false &&
+    (!Array.isArray(value.choices) || value.choices.length === 0)
+  ) {
+    throw err('Android', `${path}.allowFreeFormInput requires choices when false`);
+  }
+  if (value.editableChoices === true && value.allowFreeFormInput === false) {
+    throw err('Android', `${path}.editableChoices requires allowFreeFormInput when true`);
+  }
+}
+
+function validateAction(value: unknown, path: string): void {
+  if (!isPlainObject(value)) {
+    throw err('Android', `${path} must be an AndroidAction object`);
+  }
+  rejectUnsupportedKeys(value, ACTION_KEYS, path);
+  if (!isNonEmptyString(value.title)) {
+    throw err('Android', `${path}.title must be a non-empty string`);
+  }
+  validatePressAction(value.pressAction, `${path}.pressAction`);
+  if (value.icon !== undefined && !isNonEmptyString(value.icon)) {
+    throw err('Android', `${path}.icon must be a non-empty string`);
+  }
+  if (value.input !== undefined) {
+    validateActionInput(value.input, `${path}.input`);
+  }
 }
 
 export function validateInput(input: NotifyKitPayloadInput): void {
@@ -77,6 +199,18 @@ export function validateInput(input: NotifyKitPayloadInput): void {
           `FCM data values must be strings. Got ${typeof value} for key '${key}'. Use JSON.stringify() if you need to pass complex values.`,
         );
       }
+    }
+  }
+
+  if (notification.android !== undefined) {
+    if (!isPlainObject(notification.android)) {
+      throw err('Android', 'notification.android must be an object');
+    }
+    if (
+      notification.android.pressAction !== undefined &&
+      notification.android.pressAction !== null
+    ) {
+      validatePressAction(notification.android.pressAction, 'notification.android.pressAction');
     }
   }
 
@@ -179,14 +313,15 @@ export function validateInput(input: NotifyKitPayloadInput): void {
   }
 
   const actions = notification.android?.actions;
-  if (Array.isArray(actions)) {
+  if (actions !== undefined) {
+    if (!Array.isArray(actions)) {
+      throw err('Android', 'notification.android.actions must be an array');
+    }
     const pressActionIds = new Set<string>();
 
-    for (const action of actions) {
-      const pressActionId = action?.pressAction?.id;
-      if (typeof pressActionId !== 'string') {
-        continue;
-      }
+    for (const [index, action] of actions.entries()) {
+      validateAction(action, `notification.android.actions[${index}]`);
+      const pressActionId = action.pressAction.id;
 
       if (pressActionIds.has(pressActionId)) {
         throw err(
