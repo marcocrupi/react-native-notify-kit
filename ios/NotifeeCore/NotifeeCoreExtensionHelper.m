@@ -22,8 +22,17 @@
 
 static NSString *const kNoExtension = @"";
 static NSString *const kImagePathPrefix = @"image/";
+static NSString *const kPayloadDataName = @"notifee_data";
 static NSTimeInterval const kNotifeeExtensionOrchestrationTimeoutInterval = 25.0;
 static NSTimeInterval const kNotifeeExtensionFinalizationReserveInterval = 5.0;
+
+static BOOL IsFcmTransportKey(NSString *key) {
+  return [key isEqualToString:@"aps"] || [key isEqualToString:@"from"] ||
+         [key isEqualToString:@"collapse_key"] || [key isEqualToString:@"message_type"] ||
+         [key isEqualToString:@"message_id"] || [key isEqualToString:@"fcm_options"] ||
+         [key hasPrefix:@"android."] || [key hasPrefix:@"google."] || [key hasPrefix:@"gcm."] ||
+         [key hasPrefix:@"fcm."] || [key hasPrefix:@"notifee"];
+}
 
 @interface NotifeeCoreUtil (NotifeeCoreExtensionHelper)
 + (INSendMessageIntent *)generateSenderIntentForCommunicationNotification:
@@ -33,6 +42,7 @@ static NSTimeInterval const kNotifeeExtensionFinalizationReserveInterval = 5.0;
 
 @interface NotifeeCoreExtensionHelper ()
 - (NSMutableDictionary *)parseNotifeeOptions:(id)payload;
+- (NSDictionary *)parseNotifeeData:(id)payload;
 - (NSTimeInterval)orchestrationTimeoutInterval;
 - (dispatch_time_t)orchestrationCurrentTime;
 - (void)scheduleOrchestrationFinalizerAtDeadline:(dispatch_time_t)deadline
@@ -96,7 +106,9 @@ static NSTimeInterval const kNotifeeExtensionFinalizationReserveInterval = 5.0;
 }
 
 - (void)populateNotificationContentWithRequest:(UNNotificationRequest *_Nullable)request {
-  id notifeeOptionsPayload = self.modifiedContent.userInfo[kPayloadOptionsName];
+  NSDictionary *originalUserInfo = [self.modifiedContent.userInfo copy];
+  NSNumber *originalBadge = self.modifiedContent.badge;
+  id notifeeOptionsPayload = originalUserInfo[kPayloadOptionsName];
   if (!notifeeOptionsPayload) {
     [self deliverNotification];
     return;
@@ -111,8 +123,17 @@ static NSTimeInterval const kNotifeeExtensionFinalizationReserveInterval = 5.0;
 
   options[@"remote"] = @YES;
 
-  // Convert options to Notification and set defaults
-  if (options[@"data"] == nil) {
+  // The server sends custom data outside notifee_options so it can share the
+  // same _v:1 options blob with Android. Preserve every server-supported key
+  // in notification.data, even when its name collides with APNs metadata.
+  NSDictionary *parsedData = [self.helper parseNotifeeData:originalUserInfo[kPayloadDataName]];
+  if (parsedData != nil) {
+    NSMutableDictionary *data = [options[@"data"] isKindOfClass:[NSDictionary class]]
+                                    ? [options[@"data"] mutableCopy]
+                                    : [NSMutableDictionary dictionary];
+    [data addEntriesFromDictionary:parsedData];
+    options[@"data"] = data;
+  } else if (options[@"data"] == nil) {
     options[@"data"] = [NSDictionary dictionary];
   }
 
@@ -130,6 +151,28 @@ static NSTimeInterval const kNotifeeExtensionFinalizationReserveInterval = 5.0;
   }
 
   self.modifiedContent = [NotifeeCore buildNotificationContent:options withTrigger:nil];
+
+  // The builder creates NotifyKit event metadata. Its user data takes legacy
+  // precedence over outer userInfo, while incoming APNs/FCM keys remain
+  // authoritative at the top level.
+  NSMutableDictionary *mergedUserInfo = [originalUserInfo mutableCopy];
+  NSDictionary *builtUserInfo = self.modifiedContent.userInfo;
+  for (id key in builtUserInfo) {
+    if ([key isKindOfClass:[NSString class]] && !IsFcmTransportKey(key) &&
+        ![key isEqualToString:kNotifeeUserInfoNotification] &&
+        ![key isEqualToString:kNotifeeUserInfoTrigger]) {
+      mergedUserInfo[key] = builtUserInfo[key];
+    }
+  }
+  mergedUserInfo[kNotifeeUserInfoNotification] = builtUserInfo[kNotifeeUserInfoNotification];
+  // This NSE path builds withTrigger:nil; no top-level trigger is authoritative.
+  [mergedUserInfo removeObjectForKey:kNotifeeUserInfoTrigger];
+  self.modifiedContent.userInfo = mergedUserInfo;
+  NSDictionary *iosOptions =
+      [options[@"ios"] isKindOfClass:[NSDictionary class]] ? options[@"ios"] : nil;
+  if (originalBadge != nil && iosOptions[@"badgeCount"] == nil) {
+    self.modifiedContent.badge = originalBadge;
+  }
   [self startOrchestrationWithOptions:options];
 }
 
@@ -436,6 +479,35 @@ static NSTimeInterval const kNotifeeExtensionFinalizationReserveInterval = 5.0;
         @"or JSON string: %@",
         NSStringFromClass([payload class]));
   return nil;
+}
+
+- (NSDictionary *)parseNotifeeData:(id)payload {
+  if (payload == nil) {
+    return nil;
+  }
+  if (![payload isKindOfClass:[NSString class]]) {
+    NSLog(@"NotifeeCoreExtensionHelper: Ignoring notifee_data because it is not a JSON string");
+    return @{};
+  }
+
+  NSData *data = [payload dataUsingEncoding:NSUTF8StringEncoding];
+  NSError *error = nil;
+  id jsonObject =
+      data == nil ? nil : [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+  if (![jsonObject isKindOfClass:[NSDictionary class]]) {
+    NSLog(@"NotifeeCoreExtensionHelper: Ignoring invalid notifee_data JSON");
+    return @{};
+  }
+
+  NSMutableDictionary *customData = [NSMutableDictionary dictionary];
+  for (id key in jsonObject) {
+    id value = jsonObject[key];
+    if ([key isKindOfClass:[NSString class]] && [value isKindOfClass:[NSString class]] &&
+        ![key isEqualToString:kPayloadOptionsName] && ![key isEqualToString:kPayloadDataName]) {
+      customData[key] = value;
+    }
+  }
+  return customData;
 }
 
 - (void)populateNotificationContent:(UNNotificationRequest *_Nullable)request

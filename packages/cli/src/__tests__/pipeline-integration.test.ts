@@ -1,36 +1,35 @@
 /**
- * Check 2 — F1→F2→F3 logical round-trip
+ * Check 2 — F1 APNs/data wire decoding
  *
- * Simulates the full pipeline:
- *   F1 (server) builds payload → F3 (NSE) reads apns.payload → F2 (client) reads data field
- * Verifies both reconstruction paths recover the original notification intent.
+ * These static fixtures check serialized fields only. The native helper
+ * harness verifies production NSE parsing and delivered content.
  */
 
 // ---------------------------------------------------------------------------
-// Fake NSE simulator — mimics what NotifeeExtensionHelper does on iOS
+// APNs fixture decoder. This does not execute the production NSE.
 // ---------------------------------------------------------------------------
 
-interface SimulatedNseResult {
+interface DecodedApnsFixture {
   title: string;
   body: string;
   data: Record<string, string> | undefined;
   iosAttachments: Array<{ url: string; identifier?: string }> | undefined;
 }
 
-function fakeNseParse(apnsPayload: {
+function decodeApnsFixture(apnsPayload: {
   aps: { alert: { title: string; body: string }; [k: string]: unknown };
   notifee_options: string;
   notifee_data?: string;
-}): SimulatedNseResult {
-  // NSE reads title/body from aps.alert (APNs delivery)
+}): DecodedApnsFixture {
+  // APNs carries title/body in aps.alert.
   const title = apnsPayload.aps.alert.title;
   const body = apnsPayload.aps.alert.body;
 
-  // NSE reads notifee_options for ios config (attachments, etc.)
+  // NotifyKit config is serialized alongside aps.
   const opts = JSON.parse(apnsPayload.notifee_options);
   const iosAttachments = opts.ios?.attachments;
 
-  // NSE reads notifee_data for user data
+  // Serialized custom data remains a transport blob at this stage.
   let data: Record<string, string> | undefined;
   if (apnsPayload.notifee_data) {
     data = JSON.parse(apnsPayload.notifee_data);
@@ -178,26 +177,26 @@ const FIXTURES = {
 };
 
 // ---------------------------------------------------------------------------
-// Tests — iOS NSE path (background/killed: F3 reads apns.payload)
+// Tests — APNs fixture encoding. Delivery is covered by the native harness.
 // ---------------------------------------------------------------------------
 
-describe('Check 2 — F1→F3 (iOS NSE background path)', () => {
-  it('minimal: NSE reconstructs title/body from aps.alert', () => {
-    const result = fakeNseParse(FIXTURES.minimal.apnsPayload);
+describe('Check 2 — APNs fixture fields', () => {
+  it('minimal: aps.alert contains title/body', () => {
+    const result = decodeApnsFixture(FIXTURES.minimal.apnsPayload);
     expect(result.title).toBe(FIXTURES.minimal.input.title);
     expect(result.body).toBe(FIXTURES.minimal.input.body);
   });
 
-  it('kitchen-sink: NSE reads title/body + data + attachments', () => {
-    const result = fakeNseParse(FIXTURES.kitchenSink.apnsPayload);
+  it('kitchen-sink: wire carries title/body + data + attachments', () => {
+    const result = decodeApnsFixture(FIXTURES.kitchenSink.apnsPayload);
     expect(result.title).toBe(FIXTURES.kitchenSink.input.title);
     expect(result.body).toBe(FIXTURES.kitchenSink.input.body);
     expect(result.data).toEqual(FIXTURES.kitchenSink.input.data);
     expect(result.iosAttachments).toEqual(FIXTURES.kitchenSink.input.iosAttachments);
   });
 
-  it('emoji: NSE preserves emoji through JSON parse', () => {
-    const result = fakeNseParse(FIXTURES.emoji.apnsPayload);
+  it('emoji: APNs fixture preserves emoji through JSON parse', () => {
+    const result = decodeApnsFixture(FIXTURES.emoji.apnsPayload);
     expect(result.title).toBe('🚀');
     expect(result.body).toBe('🎉');
   });

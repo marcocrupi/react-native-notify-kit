@@ -96,6 +96,8 @@ static INSendMessageIntent *HarnessCommunicationIntent(void) {
 
 @implementation NotifeeCore
 
+// Mirror the production builder's data -> userInfo, internal metadata, and
+// ios.badgeCount assignments; other builder behavior is outside this harness.
 + (UNMutableNotificationContent *)buildNotificationContent:(NSDictionary *)notification
                                                withTrigger:(NSDictionary *)trigger {
   @synchronized(gHarnessStateLock) {
@@ -112,6 +114,10 @@ static INSendMessageIntent *HarnessCommunicationIntent(void) {
   if ([notification[@"data"] isKindOfClass:[NSDictionary class]]) {
     content.userInfo = notification[@"data"];
   }
+  NSMutableDictionary *userInfo = [content.userInfo mutableCopy];
+  userInfo[kNotifeeUserInfoNotification] = [notification mutableCopy];
+  content.userInfo = userInfo;
+  content.badge = notification[@"ios"][@"badgeCount"];
 
   @synchronized(gHarnessStateLock) {
     gLastBuiltContent = content;
@@ -334,11 +340,13 @@ static NSArray<NSString *> *HarnessOrchestrationEvents(void) {
 
 static NSObject *HarnessFakeAttachment(void) { return [[NSObject alloc] init]; }
 
-static UNMutableNotificationContent *HarnessContentWithUserInfo(NSDictionary *userInfo) {
+static UNMutableNotificationContent *HarnessContentWithUserInfo(NSDictionary *userInfo,
+                                                                NSNumber *badge) {
   UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
   content.title = kHarnessOriginalTitle;
   content.body = kHarnessOriginalBody;
   content.userInfo = userInfo;
+  content.badge = badge;
   return content;
 }
 
@@ -367,17 +375,15 @@ static void HarnessCaptureBuiltContent(HarnessResult *result) {
   }
 }
 
-static HarnessResult *HarnessStartInvocationWithRequestIdentifier(id options,
-                                                                  BOOL includeOptionsKey,
-                                                                  NSString *requestIdentifier,
-                                                                  BOOL asynchronously) {
+static HarnessResult *HarnessStartInvocationWithUserInfo(NSDictionary *userInfo, NSNumber *badge,
+                                                         NSString *requestIdentifier,
+                                                         BOOL asynchronously) {
   @synchronized(gHarnessStateLock) {
     gLastBuiltNotification = nil;
     gLastBuiltContent = nil;
   }
 
-  NSDictionary *userInfo = includeOptionsKey ? HarnessUserInfoWithOptions(options) : @{};
-  UNMutableNotificationContent *content = HarnessContentWithUserInfo(userInfo);
+  UNMutableNotificationContent *content = HarnessContentWithUserInfo(userInfo, badge);
   UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:requestIdentifier
                                                                         content:content
                                                                         trigger:nil];
@@ -416,6 +422,14 @@ static HarnessResult *HarnessStartInvocationWithRequestIdentifier(id options,
   }
 
   return result;
+}
+
+static HarnessResult *HarnessStartInvocationWithRequestIdentifier(id options,
+                                                                  BOOL includeOptionsKey,
+                                                                  NSString *requestIdentifier,
+                                                                  BOOL asynchronously) {
+  NSDictionary *userInfo = includeOptionsKey ? HarnessUserInfoWithOptions(options) : @{};
+  return HarnessStartInvocationWithUserInfo(userInfo, nil, requestIdentifier, asynchronously);
 }
 
 static HarnessResult *HarnessInvokeWithRequestIdentifier(id options, BOOL includeOptionsKey,
@@ -766,6 +780,324 @@ static void TestUnexpectedNotifeeOptionsTypesFallBackToOriginalContent(void) {
     HarnessAssertOriginalFallback(result, testName);
   }
 
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static NSDictionary *HarnessLoadFcmFixtures(const char *fixturePath) {
+  NSString *path = [NSString stringWithUTF8String:fixturePath];
+  NSData *fixtureData = [NSData dataWithContentsOfFile:path];
+  if (fixtureData == nil) {
+    HarnessFail(@"fcmFixtures", @"could not read server-checked APNs fixtures");
+    return @{};
+  }
+
+  NSError *error = nil;
+  id fixtures = [NSJSONSerialization JSONObjectWithData:fixtureData options:0 error:&error];
+  if (error != nil || ![fixtures isKindOfClass:[NSArray class]]) {
+    HarnessFail(@"fcmFixtures", @"server-checked APNs fixtures are not a JSON array");
+    return @{};
+  }
+
+  NSMutableDictionary *byName = [NSMutableDictionary dictionary];
+  for (id fixture in fixtures) {
+    if (![fixture isKindOfClass:[NSDictionary class]] ||
+        ![fixture[@"name"] isKindOfClass:[NSString class]] ||
+        ![fixture[@"apnsPayload"] isKindOfClass:[NSDictionary class]]) {
+      HarnessFail(@"fcmFixtures", @"invalid server-checked APNs fixture entry");
+      continue;
+    }
+    byName[fixture[@"name"]] = fixture[@"apnsPayload"];
+  }
+  return byName;
+}
+
+static HarnessResult *HarnessInvokeFcmPayload(NSDictionary *apnsPayload) {
+  NSMutableDictionary *userInfo = [apnsPayload mutableCopy];
+  userInfo[@"gcm.message_id"] = @"fcm-message-42";
+  userInfo[@"google.c.sender.id"] = @"sender-7";
+  NSNumber *badge = apnsPayload[@"aps"][@"badge"];
+  return HarnessStartInvocationWithUserInfo(userInfo, badge, kHarnessRequestIdentifier, NO);
+}
+
+static void HarnessAssertFcmMetadata(HarnessResult *result, NSDictionary *apnsPayload,
+                                     NSString *testName) {
+  NSDictionary *userInfo = result.deliveredContent.userInfo;
+  HarnessAssert([userInfo[@"aps"] isEqual:apnsPayload[@"aps"]], testName,
+                @"APNs aps fields were lost or overwritten");
+  HarnessAssert([userInfo[@"notifee_options"] isEqual:apnsPayload[@"notifee_options"]], testName,
+                @"notifee_options transport metadata was lost");
+  HarnessAssert([userInfo[@"notifee_data"] isEqual:apnsPayload[@"notifee_data"]] ||
+                    (userInfo[@"notifee_data"] == nil && apnsPayload[@"notifee_data"] == nil),
+                testName, @"notifee_data transport metadata was lost");
+  HarnessAssert([userInfo[@"gcm.message_id"] isEqualToString:@"fcm-message-42"], testName,
+                @"FCM message id was lost");
+  HarnessAssert([userInfo[@"google.c.sender.id"] isEqualToString:@"sender-7"], testName,
+                @"FCM sender id was lost");
+  HarnessAssert([userInfo[kNotifeeUserInfoNotification] isEqual:result.builtNotification], testName,
+                @"rebuilt NotifyKit event metadata was lost");
+}
+
+static void TestFcmDataAndPositiveBadgeSurviveProductionHelper(NSDictionary *fixtures) {
+  NSString *testName = @"testFcmDataAndPositiveBadgeSurviveProductionHelper";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *payload = fixtures[@"dataPositive"];
+  HarnessAssert(payload != nil, testName, @"missing dataPositive fixture");
+  if (payload == nil) return;
+
+  HarnessResult *result = HarnessInvokeFcmPayload(payload);
+  HarnessAssertDeliveredOnce(result, testName);
+  NSDictionary *expectedData = @{@"orderId" : @"42", @"customer" : @"acme"};
+  HarnessAssert([result.builtNotification[@"data"] isEqual:expectedData], testName,
+                @"production helper did not pass custom data to the builder");
+  HarnessAssert([result.deliveredContent.userInfo[@"orderId"] isEqualToString:@"42"], testName,
+                @"orderId was missing from delivered userInfo");
+  HarnessAssert([result.deliveredContent.userInfo[@"customer"] isEqualToString:@"acme"], testName,
+                @"customer was missing from delivered userInfo");
+  HarnessAssert([result.deliveredContent.badge isEqual:@7], testName,
+                @"positive APNs badge was lost");
+  HarnessAssertFcmMetadata(result, payload, testName);
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestFcmZeroAndAbsentBadgeRemainDistinct(NSDictionary *fixtures) {
+  NSString *testName = @"testFcmZeroAndAbsentBadgeRemainDistinct";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *zeroPayload = fixtures[@"badgeZero"];
+  NSDictionary *absentPayload = fixtures[@"badgeAbsent"];
+  HarnessAssert(zeroPayload != nil && absentPayload != nil, testName,
+                @"missing zero or absent fixture");
+  if (zeroPayload == nil || absentPayload == nil) return;
+
+  HarnessResult *zero = HarnessInvokeFcmPayload(zeroPayload);
+  HarnessResult *absent = HarnessInvokeFcmPayload(absentPayload);
+  HarnessAssertDeliveredOnce(zero, testName);
+  HarnessAssertDeliveredOnce(absent, testName);
+  HarnessAssert([zero.deliveredContent.badge isEqual:@0], testName, @"clear-badge zero was lost");
+  HarnessAssert(absent.deliveredContent.badge == nil, testName, @"absent badge became a number");
+  HarnessAssert([zero.builtNotification[@"data"] isEqual:@{}] &&
+                    [absent.builtNotification[@"data"] isEqual:@{}],
+                testName, @"transport metadata was copied into notification.data");
+  HarnessAssertFcmMetadata(zero, zeroPayload, testName);
+  HarnessAssertFcmMetadata(absent, absentPayload, testName);
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestExplicitLegacyBadgeRemainsAuthoritative(void) {
+  NSString *testName = @"testExplicitLegacyBadgeRemainsAuthoritative";
+  NSInteger failuresBefore = gFailures;
+  for (NSNumber *explicitBadge in @[ @4, @0 ]) {
+    NSDictionary *options = @{
+      @"title" : @"Legacy badge",
+      @"body" : @"Badge precedence",
+      @"ios" : @{@"badgeCount" : explicitBadge}
+    };
+    NSDictionary *userInfo = @{@"aps" : @{@"badge" : @7}, @"notifee_options" : options};
+    HarnessResult *result =
+        HarnessStartInvocationWithUserInfo(userInfo, @7, kHarnessRequestIdentifier, NO);
+    HarnessAssertDeliveredOnce(result, testName);
+    HarnessAssert([result.deliveredContent.badge isEqual:explicitBadge], testName,
+                  @"incoming APNs badge overrode explicit legacy ios.badgeCount");
+  }
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestFcmServerAcceptedCollisionKeysSurviveNestedData(NSDictionary *fixtures) {
+  NSString *testName = @"testFcmServerAcceptedCollisionKeysSurviveNestedData";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *payload = fixtures[@"acceptedCollisionKeys"];
+  HarnessAssert(payload != nil, testName, @"missing acceptedCollisionKeys fixture");
+  if (payload == nil) return;
+
+  HarnessResult *result = HarnessInvokeFcmPayload(payload);
+  HarnessAssertDeliveredOnce(result, testName);
+  NSDictionary *expectedData = @{
+    @"safe" : @"yes",
+    @"aps" : @"custom-aps",
+    @"notifee_extra" : @"custom-namespace",
+    @"__notifee_notification" : @"custom-internal"
+  };
+  HarnessAssert([result.builtNotification[@"data"] isEqual:expectedData], testName,
+                @"Server SDK-accepted collision keys were dropped before reconstruction");
+  HarnessAssert([result.deliveredContent.userInfo[kNotifeeUserInfoNotification][@"data"]
+                    isEqual:expectedData],
+                testName, @"collision keys were lost from delivered NotifyKit notification data");
+  HarnessAssert([result.deliveredContent.userInfo[@"safe"] isEqualToString:@"yes"], testName,
+                @"ordinary custom data was missing at top level");
+  HarnessAssert(result.deliveredContent.userInfo[@"notifee_extra"] == nil, testName,
+                @"reserved namespace key was flattened into top-level userInfo");
+  HarnessAssertFcmMetadata(result, payload, testName);
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestFcmReservedDataCannotReplaceTransportMetadata(NSDictionary *fixtures) {
+  NSString *testName = @"testFcmReservedDataCannotReplaceTransportMetadata";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *basePayload = fixtures[@"dataPositive"];
+  HarnessAssert(basePayload != nil, testName, @"missing dataPositive fixture");
+  if (basePayload == nil) return;
+
+  NSMutableDictionary *payload = [basePayload mutableCopy];
+  NSMutableDictionary *aps = [payload[@"aps"] mutableCopy];
+  aps[@"content-available"] = @1;
+  payload[@"aps"] = aps;
+  payload[@"notifee_data"] =
+      @"{\"safe\":\"yes\",\"aps\":\"spoof\",\"notifee_options\":\"spoof\",\"notifee_data\":"
+      @"\"spoof\",\"gcm.message_id\":\"spoof\",\"fcm_options\":\"spoof\",\"notifee_extra\":"
+      @"\"spoof\",\"__notifee_notification\":\"spoof\",\"__notifee_trigger\":\"spoof\"}";
+  HarnessResult *result = HarnessInvokeFcmPayload(payload);
+  HarnessAssertDeliveredOnce(result, testName);
+  NSDictionary *expectedData = @{
+    @"safe" : @"yes",
+    @"aps" : @"spoof",
+    @"gcm.message_id" : @"spoof",
+    @"fcm_options" : @"spoof",
+    @"notifee_extra" : @"spoof",
+    @"__notifee_notification" : @"spoof",
+    @"__notifee_trigger" : @"spoof"
+  };
+  HarnessAssert([result.builtNotification[@"data"] isEqual:expectedData], testName,
+                @"server-supported collision keys were lost or reserved blobs became user data");
+  HarnessAssert([result.deliveredContent.userInfo[@"safe"] isEqualToString:@"yes"], testName,
+                @"safe custom data was lost while merging collisions");
+  HarnessAssert(result.deliveredContent.userInfo[@"fcm_options"] == nil &&
+                    result.deliveredContent.userInfo[@"notifee_extra"] == nil,
+                testName, @"transport-looking keys were flattened into userInfo");
+  HarnessAssert([result.deliveredContent.userInfo[@"aps"] isEqual:aps], testName,
+                @"custom aps replaced the received APNs dictionary");
+  HarnessAssert(result.deliveredContent.userInfo[kNotifeeUserInfoTrigger] == nil, testName,
+                @"serialized data injected NotifyKit trigger metadata");
+  HarnessAssertFcmMetadata(result, payload, testName);
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestFcmDataMergeOrderAndReservedOptionsKeys(void) {
+  NSString *testName = @"testFcmDataMergeOrderAndReservedOptionsKeys";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *options = @{
+    @"title" : @"Merge",
+    @"body" : @"Order",
+    @"data" : @{
+      @"safe" : @"legacy",
+      @"aps" : @"nested-custom",
+      @"notifee_options" : @"spoof",
+      @"notifee_data" : @"spoof"
+    }
+  };
+  NSDictionary *userInfo = @{
+    @"aps" : @{@"alert" : @{@"title" : @"Merge", @"body" : @"Order"}},
+    @"notifee_options" : options,
+    @"notifee_data" : @"{\"safe\":\"serialized\",\"extra\":\"yes\"}",
+    @"safe" : @"outer",
+    @"extra" : @"outer-extra"
+  };
+  HarnessResult *result =
+      HarnessStartInvocationWithUserInfo(userInfo, nil, kHarnessRequestIdentifier, NO);
+  HarnessAssertDeliveredOnce(result, testName);
+  NSDictionary *expectedData = @{
+    @"safe" : @"serialized",
+    @"extra" : @"yes",
+    @"aps" : @"nested-custom",
+    @"notifee_options" : @"spoof",
+    @"notifee_data" : @"spoof"
+  };
+  HarnessAssert([result.builtNotification[@"data"] isEqual:expectedData], testName,
+                @"serialized data did not override legacy data or legacy keys were removed");
+  HarnessAssert([result.deliveredContent.userInfo[@"aps"] isEqual:userInfo[@"aps"]], testName,
+                @"legacy custom aps replaced APNs metadata");
+  HarnessAssert([result.deliveredContent.userInfo[@"safe"] isEqualToString:@"serialized"], testName,
+                @"serialized custom data was not delivered");
+  HarnessAssert([result.deliveredContent.userInfo[@"extra"] isEqualToString:@"yes"], testName,
+                @"serialized custom data did not take precedence over outer userInfo");
+  HarnessAssert(
+      [result.deliveredContent.userInfo[@"notifee_options"] isEqual:options] &&
+          [result.deliveredContent.userInfo[@"notifee_data"] isEqual:userInfo[@"notifee_data"]],
+      testName, @"serialized data replaced transport metadata");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestLegacyOptionsDataUnchangedWithoutFcmBlob(void) {
+  NSString *testName = @"testLegacyOptionsDataUnchangedWithoutFcmBlob";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *legacyData = @{
+    @"safe" : @"legacy",
+    @"aps" : @"legacy-custom",
+    @"gcm.message_id" : @"legacy-custom",
+    @"notifee_options" : @"legacy-custom",
+    @"notifee_data" : @"legacy-custom",
+    @"__notifee_notification" : @"legacy-custom",
+    @"__notifee_trigger" : @"legacy-trigger"
+  };
+  NSDictionary *options = @{@"title" : @"Legacy", @"body" : @"Data", @"data" : legacyData};
+  NSDictionary *userInfo = @{
+    @"aps" : @{@"alert" : @"APNs"},
+    @"gcm.message_id" : @"transport-id",
+    @"notifee_options" : options,
+    @"__notifee_trigger" : @"outer-trigger",
+    @"safe" : @"outer",
+    @"outerOnly" : @"outer"
+  };
+  HarnessResult *result =
+      HarnessStartInvocationWithUserInfo(userInfo, nil, kHarnessRequestIdentifier, NO);
+  HarnessAssertDeliveredOnce(result, testName);
+  HarnessAssert([result.builtNotification[@"data"] isEqual:legacyData], testName,
+                @"NSE changed preexisting legacy options.data without an FCM data blob");
+  HarnessAssert([result.deliveredContent.userInfo[@"safe"] isEqualToString:@"legacy"], testName,
+                @"outer userInfo overrode legacy options.data in delivered content");
+  HarnessAssert([result.deliveredContent.userInfo[@"outerOnly"] isEqualToString:@"outer"], testName,
+                @"unrelated outer userInfo data was lost");
+  HarnessAssert([result.deliveredContent.userInfo[@"aps"] isEqual:userInfo[@"aps"]] &&
+                    [result.deliveredContent.userInfo[@"gcm.message_id"]
+                        isEqual:userInfo[@"gcm.message_id"]] &&
+                    [result.deliveredContent.userInfo[@"notifee_options"] isEqual:options] &&
+                    result.deliveredContent.userInfo[@"notifee_data"] == nil,
+                testName, @"legacy data replaced APNs or FCM transport metadata");
+  HarnessAssert([result.deliveredContent.userInfo[kNotifeeUserInfoNotification]
+                    isEqual:result.builtNotification],
+                testName, @"legacy data replaced NotifyKit event metadata");
+  HarnessAssert(result.deliveredContent.userInfo[kNotifeeUserInfoTrigger] == nil, testName,
+                @"legacy data injected NotifyKit trigger metadata");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestAbsentOptionsDataRetainsOuterUserInfo(void) {
+  NSString *testName = @"testAbsentOptionsDataRetainsOuterUserInfo";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *options = @{@"title" : @"No data", @"body" : @"Outer only"};
+  NSDictionary *userInfo = @{
+    @"aps" : @{@"alert" : @"APNs"},
+    @"notifee_options" : options,
+    @"__notifee_trigger" : @"outer-trigger",
+    @"safe" : @"outer"
+  };
+  HarnessResult *result =
+      HarnessStartInvocationWithUserInfo(userInfo, nil, kHarnessRequestIdentifier, NO);
+  HarnessAssertDeliveredOnce(result, testName);
+  HarnessAssert([result.builtNotification[@"data"] isEqual:@{}], testName,
+                @"absent options.data was populated from outer metadata");
+  HarnessAssert([result.deliveredContent.userInfo[@"safe"] isEqualToString:@"outer"] &&
+                    [result.deliveredContent.userInfo[@"aps"] isEqual:userInfo[@"aps"]],
+                testName, @"outer userInfo was lost when options.data was absent");
+  HarnessAssert(result.deliveredContent.userInfo[kNotifeeUserInfoTrigger] == nil, testName,
+                @"outer userInfo injected NotifyKit trigger metadata absent from builder");
+  HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestMalformedFcmDataPreservesNotification(NSDictionary *fixtures) {
+  NSString *testName = @"testMalformedFcmDataPreservesNotification";
+  NSInteger failuresBefore = gFailures;
+  NSDictionary *basePayload = fixtures[@"badgeZero"];
+  HarnessAssert(basePayload != nil, testName, @"missing badgeZero fixture");
+  if (basePayload == nil) return;
+
+  NSMutableDictionary *payload = [basePayload mutableCopy];
+  payload[@"notifee_data"] = @"{broken";
+  HarnessResult *result = HarnessInvokeFcmPayload(payload);
+  HarnessAssertDeliveredOnce(result, testName);
+  HarnessAssert([result.builtNotification[@"data"] isEqual:@{}], testName,
+                @"malformed data was passed to the builder");
+  HarnessAssert([result.deliveredContent.badge isEqual:@0], testName,
+                @"malformed data changed clear-badge semantics");
+  HarnessAssertFcmMetadata(result, payload, testName);
   HarnessFinishTest(testName, failuresBefore);
 }
 
@@ -1287,7 +1619,7 @@ static void TestOverlappingCommunicationRequestsRemainIsolated(void) {
   HarnessFinishTest(testName, failuresBefore);
 }
 
-int main(void) {
+int main(int argc, const char *argv[]) {
   @autoreleasepool {
     gHarnessStateLock = [[NSObject alloc] init];
     gOrchestrationEvents = [NSMutableArray new];
@@ -1301,6 +1633,20 @@ int main(void) {
     TestInvalidJsonStringFallsBackToOriginalContent();
     TestJsonStringArrayFallsBackToOriginalContent();
     TestUnexpectedNotifeeOptionsTypesFallBackToOriginalContent();
+    if (argc != 2) {
+      HarnessFail(@"fcmFixtures", @"expected server-checked APNs fixture path");
+    } else {
+      NSDictionary *fcmFixtures = HarnessLoadFcmFixtures(argv[1]);
+      TestFcmDataAndPositiveBadgeSurviveProductionHelper(fcmFixtures);
+      TestFcmZeroAndAbsentBadgeRemainDistinct(fcmFixtures);
+      TestExplicitLegacyBadgeRemainsAuthoritative();
+      TestFcmServerAcceptedCollisionKeysSurviveNestedData(fcmFixtures);
+      TestFcmReservedDataCannotReplaceTransportMetadata(fcmFixtures);
+      TestFcmDataMergeOrderAndReservedOptionsKeys();
+      TestLegacyOptionsDataUnchangedWithoutFcmBlob();
+      TestAbsentOptionsDataRetainsOuterUserInfo();
+      TestMalformedFcmDataPreservesNotification(fcmFixtures);
+    }
     TestSequentialRequestsRemainIndependent();
     TestAttachmentCompletionIsOneShotPerRequest();
     TestLateAttachmentCompletionUsesOriginalRequestContext();

@@ -1,7 +1,6 @@
 import { buildNotifyKitPayload } from '../buildPayload';
 import type { NotifyKitPayloadInput } from '../types';
 import { parseAndroidPayload } from './helpers/fakeAndroidHandler';
-import { parseIosPayload } from './helpers/fakeIosNse';
 
 // Freeze Date.now for deterministic TTL/expiration
 const realNow = Date.now;
@@ -100,50 +99,46 @@ const fixtures: Record<string, NotifyKitPayloadInput> = {
 };
 
 // ---------------------------------------------------------------------------
-// Check 3 — iOS NSE round-trip
+// Check 3 — iOS APNs wire fields. The native helper harness consumes
+// Server SDK-checked APNs fixtures to verify delivered NSE content.
 // ---------------------------------------------------------------------------
 
-describe('Check 3 — iOS NSE round-trip', () => {
+describe('Check 3 — iOS APNs wire fields', () => {
   for (const [name, input] of Object.entries(fixtures)) {
-    it(`Fixture "${name}": iOS NSE reconstructs title, body, and data correctly`, () => {
+    it(`Fixture "${name}": APNs carries title, body, and optional data`, () => {
       const output = buildNotifyKitPayload(input);
-      const reconstructed = parseIosPayload(output.apns.payload);
+      const apnsPayload = output.apns.payload;
 
-      // Title and body always round-trip through aps.alert
-      expect(reconstructed.title).toBe(input.notification.title);
-      expect(reconstructed.body).toBe(input.notification.body);
+      expect(apnsPayload.aps.alert.title).toBe(input.notification.title);
+      expect(apnsPayload.aps.alert.body).toBe(input.notification.body);
 
-      // Data round-trips through notifee_data
       if (input.notification.data) {
-        expect(reconstructed.data).toEqual(input.notification.data);
+        expect(JSON.parse(apnsPayload.notifee_data as string)).toEqual(input.notification.data);
       } else {
-        expect(reconstructed.data).toBeUndefined();
+        expect(apnsPayload.notifee_data).toBeUndefined();
       }
     });
 
     if (input.notification.ios) {
-      it(`Fixture "${name}": iOS NSE reconstructs ios config fields`, () => {
+      it(`Fixture "${name}": APNs and notifee_options carry iOS config`, () => {
         const output = buildNotifyKitPayload(input);
-        const reconstructed = parseIosPayload(output.apns.payload);
+        const apnsPayload = output.apns.payload;
+        const serializedOptions = JSON.parse(apnsPayload.notifee_options);
         const iosInput = input.notification.ios!;
 
-        if (iosInput.sound) expect(reconstructed.ios.sound).toBe(iosInput.sound);
-        if (iosInput.categoryId) expect(reconstructed.ios.categoryId).toBe(iosInput.categoryId);
-        if (iosInput.threadId) expect(reconstructed.ios.threadId).toBe(iosInput.threadId);
-        if (iosInput.interruptionLevel) {
-          expect(reconstructed.ios.interruptionLevel).toBe(iosInput.interruptionLevel);
-        }
-        if (iosInput.attachments) {
-          expect(reconstructed.ios.attachments).toEqual(iosInput.attachments);
-        }
+        expect(serializedOptions.ios).toEqual(iosInput);
+        if (iosInput.sound) expect(apnsPayload.aps.sound).toBe(iosInput.sound);
+        if (iosInput.categoryId) expect(apnsPayload.aps.category).toBe(iosInput.categoryId);
+        if (iosInput.threadId) expect(apnsPayload.aps['thread-id']).toBe(iosInput.threadId);
+        if (iosInput.attachments)
+          expect(serializedOptions.ios.attachments).toEqual(iosInput.attachments);
       });
     }
 
     if (input.options?.iosBadgeCount !== undefined) {
-      it(`Fixture "${name}": iOS NSE reconstructs badge count`, () => {
+      it(`Fixture "${name}": APNs carries badge count`, () => {
         const output = buildNotifyKitPayload(input);
-        const reconstructed = parseIosPayload(output.apns.payload);
-        expect(reconstructed.iosBadgeCount).toBe(input.options!.iosBadgeCount);
+        expect(output.apns.payload.aps.badge).toBe(input.options!.iosBadgeCount);
       });
     }
   }

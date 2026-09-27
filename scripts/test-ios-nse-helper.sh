@@ -34,4 +34,4 @@ xcrun --sdk macosx clang \
   -framework Intents \
   -o "$OUTPUT_BINARY"
 
-"$OUTPUT_BINARY"
+"$OUTPUT_BINARY" "$REPO_ROOT/ios/NotifeeCoreTests/fixtures/fcm-mode-ios-batch1.json"

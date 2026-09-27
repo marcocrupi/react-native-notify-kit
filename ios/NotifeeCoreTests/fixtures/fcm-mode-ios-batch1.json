@@ -1,0 +1,112 @@
+[
+  {
+    "name": "dataPositive",
+    "input": {
+      "token": "fixture-token",
+      "notification": {
+        "title": "Order",
+        "body": "Ready",
+        "data": {
+          "orderId": "42",
+          "customer": "acme"
+        },
+        "ios": {
+          "sound": "chime.caf",
+          "categoryId": "orders",
+          "threadId": "order-42",
+          "interruptionLevel": "timeSensitive"
+        }
+      },
+      "options": {
+        "iosBadgeCount": 7
+      }
+    },
+    "apnsPayload": {
+      "aps": {
+        "alert": {
+          "title": "Order",
+          "body": "Ready"
+        },
+        "mutable-content": 1,
+        "sound": "chime.caf",
+        "category": "orders",
+        "thread-id": "order-42",
+        "interruption-level": "time-sensitive",
+        "badge": 7
+      },
+      "notifee_options": "{\"_v\":1,\"title\":\"Order\",\"body\":\"Ready\",\"ios\":{\"sound\":\"chime.caf\",\"categoryId\":\"orders\",\"threadId\":\"order-42\",\"interruptionLevel\":\"timeSensitive\"}}",
+      "notifee_data": "{\"orderId\":\"42\",\"customer\":\"acme\"}"
+    }
+  },
+  {
+    "name": "badgeZero",
+    "input": {
+      "token": "fixture-token",
+      "notification": {
+        "title": "Clear",
+        "body": "Badge"
+      },
+      "options": {
+        "iosBadgeCount": 0
+      }
+    },
+    "apnsPayload": {
+      "aps": {
+        "alert": {
+          "title": "Clear",
+          "body": "Badge"
+        },
+        "mutable-content": 1,
+        "badge": 0
+      },
+      "notifee_options": "{\"_v\":1,\"title\":\"Clear\",\"body\":\"Badge\"}"
+    }
+  },
+  {
+    "name": "badgeAbsent",
+    "input": {
+      "token": "fixture-token",
+      "notification": {
+        "title": "Plain",
+        "body": "Alert"
+      }
+    },
+    "apnsPayload": {
+      "aps": {
+        "alert": {
+          "title": "Plain",
+          "body": "Alert"
+        },
+        "mutable-content": 1
+      },
+      "notifee_options": "{\"_v\":1,\"title\":\"Plain\",\"body\":\"Alert\"}"
+    }
+  },
+  {
+    "name": "acceptedCollisionKeys",
+    "input": {
+      "token": "fixture-token",
+      "notification": {
+        "title": "Collision",
+        "body": "Boundary",
+        "data": {
+          "safe": "yes",
+          "aps": "custom-aps",
+          "notifee_extra": "custom-namespace",
+          "__notifee_notification": "custom-internal"
+        }
+      }
+    },
+    "apnsPayload": {
+      "aps": {
+        "alert": {
+          "title": "Collision",
+          "body": "Boundary"
+        },
+        "mutable-content": 1
+      },
+      "notifee_options": "{\"_v\":1,\"title\":\"Collision\",\"body\":\"Boundary\"}",
+      "notifee_data": "{\"safe\":\"yes\",\"aps\":\"custom-aps\",\"notifee_extra\":\"custom-namespace\",\"__notifee_notification\":\"custom-internal\"}"
+    }
+  }
+]
