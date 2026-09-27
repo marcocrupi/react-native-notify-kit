@@ -66,7 +66,7 @@ Builds the iOS APNs half only: `{ headers, payload }` with the `aps` object, `no
 
 ### `serializeNotifeeOptions(input): string`
 
-Returns the JSON-serialized `notifee_options` blob: `{ _v: 1, title, body, subtitle?, android?, ios? }`. The optional `subtitle` is top-level; the supported Android fields include `circularLargeIcon`, `BIG_TEXT` `title` / `summary`, and `BIG_PICTURE` `title` / `summary` / `largeIcon` (string or explicit `null`). Use when you want the blob string directly (e.g., to send via a non-FCM transport while preserving the wire contract).
+Returns the JSON-serialized `notifee_options` blob: `{ _v: 1, title, body, subtitle?, android?, ios? }`. The optional `subtitle` is top-level; supported Android fields include `circularLargeIcon`, `BIG_TEXT` `title` / `summary`, `BIG_PICTURE` `title` / `summary` / `largeIcon` (string or explicit `null`), body `pressAction` (including explicit `null`), and actions with `icon`, the supported press-action fields, and `input: true` or an `AndroidInput` object. See the [interaction contract](../../../docs/fcm-mode.mdx#body-press-actions-and-action-buttons) for the exact fields and reply semantics. Use when you want the blob string directly (e.g., to send via a non-FCM transport while preserving the wire contract).
 
 ### Types
 
@@ -121,10 +121,11 @@ All validation happens synchronously in `buildNotifyKitPayload`. Errors thrown a
 - `options.ttl` must be a **positive** integer in seconds (zero is rejected — omit to use FCM default).
 - iOS attachments require `https://` URLs.
 - `options.iosBadgeCount` must be a non-negative integer.
+- Android body `pressAction` accepts absence, explicit `null`, or a supported object. Actions require a `title` and press action; `input: false` is rejected for new payloads.
 
 ## Limitations
 
-- **Limited deep runtime validation of `notification.android` / `notification.ios` sub-objects.** The Server SDK validates `android.circularLargeIcon` and the supported Android style shape and fields, alongside existing checks such as iOS attachment URLs and duplicate Android action IDs. Other nested fields (`channelId`, `smallIcon`, `color`, `pressAction`, `sound`, `categoryId`, etc.) rely on TypeScript structural typing. JavaScript consumers bypassing TypeScript should validate them. Broader deep runtime validation is planned.
+- **Limited deep runtime validation of `notification.android` / `notification.ios` sub-objects.** The Server SDK validates `android.circularLargeIcon`, the supported Android style shape and fields, body and action press actions, action icons and inputs, alongside checks such as iOS attachment URLs and duplicate Android action IDs. Other nested fields (`channelId`, `smallIcon`, `color`, `sound`, `categoryId`, etc.) rely on TypeScript structural typing. JavaScript consumers bypassing TypeScript should validate them. Broader deep runtime validation is planned.
 - **Style types are limited to `BIG_TEXT` and `BIG_PICTURE`.** `MESSAGING`, `INBOX`, and `CALL` styles are available via the client `displayNotification` but not yet wired through the server SDK — their richer schemas (person avatars, reply actions) need forward-compatible versioning before the wire contract is frozen.
 - **FCM 4 KB hard limit.** The serialized message is capped at 4 KB by FCM. The SDK warns at ~3500 bytes — reduce `data` keys or body length, or switch to a nudge-then-fetch pattern for large payloads.
 

@@ -531,8 +531,8 @@ type NotifyKitAndroidConfig = {
   largeIcon?: string;
   circularLargeIcon?: boolean;
   color?: string;
-  pressAction?: { id: string; launchActivity?: string };
-  actions?: Array<{ title: string; pressAction: { id; launchActivity? }; input?: boolean }>;
+  pressAction?: NotifyKitPressAction | null;
+  actions?: NotifyKitAndroidAction[];
   style?:
     | { type: 'BIG_TEXT'; text: string; title?: string; summary?: string }
     | {
@@ -544,6 +544,28 @@ type NotifyKitAndroidConfig = {
       };
   showTimestamp?: boolean; // show timestamp when timestamp is set
   timestamp?: number; // milliseconds; used for display and notification-panel sorting
+};
+
+type NotifyKitPressAction = {
+  id: string;
+  launchActivity?: string;
+  mainComponent?: string;
+  launchActivityFlags?: AndroidLaunchActivityFlag[]; // numeric enum values 0–20
+};
+
+type NotifyKitAndroidAction = {
+  title: string;
+  pressAction: NotifyKitPressAction;
+  icon?: string;
+  input?:
+    | true
+    | {
+        allowFreeFormInput?: boolean;
+        allowGeneratedReplies?: boolean;
+        choices?: string[];
+        editableChoices?: boolean;
+        placeholder?: string;
+      };
 };
 
 type NotifyKitIosConfig = {
@@ -571,7 +593,7 @@ These are the Batch 2A additions to the supported FCM Mode input, `_v: 1` wire b
 | `notification.android.style` `BIG_TEXT`    | Required `text`; optional `title` and `summary` retained                                   | Android expanded style; visual presentation belongs to Android.                                                        |
 | `notification.android.style` `BIG_PICTURE` | Required `picture`; optional `title`, `summary`, and `largeIcon` (string or null) retained | Android expanded style; `largeIcon: null` hides the expanded large icon and differs from omission.                     |
 
-This is a limited FCM Mode contract, not full parity with the public `Notification` / `NotificationAndroid` APIs. The Batch 2A fields do not add style types or change action and press semantics.
+This is a limited FCM Mode contract, not full parity with the public `Notification` / `NotificationAndroid` APIs. Batch 2B adds only the [Android interactions described below](#body-press-actions-and-action-buttons); it does not add further style types or other notification fields.
 
 The returned value is a Firebase Admin-compatible message with exactly one routing target:
 
@@ -672,6 +694,10 @@ Every error is thrown synchronously from `buildNotifyKitPayload`. Error messages
 | `data` values must be strings                    | `Validation: FCM data values must be strings. Got <type> for key '<key>'. Use JSON.stringify() if you need to pass complex values.`                  |
 | Reserved keys rejected                           | `Validation: 'notifee_options' and 'notifee_data' are reserved keys and cannot be used in notification.data`                                         |
 | `android.circularLargeIcon` boolean              | `Android: notification.android.circularLargeIcon must be a boolean when provided`                                                                    |
+| Body `android.pressAction` object                | `Android: notification.android.pressAction.id must be a non-empty string` or a field-specific error; explicit `null` is accepted                     |
+| Action shape and `pressAction`                   | `Android: notification.android.actions must be an array` or an action/press-action field-specific error                                              |
+| Action `icon`                                    | `Android: notification.android.actions[<index>].icon must be a non-empty string`                                                                     |
+| Action `input`                                   | `Android: notification.android.actions[<index>].input must be true or an AndroidInput object` or an input-field-specific error                       |
 | `android.style` supported object and type        | `Android: notification.android.style must be a supported style object` or `Android: notification.android.style type must be BIG_TEXT or BIG_PICTURE` |
 | `android.style` supported keys only              | `Android: notification.android.style.<key> is not supported`                                                                                         |
 | `BIG_TEXT.text` / `BIG_PICTURE.picture` required | `Android: notification.android.style.text must be a non-empty string` or `Android: notification.android.style.picture must be a non-empty string`    |
@@ -1045,7 +1071,7 @@ If `hasNotifeeOptions=false`, the server didn't send a NotifyKit-shaped payload 
 
 The server SDK always emits an Android data-only message — there's no `notification` field in the FCM payload. That's what makes `setBackgroundMessageHandler` / `onMessage` fire instead of the FCM SDK auto-displaying.
 
-Supported Android notification fields, including `showTimestamp`, `timestamp`, `circularLargeIcon`, and the supported style fields, are serialized inside the `_v: 1` `notifee_options` blob and reconstructed client-side by `handleFcmMessage`. They are not mapped to Firebase Admin's `android.notification` object.
+Supported Android notification fields, including `showTimestamp`, `timestamp`, `circularLargeIcon`, supported styles, and the interaction fields below, are serialized inside the `_v: 1` `notifee_options` blob and reconstructed client-side by `handleFcmMessage`. They are not mapped to Firebase Admin's `android.notification` object.
 
 ### Channels are your responsibility
 
@@ -1100,16 +1126,61 @@ android: {
 
 For `BIG_TEXT`, send `{ type: 'BIG_TEXT', text: 'Long text', title: 'Expanded title', summary: 'Expanded summary' }`; the client maps the type to `AndroidStyle.BIGTEXT` and keeps the other fields. `title` and `summary` apply to the expanded style. For `BIG_PICTURE`, a string `style.largeIcon` overrides the main `android.largeIcon` while expanded; explicit `null` hides it while expanded; omission leaves that override unset. `circularLargeIcon: false` is retained separately from an omitted field, even though the default is also non-circular. Actual layout and image rendering belong to Android.
 
-Other `AndroidStyle` values (`MESSAGING`, `INBOX`, `CALL`) aren't wired through the server SDK. Build them yourself via `displayNotification` until then. Batch 2A does not extend action or press behavior.
+Other `AndroidStyle` values (`MESSAGING`, `INBOX`, `CALL`) aren't wired through the server SDK. Build them yourself via `displayNotification` until then.
 
-### Action buttons
+### Body press actions and action buttons
+
+For `notification.android.pressAction`:
+
+| Value  | Body-tap behavior                                                                                                                           |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Absent | Keeps the FCM Mode `defaultPressAction` if configured; otherwise the normal Android default opens the app.                                  |
+| `null` | Explicitly disables the body tap, even when a default is configured. No body-tap app launch or `PRESS` event; action buttons remain usable. |
+| Object | Uses its `id` and optional `launchActivity`, `mainComponent`, and `launchActivityFlags`.                                                    |
+
+The same four object fields are supported on each action's `pressAction`. `launchActivityFlags` takes public `AndroidLaunchActivityFlag` enum values; `mainComponent` requires an appropriately registered React component and native setup. An alternate `mainComponent` passed contract and client checks but was **not run** on the physical device.
+
+```ts
+// Explicitly disable the notification body tap:
+android: { channelId: 'orders', pressAction: null }
+
+// Or configure it (after registering Orders and completing its native setup):
+android: {
+  channelId: 'orders',
+  pressAction: {
+    id: 'open-order',
+    launchActivity: 'default',
+    mainComponent: 'Orders',
+    launchActivityFlags: [AndroidLaunchActivityFlag.CLEAR_TOP],
+  },
+}
+```
+
+Actions require a `title` and `pressAction`. Optional `icon` is a local or remote icon path; Android may omit action icons from the notification shade. The Pixel 9 Pro XL / Android 17 qualification confirmed the icon's data/native path, not its visual display.
+
+For action replies, omit `input` for no reply, set `input: true` for the standard free-text direct reply, or provide an `AndroidInput` object to configure it. The supported object fields are:
+
+| `AndroidInput` field              | Meaning                                                                            |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `allowFreeFormInput?: boolean`    | Allows typed text; defaults to `true`. If `false`, supply non-empty `choices`.     |
+| `allowGeneratedReplies?: boolean` | Allows device-generated suggestions when available; defaults to `true`.            |
+| `choices?: string[]`              | Non-empty list of suggested or required reply choices.                             |
+| `editableChoices?: boolean`       | Controls whether a selected choice can be edited; `true` requires free-form input. |
+| `placeholder?: string`            | Text shown in the reply field.                                                     |
+
+The Server SDK rejects a new `input: false`. For compatibility only, client reconstruction treats `input: false` in an older `_v: 1` blob as absent input. Other malformed legacy input values are not silently discarded; reconstruction or normal validation rejects them.
 
 ```ts
 android: {
   actions: [
-    { title: 'Accept',  pressAction: { id: 'accept-order' } },
+    { title: 'Accept', pressAction: { id: 'accept-order' }, icon: 'ic_accept' },
     { title: 'Decline', pressAction: { id: 'decline-order' } },
-    { title: 'Reply',   pressAction: { id: 'reply' }, input: true },
+    { title: 'Reply', pressAction: { id: 'reply' }, input: true },
+    {
+      title: 'Choose',
+      pressAction: { id: 'choose' },
+      input: { allowFreeFormInput: false, choices: ['Now', 'Later'] },
+    },
   ],
 }
 ```
@@ -1156,10 +1227,20 @@ messaging().onMessage(async remoteMessage => {
     "largeIcon": "https://cdn.example.com/avatar.png",
     "circularLargeIcon": false,
     "color": "#4CAF50",
-    "pressAction": { "id": "open-order", "launchActivity": "default" },
+    "pressAction": {
+      "id": "open-order",
+      "launchActivity": "default",
+      "mainComponent": "Orders",
+      "launchActivityFlags": [4],
+    },
     "actions": [
-      { "title": "Accept", "pressAction": { "id": "accept" } },
-      { "title": "Decline", "pressAction": { "id": "decline" }, "input": true },
+      { "title": "Accept", "pressAction": { "id": "accept" }, "icon": "ic_accept" },
+      { "title": "Reply", "pressAction": { "id": "reply" }, "input": true },
+      {
+        "title": "Choose",
+        "pressAction": { "id": "choose" },
+        "input": { "allowFreeFormInput": false, "choices": ["Now", "Later"] },
+      },
     ],
     "style": {
       "type": "BIG_TEXT",
@@ -1183,7 +1264,7 @@ messaging().onMessage(async remoteMessage => {
 
 ### `_v` version field
 
-Every blob still carries `_v: 1` with Batch 2A fields; the wire version did not change. When a future client encounters `_v > 1`, it parses what it understands and logs:
+Every blob still carries `_v: 1`, including Batch 2A and 2B fields; the wire version did not change. When a future client encounters `_v > 1`, it parses what it understands and logs:
 
 ```text
 [react-native-notify-kit] notifee_options version 2 is newer than supported version 1. Display may be incomplete.
@@ -1368,7 +1449,7 @@ If you're seeing `null` unexpectedly, check `remoteMessage.data.notifee_options`
 
 ### Notification appears but tap doesn't open app
 
-On Android, set a `pressAction`:
+An absent Android body `pressAction` uses the configured FCM Mode default, if present, or the normal app-opening default. If the payload explicitly contains `pressAction: null`, the body tap is intentionally disabled; remove `null` or send a press-action object to enable it. For a custom tap target, set a `pressAction`:
 
 ```ts
 android: { pressAction: { id: 'default', launchActivity: 'default' } }
@@ -1376,7 +1457,7 @@ android: { pressAction: { id: 'default', launchActivity: 'default' } }
 
 Or call `notifee.setFcmConfig({ defaultPressAction: { id: 'default', launchActivity: 'default' } })` at startup.
 
-Since [9.3.0](../CHANGELOG.md#930---2026-04-09) the library injects this default at the native layer for `displayNotification`, so `handleFcmMessage` tap behavior works without explicit config — but set it if you want the tap to route to a non-default activity. See the main README section on [Android `pressAction`](../README.md#android-pressaction-defaults-to-opening-the-app-on-tap).
+Since [9.3.0](../CHANGELOG.md#930---2026-04-09) the library injects the app-opening default at the native layer for `displayNotification`. See the main README section on [Android `pressAction`](../README.md#android-pressaction-defaults-to-opening-the-app-on-tap) and the [FCM Mode interaction contract](#body-press-actions-and-action-buttons).
 
 ### Payload too large
 
@@ -1389,8 +1470,9 @@ The server SDK warns at ~3500 bytes. Common fixes:
 ## Known limitations
 
 - **iOS background `DELIVERED` event gap.** When a push arrives while your app is in background/killed on iOS, `EventType.DELIVERED` is **not** emitted to `onBackgroundEvent` — the NSE draws the notification and the main app process never wakes. This is a platform limitation (no `UNUserNotificationCenterDelegate` callback fires for NSE-drawn notifications until the user taps). Android emits `DELIVERED` unconditionally. To detect background delivery on iOS, check `getDisplayedNotifications()` when the app returns to foreground, or have the NSE write to a shared App Group container.
-- **Limited deep validation of nested `android` / `ios` config.** The server SDK validates the top-level shape (routing, data value types, iOS attachment URLs, ttl, etc.), `android.circularLargeIcon`, the supported Android style shape and fields, and duplicate `pressAction.id` values within a single notification's `android.actions` array. Other nested `NotifyKitAndroidConfig` / `NotifyKitIosConfig` fields still rely on TypeScript structural typing; JavaScript callers that bypass TypeScript should validate them. Broader deep runtime validation is planned.
-- **FCM Mode is a subset of the public notification API.** Batch 2A adds only the fields in the [support table](#server-sdk-reference). Other public `Notification` / `NotificationAndroid` fields and action/press behaviors are not added by this batch.
+- **Limited deep validation of nested `android` / `ios` config.** The Server SDK validates the top-level shape (routing, data value types, iOS attachment URLs, ttl, etc.), `android.circularLargeIcon`, supported Android styles, and the [Batch 2B interaction fields](#body-press-actions-and-action-buttons). Other nested fields still rely on TypeScript structural typing; JavaScript callers that bypass TypeScript should validate them. Hand-crafted legacy blobs do not pass through Server SDK validation. Broader deep runtime validation is planned.
+- **Legacy Android wire parsing is not a general validation gate.** The Batch 2B input and reserved-ID checks do not change the existing behavior for other malformed `android.pressAction` values or non-array `android.actions`, which reconstruction may omit.
+- **FCM Mode is a subset of the public notification API.** The [supported fields](#server-sdk-reference) and [Android interactions](#body-press-actions-and-action-buttons) do not imply full `Notification` / `NotificationAndroid` parity. Other notification fields and interaction behaviors remain outside this contract.
 - **Style types limited to `BIG_TEXT` / `BIG_PICTURE`.** `MESSAGING`, `INBOX`, and `CALL` are available via `displayNotification` but aren't wired through the server SDK.
 - **Expo Go not supported.** Expo CNG / prebuild development builds are supported. Expo Go cannot load the native NotifyKit module, the generated iOS NSE target, or the embedded `.appex`.
 - **Firebase/RNFirebase setup is not owned by NotifyKit.** The NotifyKit config plugin does not create Firebase apps, install RNFirebase, copy `google-services.json`, configure `GoogleService-Info.plist`, or patch Gradle for Firebase.
