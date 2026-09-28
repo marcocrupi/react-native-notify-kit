@@ -1,7 +1,10 @@
 import validateIOSNotification from 'react-native-notify-kit/src/validators/validateIOSNotification';
 import { NotificationIOS } from 'react-native-notify-kit/src/types/NotificationIOS';
+import { setPlatform } from '../testSetup';
 
 describe('Validate IOS Notification', () => {
+  beforeEach(() => setPlatform('ios'));
+
   describe('validateIOSNotification()', () => {
     test('returns valid ', () => {
       const notification: NotificationIOS = {
@@ -156,17 +159,26 @@ describe('Validate IOS Notification', () => {
       expect(explicitNull.categoryId).toBe('badge-category');
     });
 
-    test.each([0, 7])('preserves numeric badgeCount %s', badgeCount => {
-      const validated = validateIOSNotification({ badgeCount });
+    test.each([0, -0, 7, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1, Number.MAX_VALUE])(
+      'preserves finite integer badgeCount %s without a maximum',
+      badgeCount => {
+        const notification = Object.freeze({ badgeCount, categoryId: 'badge-category' });
+        const validated = validateIOSNotification(notification);
 
-      expect(validated).toHaveProperty('badgeCount', badgeCount);
-    });
+        expect(Object.is(validated.badgeCount, badgeCount)).toBe(true);
+        expect(validated.categoryId).toBe('badge-category');
+        expect(Object.is(notification.badgeCount, badgeCount)).toBe(true);
+      },
+    );
 
-    test('rejects a negative badgeCount', () => {
-      expect(() => validateIOSNotification({ badgeCount: -1 })).toThrowError(
-        "'notification.ios.badgeCount' expected a number value >=0.",
-      );
-    });
+    test.each([-1, -0.5, 0.5, 1.5, NaN, Infinity, -Infinity, '7', true, {}])(
+      'rejects invalid badgeCount %s',
+      badgeCount => {
+        expect(() => validateIOSNotification({ badgeCount: badgeCount as any })).toThrowError(
+          "'notification.ios.badgeCount' expected a number value >=0.",
+        );
+      },
+    );
 
     test('still rejects an explicitly present undefined badgeCount', () => {
       const notification: NotificationIOS = { badgeCount: undefined };

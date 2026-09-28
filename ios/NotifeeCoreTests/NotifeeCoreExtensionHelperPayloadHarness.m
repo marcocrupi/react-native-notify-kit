@@ -32,6 +32,9 @@ typedef void (^HarnessFinalizer)(void);
 static NSInteger gFailures = 0;
 static NSDictionary *gLastBuiltNotification = nil;
 static UNMutableNotificationContent *gLastBuiltContent = nil;
+static NSNumber *gLastBuilderBadge = nil;
+static NSInteger gBadgeSetterCallCount = 0;
+static NSInteger gNullBadgeSetterCallCount = 0;
 static BOOL gCaptureAttachmentDownloads = NO;
 static NSMutableArray *gPendingAttachmentCompletions = nil;
 static NSObject *gHarnessStateLock = nil;
@@ -94,40 +97,6 @@ static INSendMessageIntent *HarnessCommunicationIntent(void) {
                                              attachments:nil];
 }
 
-@implementation NotifeeCore
-
-// Mirror the production builder's data -> userInfo, internal metadata, and
-// ios.badgeCount assignments; other builder behavior is outside this harness.
-+ (UNMutableNotificationContent *)buildNotificationContent:(NSDictionary *)notification
-                                               withTrigger:(NSDictionary *)trigger {
-  @synchronized(gHarnessStateLock) {
-    gLastBuiltNotification = [notification copy];
-  }
-
-  UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
-  if ([notification[@"title"] isKindOfClass:[NSString class]]) {
-    content.title = notification[@"title"];
-  }
-  if ([notification[@"body"] isKindOfClass:[NSString class]]) {
-    content.body = notification[@"body"];
-  }
-  if ([notification[@"data"] isKindOfClass:[NSDictionary class]]) {
-    content.userInfo = notification[@"data"];
-  }
-  NSMutableDictionary *userInfo = [content.userInfo mutableCopy];
-  userInfo[kNotifeeUserInfoNotification] = [notification mutableCopy];
-  content.userInfo = userInfo;
-  content.badge = notification[@"ios"][@"badgeCount"];
-
-  @synchronized(gHarnessStateLock) {
-    gLastBuiltContent = content;
-  }
-
-  return content;
-}
-
-@end
-
 @implementation NotifeeCoreUtil
 
 + (INSendMessageIntent *)generateSenderIntentForCommunicationNotification:
@@ -185,6 +154,46 @@ static void HarnessAssert(BOOL condition, NSString *testName, NSString *message)
   if (!condition) {
     HarnessFail(testName, message);
   }
+}
+
+static BOOL HarnessInstallProductionBuilderObservers(void) {
+  SEL builderSelector = @selector(buildNotificationContent:withTrigger:);
+  Method builderMethod = class_getClassMethod([NotifeeCore class], builderSelector);
+  Method badgeMethod =
+      class_getInstanceMethod([UNMutableNotificationContent class], @selector(setBadge:));
+  if (builderMethod == NULL || badgeMethod == NULL) {
+    HarnessFail(@"productionBuilderObserver", @"production builder or badge setter is missing");
+    return NO;
+  }
+
+  IMP productionBuilder = method_getImplementation(builderMethod);
+  IMP originalBadgeSetter = method_getImplementation(badgeMethod);
+  method_setImplementation(
+      badgeMethod, imp_implementationWithBlock(^(UNMutableNotificationContent *content, id badge) {
+        @synchronized(gHarnessStateLock) {
+          gBadgeSetterCallCount += 1;
+          if (badge == [NSNull null]) {
+            gNullBadgeSetterCallCount += 1;
+          }
+        }
+        ((void (*)(id, SEL, id))originalBadgeSetter)(content, @selector(setBadge:), badge);
+      }));
+  method_setImplementation(
+      builderMethod, imp_implementationWithBlock(^UNMutableNotificationContent *(
+                         Class receiver, NSDictionary *notification, NSDictionary *trigger) {
+        @synchronized(gHarnessStateLock) {
+          gLastBuiltNotification = [notification copy];
+        }
+        UNMutableNotificationContent *content =
+            ((UNMutableNotificationContent * (*)(id, SEL, NSDictionary *, NSDictionary *))
+                 productionBuilder)(receiver, builderSelector, notification, trigger);
+        @synchronized(gHarnessStateLock) {
+          gLastBuiltContent = content;
+          gLastBuilderBadge = content.badge;
+        }
+        return content;
+      }));
+  return YES;
 }
 
 static void HarnessInstallPrivateOrchestrationSeams(void) {
@@ -361,6 +370,9 @@ static NSDictionary *HarnessUserInfoWithOptions(id options) {
 @property(nonatomic, strong) UNMutableNotificationContent *originalContent;
 @property(nonatomic, strong) NSDictionary *builtNotification;
 @property(nonatomic, strong) UNMutableNotificationContent *builtContent;
+@property(nonatomic, strong) NSNumber *builderBadge;
+@property(nonatomic, assign) NSInteger badgeSetterCallCount;
+@property(nonatomic, assign) NSInteger nullBadgeSetterCallCount;
 @property(nonatomic, strong) dispatch_semaphore_t handlerCalledSemaphore;
 @property(nonatomic, strong) dispatch_semaphore_t invocationFinishedSemaphore;
 @end
@@ -372,6 +384,9 @@ static void HarnessCaptureBuiltContent(HarnessResult *result) {
   @synchronized(gHarnessStateLock) {
     result.builtNotification = gLastBuiltNotification;
     result.builtContent = gLastBuiltContent;
+    result.builderBadge = gLastBuilderBadge;
+    result.badgeSetterCallCount = gBadgeSetterCallCount;
+    result.nullBadgeSetterCallCount = gNullBadgeSetterCallCount;
   }
 }
 
@@ -381,6 +396,9 @@ static HarnessResult *HarnessStartInvocationWithUserInfo(NSDictionary *userInfo,
   @synchronized(gHarnessStateLock) {
     gLastBuiltNotification = nil;
     gLastBuiltContent = nil;
+    gLastBuilderBadge = nil;
+    gBadgeSetterCallCount = 0;
+    gNullBadgeSetterCallCount = 0;
   }
 
   UNMutableNotificationContent *content = HarnessContentWithUserInfo(userInfo, badge);
@@ -928,6 +946,98 @@ static void TestExplicitLegacyBadgeRemainsAuthoritative(void) {
                   @"incoming APNs badge overrode explicit legacy ios.badgeCount");
   }
   HarnessFinishTest(testName, failuresBefore);
+}
+
+static void TestLegacyBadgeMatrixThroughProductionBuilder(void) {
+  for (NSString *encoding in @[ @"dictionary", @"json" ]) {
+    for (NSString *legacy in @[ @"absent", @"null", @"three", @"zero" ]) {
+      for (NSString *apns in @[ @"absent", @"zero", @"seven" ]) {
+        NSString *testName =
+            [NSString stringWithFormat:@"testLegacyBadge_%@_%@_apns_%@", encoding, legacy, apns];
+        NSInteger failuresBefore = gFailures;
+        NSNumber *apnsBadge =
+            [apns isEqualToString:@"absent"] ? nil : ([apns isEqualToString:@"zero"] ? @0 : @7);
+        NSNumber *numericOverride =
+            [legacy isEqualToString:@"three"] ? @3 : ([legacy isEqualToString:@"zero"] ? @0 : nil);
+        NSMutableDictionary *ios = [@{
+          @"categoryId" : @"badge-category",
+          @"threadId" : @"badge-thread",
+          @"critical" : [NSNull null],
+          @"foregroundPresentationOptions" : @{@"badge" : @YES}
+        } mutableCopy];
+        if ([legacy isEqualToString:@"null"]) {
+          ios[@"badgeCount"] = [NSNull null];
+        } else if (numericOverride != nil) {
+          ios[@"badgeCount"] = numericOverride;
+        }
+        // Both encodings start with an immutable nested dictionary. The helper
+        // must copy only the ios dictionary when removing the null badge.
+        NSDictionary *options =
+            @{@"_v" : @1,
+              @"title" : @"Legacy badge matrix",
+              @"ios" : [ios copy]};
+        NSMutableDictionary *expectedIOS = [ios mutableCopy];
+        if ([legacy isEqualToString:@"null"]) {
+          [expectedIOS removeObjectForKey:@"badgeCount"];
+        }
+        id payload = options;
+        if ([encoding isEqualToString:@"json"]) {
+          NSError *error = nil;
+          NSData *bytes = [NSJSONSerialization dataWithJSONObject:options options:0 error:&error];
+          HarnessAssert(bytes != nil && error == nil, testName, @"could not encode legacy fixture");
+          if (bytes == nil) continue;
+          payload = [[NSString alloc] initWithData:bytes encoding:NSUTF8StringEncoding];
+        }
+        NSDictionary *aps = apnsBadge == nil ? @{} : @{@"badge" : apnsBadge};
+        NSDictionary *userInfo = @{@"aps" : aps, @"notifee_options" : payload};
+        HarnessResult *result =
+            HarnessStartInvocationWithUserInfo(userInfo, apnsBadge, kHarnessRequestIdentifier, NO);
+        NSNumber *expectedBadge = numericOverride != nil ? numericOverride : apnsBadge;
+
+        HarnessAssertDeliveredOnce(result, testName);
+        HarnessAssert([result.builtNotification[@"ios"] isEqual:expectedIOS], testName,
+                      @"builder ios options were not normalized locally or another field changed");
+        HarnessAssert(result.builtNotification[@"ios"][@"badgeCount"] != [NSNull null], testName,
+                      @"NSNull badge reached production builder");
+        HarnessAssert([result.builtNotification[@"_v"] isEqual:@1], testName,
+                      @"legacy wire version changed");
+        HarnessAssert(result.badgeSetterCallCount >= 2, testName,
+                      @"badge setter observer did not witness original content and builder");
+        HarnessAssert(result.nullBadgeSetterCallCount == 0, testName,
+                      @"NSNull reached the real badge setter");
+        HarnessAssert(
+            result.builderBadge == numericOverride || [result.builderBadge isEqual:numericOverride],
+            testName, @"production builder did not preserve the normalized override");
+        HarnessAssert(result.deliveredContent.badge == expectedBadge ||
+                          [result.deliveredContent.badge isEqual:expectedBadge],
+                      testName, @"final badge did not preserve APNs or numeric legacy precedence");
+        HarnessAssert(
+            [result.deliveredContent.categoryIdentifier isEqualToString:@"badge-category"] &&
+                [result.deliveredContent.threadIdentifier isEqualToString:@"badge-thread"],
+            testName, @"other ios builder fields changed");
+        HarnessAssert([result.deliveredContent.userInfo[@"notifee_options"] isEqual:payload] &&
+                          [result.deliveredContent.userInfo[@"aps"] isEqual:aps],
+                      testName, @"original transport payload was mutated");
+        HarnessAssert(
+            [options[@"ios"] isEqual:ios] && [result.originalContent.userInfo isEqual:userInfo],
+            testName, @"immutable input changed");
+        if ([legacy isEqualToString:@"null"]) {
+          HarnessAssert(options[@"ios"][@"badgeCount"] == [NSNull null], testName,
+                        @"original null badge was removed instead of copied");
+        }
+        NSString *builderOverride =
+            [result.builtNotification[@"ios"][@"badgeCount"] description] ?: @"absent";
+        NSString *builderBadge = [result.builderBadge description] ?: @"nil";
+        NSString *finalBadge = [result.deliveredContent.badge description] ?: @"nil";
+        fprintf(stdout,
+                "WITNESS %s: builder.badgeCount=%s builder.badge=%s final.badge=%s "
+                "NSNullSetterCalls=%ld\n",
+                testName.UTF8String, builderOverride.UTF8String, builderBadge.UTF8String,
+                finalBadge.UTF8String, (long)result.nullBadgeSetterCallCount);
+        HarnessFinishTest(testName, failuresBefore);
+      }
+    }
+  }
 }
 
 static void TestFcmServerAcceptedCollisionKeysSurviveNestedData(NSDictionary *fixtures) {
@@ -1654,6 +1764,7 @@ int main(int argc, const char *argv[]) {
     gOrchestrationEvents = [NSMutableArray new];
     gPendingFinalizers = [NSMutableArray new];
     gPendingFinalizerDeadlines = [NSMutableArray new];
+    if (!HarnessInstallProductionBuilderObservers()) return 1;
     HarnessInstallPrivateOrchestrationSeams();
     HarnessInstallNotificationFrameworkStubs();
     TestMissingNotifeeOptionsDeliversOriginalContentOnce();
@@ -1670,6 +1781,7 @@ int main(int argc, const char *argv[]) {
       TestFcmLogicalIdSurvivesProductionHelper();
       TestFcmZeroAndAbsentBadgeRemainDistinct(fcmFixtures);
       TestExplicitLegacyBadgeRemainsAuthoritative();
+      TestLegacyBadgeMatrixThroughProductionBuilder();
       TestFcmServerAcceptedCollisionKeysSurviveNestedData(fcmFixtures);
       TestFcmReservedDataCannotReplaceTransportMetadata(fcmFixtures);
       TestFcmDataMergeOrderAndReservedOptionsKeys();

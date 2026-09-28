@@ -121,6 +121,15 @@ static BOOL IsFcmTransportKey(NSString *key) {
     return;
   }
 
+  NSDictionary *iosOptions =
+      [options[@"ios"] isKindOfClass:[NSDictionary class]] ? options[@"ios"] : nil;
+  if (iosOptions[@"badgeCount"] == [NSNull null]) {
+    NSMutableDictionary *normalizedIOSOptions = [iosOptions mutableCopy];
+    [normalizedIOSOptions removeObjectForKey:@"badgeCount"];
+    options[@"ios"] = normalizedIOSOptions;
+    iosOptions = normalizedIOSOptions;
+  }
+
   options[@"remote"] = @YES;
 
   // The server sends custom data outside notifee_options so it can share the
@@ -168,8 +177,6 @@ static BOOL IsFcmTransportKey(NSString *key) {
   // This NSE path builds withTrigger:nil; no top-level trigger is authoritative.
   [mergedUserInfo removeObjectForKey:kNotifeeUserInfoTrigger];
   self.modifiedContent.userInfo = mergedUserInfo;
-  NSDictionary *iosOptions =
-      [options[@"ios"] isKindOfClass:[NSDictionary class]] ? options[@"ios"] : nil;
   if (originalBadge != nil && iosOptions[@"badgeCount"] == nil) {
     self.modifiedContent.badge = originalBadge;
   }
