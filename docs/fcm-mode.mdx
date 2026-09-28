@@ -983,17 +983,28 @@ iOS requires a Notification Service Extension (NSE) to rewrite incoming APNs not
 
 The Server SDK serializes `notification.data` as `apns.payload.notifee_data`. The production NSE merges it into the delivered notification's `data`, which is available on the NotifyKit notification/event path when the user taps. Custom data cannot replace top-level APNs/FCM fields or NotifyKit event metadata. Background delivery-to-tap was validated on a physical iPhone 16e running iOS 26.5; the killed/cold-start data path was not run.
 
-Use `options.iosBadgeCount` to set `aps.badge` through the Server SDK:
+Use the Server SDK's `options.iosBadgeCount?: number` to set `aps.badge`. Its supported input remains a finite non-negative integer; `null` is rejected. `NotifyKitIosConfig` does not expose `badgeCount`.
 
-| Server SDK input              | APNs field     | NSE result                                         |
-| ----------------------------- | -------------- | -------------------------------------------------- |
-| Positive integer, such as `7` | `aps.badge: 7` | Preserves `7`                                      |
-| `0`                           | `aps.badge: 0` | Preserves `0` and clears the app icon badge        |
-| Omitted                       | No `aps.badge` | Leaves the badge unset; omission does not mean `0` |
+| Server SDK input                     | APNs field     | NSE result                                         |
+| ------------------------------------ | -------------- | -------------------------------------------------- |
+| Positive finite integer, such as `7` | `aps.badge: 7` | Preserves `7`                                      |
+| `0`                                  | `aps.badge: 0` | Preserves `0` and clears the app icon badge        |
+| Omitted                              | No `aps.badge` | Leaves the badge unset; omission does not mean `0` |
 
-If a separately authored or legacy `notifee_options` blob explicitly contains a numeric `ios.badgeCount`, that value takes precedence over `aps.badge` in the NSE. The current Server SDK `NotifyKitIosConfig` does not expose `badgeCount`; its supported badge input is `options.iosBadgeCount`. On the same physical iPhone, badge `7`, badge `0`, badge absence, and precedence of `aps.badge: 7` with explicit `ios.badgeCount: 3` (result `3`) passed.
+For legacy/manual `_v: 1` payloads, a numeric `notifee_options.ios.badgeCount` keeps precedence over `aps.badge`, including an override of `0`. If an existing payload contains `notifee_options.ios.badgeCount: null`, the NSE treats it as an absent override. That legacy `null` is removed from the badge options before native content is built, so it is not forwarded as `NSNull` to the native badge setter.
 
-iOS can also withdraw delivered notifications when a badge is set to `0`. This is platform behavior; clearing the badge does not guarantee that a notification stays in Notification Center.
+| Legacy `notifee_options.ios.badgeCount` | APNs `aps.badge` | NSE result                         |
+| --------------------------------------- | ---------------- | ---------------------------------- |
+| Absent or legacy `null`                 | Absent           | Leaves the current badge unchanged |
+| Absent or legacy `null`                 | `0`              | Clears the app icon badge          |
+| Absent or legacy `null`                 | Positive integer | Preserves the APNs badge value     |
+| Numeric override, including `0`         | Any or absent    | Uses the numeric legacy override   |
+
+This defensive compatibility handling applies to existing legacy/manual payloads and does not make `null` a supported Server SDK input. Use `options.iosBadgeCount` for new sends.
+
+Physical iPhone 16e / iOS 26.5 qualification passed T0 and all eight real APNs/NSE badge scenarios (B1–B8): legacy `null`/absent with APNs absent/`0`/`7`, and numeric overrides `3`/`0` with APNs `7`.
+
+iOS/SpringBoard can also withdraw delivered notifications when a badge is set to `0`. This is platform-owned behavior, not an explicit NotifyKit cancellation; clearing the badge does not guarantee that a notification stays in Notification Center.
 
 ### Expo CNG setup
 

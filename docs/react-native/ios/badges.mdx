@@ -16,14 +16,21 @@ to control the badge count.
 
 ## Per-notification badge count
 
-Set `ios.badgeCount` on a notification passed to `displayNotification` or `createTriggerNotification` to control how that
-notification affects the current app icon badge:
+Set `NotificationIOS.badgeCount` (`ios.badgeCount`) on a notification passed to `displayNotification` or
+`createTriggerNotification` to control how that notification affects the current app icon badge:
 
-| `ios.badgeCount` | Effect on current badge |
-| ---------------- | ----------------------- |
-| Absent or `null` | Leave it unchanged      |
-| `0`              | Clear it                |
-| Positive value   | Set it to that value    |
+| `ios.badgeCount`          | Effect on current badge |
+| ------------------------- | ----------------------- |
+| Absent (property omitted) | Leave it unchanged      |
+| `null`                    | Leave it unchanged      |
+| `0`                       | Clear it                |
+| Positive finite integer   | Set it to that value    |
+
+Numeric values must satisfy `Number.isFinite(value) && Number.isInteger(value) && value >= 0`. Negative values,
+fractions, `NaN`, `Infinity`, and `-Infinity` are invalid and are rejected before native dispatch. Values are not rounded
+or clamped, and the validator imposes no additional maximum.
+
+To leave the badge unchanged, omit `badgeCount` or use `null`. An explicitly present `badgeCount: undefined` is rejected.
 
 `null` is allowed by the public `NotificationIOS` type. The client removes it from the notification payload before the
 native boundary, so it does not reach `UNMutableNotificationContent.badge` as `NSNull`. Readback may show an absent
@@ -31,8 +38,8 @@ native boundary, so it does not reach `UNMutableNotificationContent.badge` as `N
 the same shape.
 
 This per-notification option is distinct from the app-wide `setBadgeCount`, `getBadgeCount`, `incrementBadgeCount`, and
-`decrementBadgeCount` methods below. On iOS, bringing the badge to `0` can also cause the platform to withdraw related
-delivered notifications from Notification Center. Do not assume that clearing the badge only changes the icon number.
+`decrementBadgeCount` methods below. On iOS, bringing the badge to `0` can also cause iOS/SpringBoard to withdraw related
+delivered notifications from Notification Center. This is platform-owned behavior, not an explicit NotifyKit cancellation.
 
 ## Updating the badge count with app-wide methods
 
