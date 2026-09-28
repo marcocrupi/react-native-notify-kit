@@ -33,9 +33,7 @@ function loadFirebaseAdmin() {
 
     return { cert, getApps, getMessaging, initializeApp };
   } catch {
-    console.error('Missing dependency `firebase-admin`.');
-    console.error('Run `yarn install` from the repo root, then retry.');
-    process.exit(1);
+    throw new Error('Missing dependency `firebase-admin`. Run `yarn install` from the repo root.');
   }
 }
 
@@ -43,9 +41,9 @@ function loadBuildNotifyKitPayload() {
   try {
     return require('../packages/react-native/server/dist/index').buildNotifyKitPayload;
   } catch {
-    console.error('Could not load NotifyKit server SDK from packages/react-native/server/dist.');
-    console.error('Run `yarn build:rn:server` from the repo root, then retry.');
-    process.exit(1);
+    throw new Error(
+      'Could not load NotifyKit server SDK from packages/react-native/server/dist. Run `yarn build:rn:server`.',
+    );
   }
 }
 
@@ -326,6 +324,82 @@ function scenarioConfigFor(scenario, correlationId) {
   };
 }
 
+// The ordinary CLI and the iOS qualification controller share this one pipeline.
+// Qualification adds an authorization boundary, not another Firebase sender.
+async function sendScenario(
+  { token, scenario, correlationId = '', qualification, serviceAccountPath = SERVICE_ACCOUNT_PATH },
+  dependencies = {},
+) {
+  if (!token || !hasScenario(scenario))
+    throw new Error('A token and a supported scenario are required.');
+  if (qualification && typeof qualification.authorizeSend !== 'function')
+    throw new Error('Qualification requires a live sender authorization callback.');
+  if (
+    qualification &&
+    ((qualification.phase === 'T0' &&
+      (qualification.t0Probe !== true || scenario !== 'minimal' || !correlationId)) ||
+      (qualification.t0Probe && qualification.phase !== 'T0'))
+  )
+    throw new Error('T0 may only use a correlated minimal probe.');
+  if (qualification && !['T0', 'FUNCTIONAL'].includes(qualification.phase))
+    throw new Error('Unsupported qualification phase.');
+  const admin = dependencies.admin ?? loadFirebaseAdmin();
+  const buildNotifyKitPayload = dependencies.buildNotifyKitPayload ?? loadBuildNotifyKitPayload();
+  let serviceAccount;
+  try {
+    serviceAccount = dependencies.serviceAccount ?? require(serviceAccountPath);
+  } catch {
+    throw new Error('Could not load the configured Firebase service account.');
+  }
+  if (admin.getApps().length === 0) admin.initializeApp({ credential: admin.cert(serviceAccount) });
+  let scenarioConfig = scenarioConfigFor(scenario, correlationId);
+  if (qualification) {
+    if (!correlationId) throw new Error('Qualification requires a unique correlation ID.');
+    scenarioConfig = {
+      ...scenarioConfig,
+      notification: {
+        ...scenarioConfig.notification,
+        id: smokeNotificationIdFor(correlationId),
+        data: {
+          ...scenarioConfig.notification.data,
+          correlationId,
+          smokeNotificationId: smokeNotificationIdFor(correlationId),
+        },
+      },
+    };
+  }
+  const payload = buildNotifyKitPayload({ ...scenarioConfig, token });
+  if (qualification?.t0Probe) {
+    // Ordinary supported title reconstruction proves the real installed NSE ran.
+    // Keep payload construction in the existing SDK path; change only the probe's raw title.
+    payload.apns.payload.aps.alert.title = `NotifyKit T0 RAW ${correlationId}`;
+  }
+  if (qualification) {
+    qualification.log?.({ scenario, correlationId, payloadSizeBytes: payload.sizeBytes });
+  } else {
+    console.log('Sending FCM message:');
+    console.log('  Token:', token.substring(0, 20) + '...');
+    console.log('  Scenario:', scenario);
+    if (correlationId.length > 0) console.log('  Correlation ID:', correlationId);
+    console.log('  Payload size:', payload.sizeBytes, 'bytes');
+  }
+  // This check must remain synchronous and adjacent to the sole transport side effect.
+  const authorization = qualification?.authorizeSend();
+  if (authorization && typeof authorization.then === 'function')
+    throw new Error('Sender authorization must be synchronous.');
+  const messageId = await admin.getMessaging().send(payload);
+  return {
+    messageId,
+    scenario,
+    correlationId,
+    notificationId: scenarioConfig.notification.id,
+    expectedTitle: scenarioConfig.notification.title,
+    rawTitle: payload.apns?.payload?.aps?.alert?.title,
+    payloadSizeBytes: payload.sizeBytes,
+    ...(qualification ? { payload: { ...payload, token: '<redacted-fcm-token>' } } : {}),
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2), process.env);
 
@@ -362,35 +436,8 @@ async function main() {
     process.exit(1);
   }
 
-  const admin = loadFirebaseAdmin();
-  const buildNotifyKitPayload = loadBuildNotifyKitPayload();
-
   try {
-    const serviceAccount = require(SERVICE_ACCOUNT_PATH);
-
-    if (admin.getApps().length === 0) {
-      admin.initializeApp({ credential: admin.cert(serviceAccount) });
-    }
-  } catch {
-    console.error(`Could not load service account from ${SERVICE_ACCOUNT_PATH}`);
-    console.error('Download it from Firebase Console -> Project Settings -> Service Accounts.');
-    console.error('Save it as firebase-notifykittest.json in the repo root.');
-    process.exit(1);
-  }
-
-  const scenarioConfig = scenarioConfigFor(scenario, correlationId);
-  const payload = buildNotifyKitPayload({ ...scenarioConfig, token });
-
-  console.log('Sending FCM message:');
-  console.log('  Token:', token.substring(0, 20) + '...');
-  console.log('  Scenario:', scenario);
-  if (correlationId.length > 0) {
-    console.log('  Correlation ID:', correlationId);
-  }
-  console.log('  Payload size:', payload.sizeBytes, 'bytes');
-
-  try {
-    const messageId = await admin.getMessaging().send(payload);
+    const { messageId } = await sendScenario({ token, scenario, correlationId });
     console.log('Successfully sent. Message ID:', messageId);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -399,8 +446,12 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  const message = err instanceof Error ? err.message : String(err);
-  console.error('Unexpected failure:', message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Unexpected failure:', message);
+    process.exit(1);
+  });
+}
+
+module.exports = { sendScenario, parseArgs, scenarioConfigFor };

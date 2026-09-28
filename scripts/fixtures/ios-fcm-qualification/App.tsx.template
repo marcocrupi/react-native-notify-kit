@@ -1,0 +1,122 @@
+import React, { useEffect, useState } from 'react';
+import { AppState, Text, View } from 'react-native';
+import notifee from 'react-native-notify-kit';
+import {
+  getMessaging,
+  getAPNSToken,
+  deleteToken,
+  getToken,
+  setAutoInitEnabled,
+} from '@react-native-firebase/messaging/lib/modular';
+
+const CONFIG = __QUALIFICATION_CONFIG__;
+const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+async function post(route, value) {
+  const response = await fetch(CONFIG.callbackURL + route, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + CONFIG.callbackSecret,
+    },
+    body: JSON.stringify({ ...value, runId: CONFIG.runId }),
+  });
+  if (!response.ok) throw new Error('QUALIFICATION_CALLBACK_REJECTED');
+  return response.json();
+}
+async function snapshot() {
+  const displayed = await notifee.getDisplayedNotifications();
+  return {
+    timestamp: new Date().toISOString(),
+    appState: AppState.currentState,
+    displayed: displayed.map(item => ({
+      id: item.id,
+      remote: item.remote,
+      notification: { id: item.notification?.id, title: item.notification?.title },
+    })),
+  };
+}
+async function execute(command) {
+  let result;
+  let stage = command.action;
+  try {
+    const messaging = getMessaging();
+    if (command.action === 'readiness') {
+      const settings = await notifee.requestPermission();
+      const deadline = Date.now() + 20000;
+      let apns = null;
+      while (Date.now() < deadline) {
+        try {
+          apns = await getAPNSToken(messaging);
+        } catch (error) {
+          if (!String(error.code).endsWith('/unregistered')) throw error;
+        }
+        if (apns) break;
+        await pause(200);
+      }
+      if (!apns) throw new Error('APNS_TOKEN_UNAVAILABLE');
+      result = { apnsPresent: true, apnsBytes: apns.length / 2, settings };
+    } else if (command.action === 'regenerate') {
+      const apns = await getAPNSToken(messaging);
+      if (!apns) throw new Error('APNS_TOKEN_UNAVAILABLE');
+      await post('/event', { commandId: command.id, kind: 'delete-started' });
+      stage = 'delete';
+      await deleteToken(messaging);
+      if ((await getAPNSToken(messaging)) !== apns) throw new Error('APNS_IDENTITY_CHANGED');
+      await post('/event', { commandId: command.id, kind: 'delete-completed' });
+      await post('/event', { commandId: command.id, kind: 'generation-started' });
+      stage = 'generate';
+      const token = await getToken(messaging);
+      if ((await getAPNSToken(messaging)) !== apns) throw new Error('APNS_IDENTITY_CHANGED');
+      await post('/token', { commandId: command.id, token });
+      result = {
+        apnsPresent: true,
+        tokenPresent: Boolean(token),
+        generationCompletedAt: new Date().toISOString(),
+      };
+    } else if (command.action === 'read') {
+      result = await snapshot();
+    } else if (command.action === 'restore-settings') {
+      await setAutoInitEnabled(messaging, CONFIG.standardAutoInitEnabled);
+      result = { autoInitEnabled: messaging.isAutoInitEnabled };
+    } else {
+      throw new Error('UNSUPPORTED_QUALIFICATION_COMMAND');
+    }
+    await post('/result', { commandId: command.id, status: 'OK', result });
+  } catch (error) {
+    // Report an allowlisted code; raw exception text can include token/credential data.
+    const code = ['APNS_TOKEN_UNAVAILABLE', 'APNS_IDENTITY_CHANGED'].includes(error.message)
+      ? error.message
+      : ['delete', 'generate'].includes(stage)
+        ? 'STALE_FCM_TOKEN_ASSOCIATION'
+        : 'QUALIFICATION_DRIVER_FAILURE';
+    await post('/result', { commandId: command.id, status: 'ERROR', errorCode: code });
+  }
+}
+export default function App() {
+  const [state, setState] = useState('Waiting for qualification controller');
+  useEffect(() => {
+    let mounted = true;
+    async function loop() {
+      await post('/boot', { timestamp: new Date().toISOString() });
+      while (mounted) {
+        const command = await post('/next', {});
+        if (command) {
+          setState(command.action);
+          await execute(command);
+        }
+        await pause(250);
+      }
+    }
+    loop().catch(() => setState('Qualification controller unavailable'));
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
+      <Text>NotifyKit iOS FCM qualification</Text>
+      <Text>{CONFIG.runId}</Text>
+      <Text>{state}</Text>
+    </View>
+  );
+}

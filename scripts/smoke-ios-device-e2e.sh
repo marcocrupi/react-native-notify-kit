@@ -45,6 +45,7 @@ Usage:
   scripts/smoke-ios-device-e2e.sh [options] parse-result-test
   scripts/smoke-ios-device-e2e.sh [options] callback-test
   scripts/smoke-ios-device-e2e.sh [options] fcm-token
+  scripts/smoke-ios-device-e2e.sh [options] fcm-qualify
   scripts/smoke-ios-device-e2e.sh [options] displayed
   scripts/smoke-ios-device-e2e.sh [options] listener-only
   scripts/smoke-ios-device-e2e.sh [options] local-display <id>
@@ -87,13 +88,18 @@ Exit codes:
   4  missing or unsupported local configuration or callback failure
 
 Notes:
-  - This wrapper does not build, install, or clean up.
-  - Only fcm-minimal and fcm-ios-attachment send real FCM messages; all other commands are local/deep-link flows.
+  - Local/deep-link commands use the already-installed standard fixture.
+  - fcm-token retains ordinary RNFirebase token acquisition; it does not qualify an APNs route.
+  - fcm-qualify, fcm-minimal and fcm-ios-attachment run the physical qualification controller.
+    It builds/installs an isolated /tmp driver, inspects signed entitlements, regenerates
+    the token and requires real T0 delivery before functional sends.
+  - IOS_FCM_CONFIGURATION defaults to Release; IOS_FCM_APNS_ASSOCIATION defaults to default.
+    Explicitly set IOS_FCM_APNS_ASSOCIATION=signed-entitlement for the smoke-only correction.
   - The smoke app must already be installed on the selected physical device.
   - Scenario commands launch the deep link and wait for a matching HTTP callback.
   - Scenario commands use devicectl --terminate-existing by default; pass
     --no-terminate-existing to preserve an app process already started by Xcode.
-  - fcm-minimal sends, waits SMOKE_FCM_WAIT_SECONDS, then verifies via displayed-notification callback.
+  - fcm-minimal sends only after T0, then verifies installed NSE/device delivery.
   - fcm-ios-attachment: Sends a real FCM ios-attachment push, waits, then verifies displayed notification by id.
   - fcm-ios-attachment: Does not visually verify the attachment.
   - If devicectl --payload-url does not produce a callback, the wrapper dispatches
@@ -1586,77 +1592,29 @@ require_fcm_verify_config() {
   resolve_callback_host
 }
 
+qualify_ios_fcm() {
+  local scenario="${1:-}"
+  local id="${2:-}"
+  local qualification_args=(--configuration "${IOS_FCM_CONFIGURATION:-Release}" --apns-association "${IOS_FCM_APNS_ASSOCIATION:-default}")
+  require_wait_support
+  if [[ "$SMOKE_TERMINATE_EXISTING" == 0 || "$SMOKE_TERMINATE_EXISTING" == false ]]; then
+    fail_config "Physical FCM qualification requires its owned driver; --no-terminate-existing is supported by local commands only."
+  fi
+  if [[ -n "$IOS_DEVICE_ID" ]]; then qualification_args+=(--device "$IOS_DEVICE_ID"); fi
+  if [[ -n "$SMOKE_CALLBACK_HOST" ]]; then qualification_args+=(--callback-host "$SMOKE_CALLBACK_HOST"); fi
+  if [[ -n "$scenario" ]]; then
+    require_arg "$id" "id"
+    qualification_args+=(--scenario "$scenario" --correlation-id "$id")
+  fi
+  node "$REPO_ROOT/scripts/ios-fcm-qualification.js" "${qualification_args[@]}"
+}
+
 fcm_minimal() {
-  local id="$1"
-  local token
-
-  require_arg "$id" "id"
-  require_non_negative_integer "$SMOKE_FCM_WAIT_SECONDS" "SMOKE_FCM_WAIT_SECONDS"
-
-  token="$(resolve_fcm_token)"
-  if [[ -z "$token" ]]; then
-    fail_config "Missing IOS_FCM_TOKEN or FCM_TOKEN for fcm-minimal."
-  fi
-
-  if [[ ! -f "$REPO_ROOT/firebase-notifykittest.json" ]]; then
-    fail_config "Missing firebase-notifykittest.json in repo root."
-  fi
-
-  if ! command -v node >/dev/null 2>&1; then
-    fail_config "Node.js is required to send fcm-minimal."
-  fi
-
-  echo "[smoke-ios-device-e2e] sending FCM minimal correlationId=$id"
-  (
-    cd "$REPO_ROOT"
-    IOS_FCM_TOKEN="$token" node scripts/send-test-fcm.js minimal --correlation-id "$id"
-  )
-
-  if ((SMOKE_FCM_WAIT_SECONDS > 0)); then
-    echo "[smoke-ios-device-e2e] waiting ${SMOKE_FCM_WAIT_SECONDS}s before verify-displayed"
-    sleep "$SMOKE_FCM_WAIT_SECONDS"
-  fi
-
-  verify_displayed "$id"
+  qualify_ios_fcm minimal "$1"
 }
 
 fcm_ios_attachment() {
-  local id="$1"
-  local token
-  local wait_seconds
-
-  require_arg "$id" "id"
-  wait_seconds="$(resolve_fcm_attachment_wait_seconds)"
-  require_non_negative_integer "$wait_seconds" "SMOKE_FCM_ATTACHMENT_WAIT_SECONDS or SMOKE_FCM_WAIT_SECONDS"
-  wait_seconds=$((10#$wait_seconds))
-
-  token="$(resolve_fcm_token)"
-  if [[ -z "$token" ]]; then
-    fail_config "Missing IOS_FCM_TOKEN or FCM_TOKEN for fcm-ios-attachment."
-  fi
-
-  if [[ ! -f "$REPO_ROOT/firebase-notifykittest.json" ]]; then
-    fail_config "Missing firebase-notifykittest.json in repo root."
-  fi
-
-  if ! command -v node >/dev/null 2>&1; then
-    fail_config "Node.js is required to send fcm-ios-attachment."
-  fi
-
-  require_fcm_verify_config
-
-  echo "[smoke-ios-device-e2e] sending FCM ios-attachment correlationId=$id"
-  (
-    cd "$REPO_ROOT"
-    IOS_FCM_TOKEN="$token" node scripts/send-test-fcm.js ios-attachment --correlation-id "$id"
-  )
-
-  if ((wait_seconds > 0)); then
-    echo "[smoke-ios-device-e2e] waiting ${wait_seconds}s before verify-displayed"
-    sleep "$wait_seconds"
-  fi
-
-  verify_displayed "$id"
+  qualify_ios_fcm ios-attachment "$1"
 }
 
 parse_result_test() {
@@ -1741,6 +1699,9 @@ main() {
       ;;
     fcm-token)
       launch_smoke_run "fcm-token"
+      ;;
+    fcm-qualify)
+      qualify_ios_fcm
       ;;
     displayed)
       launch_smoke_run "displayed"

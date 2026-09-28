@@ -76,14 +76,17 @@ Usage:
 Environment:
   IOS_DEVICE_ID       Physical iOS device identifier. If unset, the first connected device is used.
   DEVELOPMENT_TEAM   Apple Developer Team ID for physical device signing.
-  IOS_FCM_TOKEN      iOS FCM registration token. Required by send.
+  IOS_FCM_CONFIGURATION  Debug or Release (default Release).
+  IOS_FCM_APNS_ASSOCIATION  default or explicit signed-entitlement correction.
   BUNDLE_ID          App bundle identifier for launch hints. Default: $DEFAULT_BUNDLE_ID
   F4_LOG_DIR         Optional log directory. Default: /tmp/notifykit-f4-ios-nse-<timestamp>
 
 Notes:
   - prepare intentionally creates temporary iOS/NSE changes under apps/smoke/ios.
   - cleanup reverts apps/smoke/ios and removes apps/smoke/ios/$EXPECTED_NSE_TARGET.
-  - send cannot prove foreground/background/killed/attachment delivery without human confirmation.
+  - send/all use the shared physical FCM qualifier and existing sender in an isolated /tmp copy.
+  - Signed aps-environment preflight, token regeneration and real T0 delivery gate every functional send.
+  - Ordinary smoke fcm-token remains standard RNFirebase integration.
 EOF
 }
 
@@ -747,65 +750,6 @@ confirm_observation() {
   esac
 }
 
-send_one_fcm() {
-  local step="$1"
-  local scenario="$2"
-  local logfile="$LOG_DIR/fcm-$scenario.log"
-  local masked_token
-  masked_token="$(mask_token "$IOS_FCM_TOKEN")"
-
-  log "Sending FCM scenario '$scenario' to token $masked_token (log: $logfile)"
-  if (cd "$REPO_ROOT" && yarn send:test:fcm "$IOS_FCM_TOKEN" "$scenario") 2>&1 | redact_token_from_stream "$IOS_FCM_TOKEN" "$masked_token" > "$logfile"; then
-    log "FCM scenario '$scenario' sent."
-  else
-    local pipeline_status=("${PIPESTATUS[@]}")
-    local status="${pipeline_status[0]:-1}"
-    local redact_status="${pipeline_status[1]:-0}"
-    if [[ "$redact_status" -ne 0 ]]; then
-      record_step "$step" "FAIL" "FCM log redaction failed for $scenario with exit $redact_status. See $logfile"
-      fail "FCM log redaction failed for scenario $scenario."
-    fi
-    record_step "$step" "FAIL" "FCM send failed for $scenario with exit $status. See $logfile"
-    tail -n 30 "$logfile" >&2 || true
-    fail "FCM send failed for scenario $scenario."
-  fi
-}
-
-send_fcm() {
-  if [[ -z "${IOS_FCM_TOKEN:-}" ]]; then
-    record_step "FCM foreground" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-    record_step "FCM background/NSE" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-    record_step "FCM killed/NSE" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-    record_step "FCM attachment/NSE" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-    cat >&2 <<'EOF'
-IOS_FCM_TOKEN is required for send.
-
-Run:
-  export IOS_FCM_TOKEN="<token>"
-  scripts/f4-ios-nse-e2e.sh send
-EOF
-    return 2
-  fi
-
-  [[ -f "$FIREBASE_SERVICE_ACCOUNT" ]] || fail "Missing $FIREBASE_SERVICE_ACCOUNT. The key contents will not be printed."
-
-  prompt_enter "1. Porta l'app in foreground sul device, concedi i permessi notifiche se richiesti, poi premi Enter."
-  send_one_fcm "FCM foreground" "kitchen-sink"
-  confirm_observation "FCM foreground" "Confermi ricezione/log atteso per foreground kitchen-sink?"
-
-  prompt_enter "2. Metti l'app in background, poi premi Enter."
-  send_one_fcm "FCM background/NSE" "minimal"
-  confirm_observation "FCM background/NSE" "Confermi ricezione/log atteso per background/NSE minimal?"
-
-  prompt_enter "3. Chiudi l'app dallo switcher, poi premi Enter."
-  send_one_fcm "FCM killed/NSE" "emoji"
-  confirm_observation "FCM killed/NSE" "Confermi ricezione/log atteso per killed/NSE emoji?"
-
-  prompt_enter "4. Lascia l'app background/killed per attachment, poi premi Enter."
-  send_one_fcm "FCM attachment/NSE" "ios-attachment"
-  confirm_observation "FCM attachment/NSE" "Confermi banner/attachment o log NSE per ios-attachment?"
-}
-
 cleanup() {
   ensure_log_dir
   local cleanup_log="$LOG_DIR/cleanup.log"
@@ -934,12 +878,21 @@ parse_args() {
 }
 
 main() {
+  parse_args "$@"
+  case "$COMMAND" in
+    send | all)
+      local qualification_args=(--configuration "${IOS_FCM_CONFIGURATION:-Release}" --apns-association "${IOS_FCM_APNS_ASSOCIATION:-default}")
+      if [[ -n "${IOS_DEVICE_ID:-}" ]]; then qualification_args+=(--device "$IOS_DEVICE_ID"); fi
+      if [[ -n "${SMOKE_CALLBACK_HOST:-}" ]]; then qualification_args+=(--callback-host "$SMOKE_CALLBACK_HOST"); fi
+      node "$REPO_ROOT/scripts/ios-fcm-qualification.js" "${qualification_args[@]}" \
+        --scenario kitchen-sink --scenario minimal --scenario emoji --scenario ios-attachment
+      return $?
+      ;;
+  esac
   cd "$REPO_ROOT"
   ensure_log_dir
   trap 'on_error $LINENO $?' ERR
   trap 'on_exit $?' EXIT
-
-  parse_args "$@"
 
   case "$COMMAND" in
     help | "" | -h | --help)
@@ -966,36 +919,8 @@ main() {
       build_device_ios
       CLEANUP_ON_ERROR=0
       ;;
-    send)
-      send_fcm
-      ;;
     cleanup)
       cleanup
-      ;;
-    all)
-      CLEANUP_ON_ERROR=1
-      ALWAYS_CLEANUP_ON_EXIT=1
-      prepare
-      build_generic_ios
-      local device_status=0
-      build_device_ios || device_status=$?
-      if [[ "$device_status" -ne 0 ]]; then
-        if [[ "$device_status" -eq 2 ]]; then
-          open_xcode || true
-        else
-          return "$device_status"
-        fi
-      fi
-      if [[ -n "${IOS_FCM_TOKEN:-}" ]]; then
-        send_fcm || true
-      else
-        record_step "FCM foreground" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-        record_step "FCM background/NSE" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-        record_step "FCM killed/NSE" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-        record_step "FCM attachment/NSE" "NON ESEGUITO" 'IOS_FCM_TOKEN missing. export IOS_FCM_TOKEN="<token>"'
-        log "IOS_FCM_TOKEN is not set; runtime FCM send not executed."
-      fi
-      CLEANUP_ON_ERROR=0
       ;;
     *)
       usage >&2
