@@ -21,8 +21,7 @@
 
 // The NSE stores the logical ID in NotifyKit-owned metadata. APNs owns the
 // request identifier, so it must remain a separate physical identity.
-static inline NSString *
-NotifeeFcmLogicalIdForRequest(UNNotificationRequest *request) {
+static inline NSString *NotifeeFcmLogicalIdForRequest(UNNotificationRequest *request) {
   if (![request.trigger isKindOfClass:UNPushNotificationTrigger.class]) {
     return nil;
   }
@@ -35,19 +34,16 @@ NotifeeFcmLogicalIdForRequest(UNNotificationRequest *request) {
   id options = userInfo[@"notifee_options"];
   NSString *logicalId = notification[@"id"];
   if (![remote isKindOfClass:NSNumber.class] || !remote.boolValue ||
-      (![options isKindOfClass:NSString.class] &&
-       ![options isKindOfClass:NSDictionary.class]) ||
+      (![options isKindOfClass:NSString.class] && ![options isKindOfClass:NSDictionary.class]) ||
       ![logicalId isKindOfClass:NSString.class] || logicalId.length == 0) {
     return nil;
   }
   return logicalId;
 }
 
-static inline NSArray<NSString *> *
-NotifeeFcmIdentifiersForLogicalId(NSArray<UNNotificationRequest *> *requests,
-                                  NSString *logicalId) {
-  NSMutableOrderedSet<NSString *> *physicalIds =
-      [NSMutableOrderedSet orderedSet];
+static inline NSArray<NSString *> *NotifeeFcmIdentifiersForLogicalId(
+    NSArray<UNNotificationRequest *> *requests, NSString *logicalId) {
+  NSMutableOrderedSet<NSString *> *physicalIds = [NSMutableOrderedSet orderedSet];
   for (UNNotificationRequest *request in requests) {
     if ([NotifeeFcmLogicalIdForRequest(request) isEqualToString:logicalId]) {
       [physicalIds addObject:request.identifier];
@@ -64,8 +60,7 @@ static inline BOOL NotifeeShouldRemoveDirectIdentifierForLogicalId(
   BOOL hasDivergentFcmRequest = NO;
   for (UNNotificationRequest *request in requests) {
     NSString *requestLogicalId = NotifeeFcmLogicalIdForRequest(request);
-    if ([request.identifier isEqualToString:logicalId] &&
-        requestLogicalId != nil &&
+    if ([request.identifier isEqualToString:logicalId] && requestLogicalId != nil &&
         ![requestLogicalId isEqualToString:logicalId]) {
       return NO;
     }
@@ -82,8 +77,7 @@ static inline BOOL NotifeeShouldRemoveDirectIdentifierForLogicalId(
     if (![request.identifier isEqualToString:logicalId]) {
       continue;
     }
-    NSDictionary *notification =
-        request.content.userInfo[@"__notifee_notification"];
+    NSDictionary *notification = request.content.userInfo[@"__notifee_notification"];
     if (![notification isKindOfClass:NSDictionary.class]) {
       continue;
     }

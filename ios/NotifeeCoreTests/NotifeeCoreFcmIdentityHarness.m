@@ -38,14 +38,12 @@ static void Assert(BOOL condition, NSString *message) {
   }
 }
 
-static UNNotificationRequest *Request(NSString *physicalId, NSString *logicalId,
-                                      BOOL remote, BOOL hasFcmOptions) {
+static UNNotificationRequest *Request(NSString *physicalId, NSString *logicalId, BOOL remote,
+                                      BOOL hasFcmOptions) {
   UNMutableNotificationContent *content = [UNMutableNotificationContent new];
   NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
   if (logicalId != nil) {
-    userInfo[@"__notifee_notification"] =
-        @{@"id" : logicalId,
-          @"remote" : @(remote)};
+    userInfo[@"__notifee_notification"] = @{@"id" : logicalId, @"remote" : @(remote)};
   }
   if (hasFcmOptions) {
     userInfo[@"notifee_options"] = @"{\"_v\":1}";
@@ -55,60 +53,47 @@ static UNNotificationRequest *Request(NSString *physicalId, NSString *logicalId,
   request.identifier = physicalId;
   request.content = content;
   if (remote) {
-    request.trigger = (UNNotificationTrigger *)class_createInstance(
-        UNPushNotificationTrigger.class, 0);
+    request.trigger =
+        (UNNotificationTrigger *)class_createInstance(UNPushNotificationTrigger.class, 0);
   }
   return (UNNotificationRequest *)(id)request;
 }
 
 int main(void) {
   @autoreleasepool {
-    UNNotificationRequest *fcmA =
-        Request(@"physical-A", @"logical-N", YES, YES);
-    UNNotificationRequest *fcmB =
-        Request(@"physical-B", @"logical-N", YES, YES);
+    UNNotificationRequest *fcmA = Request(@"physical-A", @"logical-N", YES, YES);
+    UNNotificationRequest *fcmB = Request(@"physical-B", @"logical-N", YES, YES);
     UNNotificationRequest *fcmSame = Request(@"same", @"same", YES, YES);
     UNNotificationRequest *legacy = Request(@"legacy-R", @"legacy-R", YES, YES);
     UNNotificationRequest *local = Request(@"local-R", @"logical-N", NO, YES);
     UNNotificationRequest *foreign = Request(@"logical-N", nil, NO, NO);
-    UNNotificationRequest *otherLogical =
-        Request(@"physical-other", @"other-N", YES, YES);
-    UNNotificationRequest *collidingLogical =
-        Request(@"logical-N", @"different-N", YES, YES);
-    NSArray *requests =
-        @[ fcmA, fcmB, fcmSame, legacy, local, foreign, otherLogical ];
+    UNNotificationRequest *otherLogical = Request(@"physical-other", @"other-N", YES, YES);
+    UNNotificationRequest *collidingLogical = Request(@"logical-N", @"different-N", YES, YES);
+    NSArray *requests = @[ fcmA, fcmB, fcmSame, legacy, local, foreign, otherLogical ];
 
     Assert([NotifeeFcmLogicalIdForRequest(fcmA) isEqualToString:@"logical-N"],
            @"owned FCM N was not read from metadata");
-    Assert(NotifeeFcmLogicalIdForRequest(local) == nil,
-           @"local notification was reinterpreted");
-    Assert(NotifeeFcmLogicalIdForRequest(foreign) == nil,
-           @"foreign notification was claimed");
+    Assert(NotifeeFcmLogicalIdForRequest(local) == nil, @"local notification was reinterpreted");
+    Assert(NotifeeFcmLogicalIdForRequest(foreign) == nil, @"foreign notification was claimed");
     Assert([NotifeeFcmIdentifiersForLogicalId(requests, @"logical-N")
                isEqual:@[ @"physical-A", @"physical-B" ]],
            @"cancel(N) did not resolve every physical R or included another "
            @"notification");
-    Assert([NotifeeFcmIdentifiersForLogicalId(requests, @"same")
-               isEqual:@[ @"same" ]],
+    Assert([NotifeeFcmIdentifiersForLogicalId(requests, @"same") isEqual:@[ @"same" ]],
            @"N=R physical identity was not retained");
-    Assert([NotifeeFcmIdentifiersForLogicalId(requests, @"legacy-R")
-               isEqual:@[ @"legacy-R" ]],
+    Assert([NotifeeFcmIdentifiersForLogicalId(requests, @"legacy-R") isEqual:@[ @"legacy-R" ]],
            @"legacy R fallback changed");
-    Assert(!NotifeeShouldRemoveDirectIdentifierForLogicalId(requests,
-                                                            @"logical-N"),
+    Assert(!NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, @"logical-N"),
            @"cancel(N) would remove foreign physical R=N");
-    Assert(!NotifeeShouldRemoveDirectIdentifierForLogicalId(
-               @[ fcmA, collidingLogical ], @"logical-N"),
-           @"cancel(N) would remove another FCM notification whose R=N");
     Assert(
-        NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, @"unmatched"),
-        @"legacy physical cancellation changed");
-    Assert(!NotifeeShouldRemoveDirectIdentifierForLogicalId(requests,
-                                                            @"physical-other"),
+        !NotifeeShouldRemoveDirectIdentifierForLogicalId(@[ fcmA, collidingLogical ], @"logical-N"),
+        @"cancel(N) would remove another FCM notification whose R=N");
+    Assert(NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, @"unmatched"),
+           @"legacy physical cancellation changed");
+    Assert(!NotifeeShouldRemoveDirectIdentifierForLogicalId(requests, @"physical-other"),
            @"cancel by physical R would remove a different FCM logical N");
   }
-  if (failures > 0)
-    return 1;
+  if (failures > 0) return 1;
   fprintf(stdout, "PASS FCM native identity helper\n");
   return 0;
 }
