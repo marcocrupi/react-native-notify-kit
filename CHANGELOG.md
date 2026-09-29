@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.8.0] - 2026-09-29
+
 ### Added
 
 - **FCM Mode**: added top-level `subtitle` support and Android `circularLargeIcon` support in the Server SDK wire payload and client reconstruction.
