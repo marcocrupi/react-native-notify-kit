@@ -18,6 +18,7 @@ package app.notifee.core;
  */
 
 import android.annotation.SuppressLint;
+import android.app.ForegroundServiceStartNotAllowedException;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -29,7 +30,9 @@ import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.Trace;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -40,6 +43,9 @@ import app.notifee.core.event.NotificationEvent;
 import app.notifee.core.interfaces.MethodCallResult;
 import app.notifee.core.model.NotificationModel;
 import app.notifee.core.utility.ParcelableCompatReader;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public class ForegroundService extends Service {
   private static final String TAG = "ForegroundService";
@@ -49,8 +55,44 @@ public class ForegroundService extends Service {
       "app.notifee.core.ForegroundService.STOP";
 
   private static final Object sLock = new Object();
+  // Serializes client START acceptance with instance-targeted STOP. Notification cache fields
+  // are not lifecycle authority. Lock order is sLifecycleLock, then sLock.
+  private static final Object sLifecycleLock = new Object();
+  // Only START senders take this lock (the notification pipeline runs on its executor). Service
+  // lifecycle callbacks must never wait for a sender's Binder reply before promoting themselves.
+  private static final Object sStartDispatchLock = new Object();
+  private static final Map<String, StartRequest> sPendingStarts = new HashMap<>();
+  private static final String START_REQUEST_ID = "notifee.foregroundServiceStartRequestId";
+  private static long sRunGeneration;
+  private static ForegroundService sInstance;
+  private static Object sStopRequest;
+  private static ForegroundService sStateOwner;
+  private int mLastStartId;
+  private boolean mStopInitiated;
+  private boolean mStartCommandFailed;
+  private boolean mForegroundActive;
+  private boolean mStartCommandSatisfied;
+  private long mRunGeneration;
+  // The admission fence may advance before posting. Cached state belongs to its last successful
+  // generation until the replacement platform call returns normally.
+  private long mStateGeneration;
+  private int mRunFirstStartId;
+  private Object mRunnerToken;
   private static final String DEFENSIVE_CHANNEL_ID = "notifee_fg_default";
   private static final int DEFENSIVE_NOTIFICATION_ID = Integer.MAX_VALUE - 1;
+
+  private static final class StartRequest {
+    final long generation;
+    final Object precedingStop;
+    boolean accepted;
+    // Null until delivery. An unfulfilled delivered request belongs to that physical instance.
+    ForegroundService instance;
+
+    StartRequest(long generation, Object precedingStop) {
+      this.generation = generation;
+      this.precedingStop = precedingStop;
+    }
+  }
 
   /**
    * Tracks whether startForeground() has been called on THIS service instance. This is an instance
@@ -72,6 +114,58 @@ public class ForegroundService extends Service {
   private static Bundle mCurrentNotificationBundle = null;
   private static Notification mCurrentNotification = null;
   private static int mCurrentHashCode = 0;
+
+  @Override
+  public void onCreate() {
+    super.onCreate();
+    synchronized (sLifecycleLock) {
+      sInstance = this;
+      mRunGeneration = sRunGeneration;
+      synchronized (sLock) {
+        sStateOwner = this;
+        clearCurrentState();
+      }
+    }
+  }
+
+  @Override
+  public void onDestroy() {
+    synchronized (sLifecycleLock) {
+      sPendingStarts.values().removeIf(request -> request.instance == this);
+      if (sInstance == this) {
+        sInstance = null;
+        if (sPendingStarts.isEmpty()) {
+          sStopRequest = null;
+        }
+      }
+      clearOwnedState();
+      mForegroundActive = false;
+      synchronized (sLock) {
+        if (sStateOwner == this) {
+          sStateOwner = null;
+        }
+      }
+    }
+    super.onDestroy();
+  }
+
+  // Caller holds sLock. Ownership is checked by clearOwnedState before any terminal cleanup.
+  private static void clearCurrentState() {
+    mCurrentNotificationId = null;
+    mCurrentForegroundServiceType = -1;
+    mCurrentNotificationBundle = null;
+    mCurrentNotification = null;
+    mCurrentHashCode = 0;
+  }
+
+  private void clearOwnedState() {
+    synchronized (sLock) {
+      if (sStateOwner == this) {
+        clearCurrentState();
+        mRunnerToken = null;
+      }
+    }
+  }
 
   /**
    * Submits the latest foreground service notification again if the given notification ID matches
@@ -130,55 +224,219 @@ public class ForegroundService extends Service {
     intent.putExtra("notification", notification);
     intent.putExtra("notificationBundle", notificationBundle);
 
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      context.startForegroundService(intent);
-    } else {
-      // TODO test this on older device
-      context.startService(intent);
+    synchronized (sStartDispatchLock) {
+      // A retry/redelivery from a previous process must not alias a new pending request.
+      String requestId = UUID.randomUUID().toString();
+      intent.putExtra(START_REQUEST_ID, requestId);
+      StartRequest request;
+      synchronized (sLifecycleLock) {
+        request = new StartRequest(sRunGeneration, sStopRequest);
+        sPendingStarts.put(requestId, request);
+      }
+      ComponentName component;
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          component = context.startForegroundService(intent);
+        } else {
+          component = context.startService(intent);
+        }
+      } catch (RuntimeException e) {
+        synchronized (sLifecycleLock) {
+          // Only a definite platform rejection releases an undelivered obligation. An unrelated
+          // exception can be a lost Binder reply: UNKNOWN must remain held until actual delivery.
+          if (!request.accepted
+              && (e instanceof SecurityException
+                  || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                      && e instanceof ForegroundServiceStartNotAllowedException))) {
+            sPendingStarts.remove(requestId);
+          }
+          scheduleStop();
+        }
+        throw e;
+      }
+      synchronized (sLifecycleLock) {
+        if (component != null) {
+          acceptStart(request);
+        } else if (!request.accepted) {
+          sPendingStarts.remove(requestId);
+        }
+        scheduleStop();
+      }
+    }
+  }
+
+  // Caller holds sLifecycleLock. Delivery itself can prove acceptance before Context returns.
+  // A late reply never cancels a STOP ordered after this START was reserved/delivered.
+  private static void acceptStart(StartRequest request) {
+    if (!request.accepted) {
+      request.accepted = true;
+      if (sStopRequest == request.precedingStop) {
+        sStopRequest = null;
+      }
     }
   }
 
   static void stop() {
-    Context context = ContextHolder.getApplicationContext();
-    if (context == null) {
-      Logger.e(TAG, "Application context is null; cannot stop ForegroundService.");
-      return;
-    }
-
-    Intent intent = new Intent(context, ForegroundService.class);
-    intent.setAction(STOP_FOREGROUND_SERVICE_ACTION);
-
-    try {
-      // Call start service first with stop action
-      context.startService(intent);
-    } catch (IllegalStateException illegalStateException) {
-      Logger.w(
-          TAG,
-          "startService() threw IllegalStateException on STOP path;"
-              + " falling back to stopService()",
-          illegalStateException);
-      // try to stop with stopService command
-      context.stopService(intent);
-    } catch (Exception exception) {
-      Logger.e(TAG, "Unable to stop foreground service", exception);
+    synchronized (sLifecycleLock) {
+      if (sInstance == null && sPendingStarts.isEmpty()) {
+        return;
+      }
+      sStopRequest = new Object();
+      sRunGeneration++;
+      scheduleStop();
     }
   }
 
-  @SuppressLint({"ForegroundServiceType", "MissingPermission"})
+  // Caller holds sLifecycleLock. No START/STOP intent is dispatched here, so a stale reference
+  // cannot cold-start a service. onCreate alone is UNKNOWN: wait for a delivered command.
+  private static void scheduleStop() {
+    ForegroundService instance = sInstance;
+    Object request = sStopRequest;
+    if (instance != null && request != null) {
+      new Handler(Looper.getMainLooper()).post(() -> instance.stopIfRequested(request));
+    }
+  }
+
+  private void stopIfRequested(Object request) {
+    synchronized (sLifecycleLock) {
+      if (sInstance != this
+          || sStopRequest != request
+          || !sPendingStarts.isEmpty()
+          || mLastStartId == 0
+          || mStopInitiated
+          || mStartCommandFailed) {
+        return;
+      }
+      // The framework token and startId also protect against a start we have not yet received.
+      if (stopSelfResult(mLastStartId)) {
+        mStopInitiated = true;
+        sStopRequest = null;
+        mForegroundActive = false;
+        clearOwnedState();
+      }
+    }
+  }
+
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
+    synchronized (sLifecycleLock) {
+      mLastStartId = startId;
+      boolean terminal =
+          intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction());
+      if (terminal) {
+        sRunGeneration++;
+      }
+      if (terminal && !sPendingStarts.isEmpty()) {
+        // The earlier accepted START must promote with its real notification/type first.
+        sStopRequest = new Object();
+        return START_STICKY_COMPATIBILITY;
+      }
+      if (!terminal) {
+        mStopInitiated = false;
+      }
+      String requestId = intent == null ? null : intent.getStringExtra(START_REQUEST_ID);
+      StartRequest request = sPendingStarts.get(requestId);
+      boolean superseded = false;
+      if (!terminal) {
+        long generation = request == null ? sRunGeneration : request.generation;
+        if (request != null) {
+          request.instance = this;
+          acceptStart(request);
+        }
+        superseded = mRunFirstStartId != 0 && generation < mRunGeneration;
+        if (!superseded && mRunGeneration != generation) {
+          // Reserve the new session without retiring the previous submitted state or runner.
+          // A failed promotion must preserve them, while older deliveries remain fenced.
+          mRunGeneration = generation;
+        }
+      }
+      mStartCommandSatisfied = mForegroundActive;
+      try {
+        int result;
+        if (superseded) {
+          // A lost-reply START can arrive after a newer run. Preserve the new cache/runner. If
+          // that run already ended, still perform the old request's real promotion before teardown.
+          result = mForegroundActive ? START_NOT_STICKY : fulfillSupersededStart(intent);
+        } else {
+          result = handleStartCommand(intent, flags, startId);
+        }
+        mStartCommandFailed = false;
+        if (mStartCommandSatisfied) {
+          settleDeliveredStarts();
+        }
+        if (superseded
+            && mStartCommandSatisfied
+            && !mForegroundActive
+            && mRunnerToken == null
+            && sPendingStarts.isEmpty()
+            && sStopRequest == null) {
+          sStopRequest = new Object();
+        }
+        if (!terminal) {
+          scheduleStop();
+        }
+        return result;
+      } catch (RuntimeException e) {
+        mStartCommandFailed = !mStartCommandSatisfied;
+        if (mStartCommandSatisfied) {
+          settleDeliveredStarts();
+        }
+        throw e;
+      }
+    }
+  }
+
+  // A real promotion (or an already foreground instance) satisfies the physical instance's
+  // delivered obligations, including a prior ambiguous delivery. Undelivered STARTs remain held.
+  // This does not turn a posting/type exception into success: onStartCommand still rethrows it.
+  private void settleDeliveredStarts() {
+    sPendingStarts.values().removeIf(request -> request.instance == this);
+  }
+
+  @SuppressLint({"ForegroundServiceType", "MissingPermission"})
+  private int fulfillSupersededStart(Intent intent) {
+    Bundle extras = intent.getExtras();
+    if (extras == null) {
+      return START_NOT_STICKY;
+    }
+    Notification notification =
+        ParcelableCompatReader.getParcelable(extras, "notification", Notification.class);
+    Bundle bundle = extras.getBundle("notificationBundle");
+    if (notification == null || bundle == null) {
+      return START_NOT_STICKY;
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+      int type = NotificationModel.fromBundle(bundle).getAndroid().getForegroundServiceType();
+      if (type == ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST) {
+        type = resolveManifestServiceType();
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+          && type == ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE) {
+        ensureStartForegroundContractSatisfied(false);
+        return START_NOT_STICKY;
+      }
+      startForeground(extras.getInt("hashCode"), notification, type);
+    } else {
+      startForeground(extras.getInt("hashCode"), notification);
+    }
+    mStartForegroundCalled = true;
+    mForegroundActive = true;
+    mStartCommandSatisfied = true;
+    stopForegroundCompat();
+    return START_NOT_STICKY;
+  }
+
+  @SuppressLint({"ForegroundServiceType", "MissingPermission"})
+  private int handleStartCommand(Intent intent, int flags, int startId) {
     Trace.beginSection("notifee:ForegroundService.onStartCommand");
     try {
       // Check if action is to stop the foreground service
       if (intent == null || STOP_FOREGROUND_SERVICE_ACTION.equals(intent.getAction())) {
-        ensureStartForegroundContractSatisfied();
-        stopSelf();
-        synchronized (sLock) {
-          mCurrentNotificationId = null;
-          mCurrentForegroundServiceType = -1;
-          mCurrentNotificationBundle = null;
-          mCurrentNotification = null;
-          mCurrentHashCode = 0;
+        ensureStartForegroundContractSatisfied(true);
+        if (stopSelfResult(startId)) {
+          mStopInitiated = true;
+          mForegroundActive = false;
+          clearOwnedState();
         }
         return Service.START_STICKY_COMPATIBILITY;
       }
@@ -200,7 +458,7 @@ public class ForegroundService extends Service {
           boolean noneEarlyReturn = false;
 
           synchronized (sLock) {
-            if (mCurrentNotificationId == null) {
+            if (mCurrentNotificationId == null || mStateGeneration != mRunGeneration) {
               if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 int foregroundServiceType =
                     notificationModel.getAndroid().getForegroundServiceType();
@@ -224,6 +482,8 @@ public class ForegroundService extends Service {
                     Trace.endSection();
                   }
                   mStartForegroundCalled = true;
+                  mForegroundActive = true;
+                  mStartCommandSatisfied = true;
                   mCurrentForegroundServiceType = foregroundServiceType;
                 }
               } else {
@@ -234,6 +494,8 @@ public class ForegroundService extends Service {
                   Trace.endSection();
                 }
                 mStartForegroundCalled = true;
+                mForegroundActive = true;
+                mStartCommandSatisfied = true;
               }
 
               if (!noneEarlyReturn) {
@@ -241,16 +503,29 @@ public class ForegroundService extends Service {
                 mCurrentNotificationBundle = bundle;
                 mCurrentNotification = notification;
                 mCurrentHashCode = hashCode;
+                mStateGeneration = mRunGeneration;
+                mRunFirstStartId = mLastStartId;
+                final Object runnerToken = new Object();
+                final long runnerGeneration = mRunGeneration;
+                mRunnerToken = runnerToken;
                 // On headless task complete
                 final MethodCallResult<Void> methodCallResult =
                     (e, aVoid) -> {
-                      stopForegroundCompat();
-                      synchronized (sLock) {
-                        mCurrentNotificationId = null;
-                        mCurrentForegroundServiceType = -1;
-                        mCurrentNotificationBundle = null;
-                        mCurrentNotification = null;
-                        mCurrentHashCode = 0;
+                      Runnable complete =
+                          () -> {
+                            synchronized (sLifecycleLock) {
+                              if (sInstance == this
+                                  && mRunnerToken == runnerToken
+                                  && sRunGeneration == runnerGeneration) {
+                                stopForegroundCompat();
+                                clearOwnedState();
+                              }
+                            }
+                          };
+                      if (Looper.myLooper() == Looper.getMainLooper()) {
+                        complete.run();
+                      } else {
+                        new Handler(Looper.getMainLooper()).post(complete);
                       }
                     };
 
@@ -292,6 +567,8 @@ public class ForegroundService extends Service {
                     Trace.endSection();
                   }
                   mStartForegroundCalled = true;
+                  mForegroundActive = true;
+                  mStartCommandSatisfied = true;
                 } else {
                   NotificationManagerCompat.from(ContextHolder.getApplicationContext())
                       .notify(mCurrentHashCode, notification);
@@ -312,7 +589,7 @@ public class ForegroundService extends Service {
           // Handle NONE early return outside the lock — the helper performs Binder IPC
           // (PackageManager query + startForeground) that must not hold sLock.
           if (noneEarlyReturn) {
-            ensureStartForegroundContractSatisfied();
+            ensureStartForegroundContractSatisfied(false);
             return START_NOT_STICKY;
           }
 
@@ -407,6 +684,7 @@ public class ForegroundService extends Service {
     } else {
       stopForeground(true);
     }
+    mForegroundActive = false;
   }
 
   /**
@@ -420,7 +698,7 @@ public class ForegroundService extends Service {
    * on API 29-33 and to {@code FOREGROUND_SERVICE_TYPE_NONE} on API 34+. This method is an instance
    * method that uses {@code this} as context (always valid inside a running Service) and returns
    * the raw declared value without any API-level mapping, which is what the proactive manifest
-   * check in {@link #ensureStartForegroundContractSatisfied()} needs.
+   * check in {@link #ensureStartForegroundContractSatisfied(boolean)} needs.
    *
    * @return the raw {@code foregroundServiceType} bitmask from the manifest, or 0 if the service is
    *     not declared or has no explicit type
@@ -485,10 +763,12 @@ public class ForegroundService extends Service {
    * @throws RuntimeException if the manifest is missing required {@code foregroundServiceType}
    *     declarations on API 34+, or if the defensive {@code startForeground()} call fails for a
    *     non-platform-permission reason. {@link SecurityException} is handled as a best-effort stop
-   *     because API 34+ can deny while-in-use types when the app is backgrounded.
+   *     because API 34+ can deny while-in-use types when the app is backgrounded. A terminal
+   *     STOP/null also logs and tolerates the API 31+ promotion denial specifically; that policy
+   *     does not apply to NONE or to an earlier unfulfilled accepted START.
    */
   @SuppressLint({"ForegroundServiceType", "MissingPermission"})
-  private void ensureStartForegroundContractSatisfied() {
+  private void ensureStartForegroundContractSatisfied(boolean terminalStop) {
     if (mStartForegroundCalled) {
       return;
     }
@@ -516,36 +796,51 @@ public class ForegroundService extends Service {
       }
     }
 
+    ensureDefensiveChannel();
+    Notification placeholder =
+        new NotificationCompat.Builder(this, DEFENSIVE_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .build();
+    // Resolve the safe declared type before entering the promotion-only exception boundary.
+    int defensiveTypes =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+            ? selectDefensiveForegroundServiceType(declaredTypes)
+            : 0;
     try {
-      ensureDefensiveChannel();
-      Notification placeholder =
-          new NotificationCompat.Builder(this, DEFENSIVE_CHANNEL_ID)
-              .setSmallIcon(android.R.drawable.ic_dialog_info)
-              .build();
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        // The STOP/null defensive placeholder does not represent the real workload. Prefer a
-        // declared type without while-in-use runtime restrictions before falling back to the
-        // manifest-declared mask.
-        int defensiveTypes = selectDefensiveForegroundServiceType(declaredTypes);
         startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder, defensiveTypes);
       } else {
         startForeground(DEFENSIVE_NOTIFICATION_ID, placeholder);
       }
-      mStartForegroundCalled = true;
-      stopForegroundCompat();
     } catch (SecurityException e) {
       Logger.w(
           TAG,
           "Defensive startForeground() was denied by Android while stopping the service; "
               + "continuing with stopSelf() to avoid a fatal app crash.",
           e);
+      return;
     } catch (Exception e) {
+      // NONE and unrelated IllegalStateException/type failures remain observable.
+      if (terminalStop
+          && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+          && e instanceof ForegroundServiceStartNotAllowedException) {
+        Logger.w(
+            TAG,
+            "Defensive startForeground() was not allowed by Android while stopping; "
+                + "continuing with stopSelf().",
+            e);
+        return;
+      }
       String msg =
           "react-native-notify-kit: defensive startForeground() failed. "
               + "This indicates an inconsistent service state and the process cannot recover.";
       Logger.e(TAG, msg, e);
       throw new RuntimeException(msg, e);
     }
+    mStartForegroundCalled = true;
+    mForegroundActive = true;
+    mStartCommandSatisfied = true;
+    stopForegroundCompat();
   }
 
   private void handleTimeout(int startId, int fgsType) {
@@ -558,17 +853,19 @@ public class ForegroundService extends Service {
             + "). Stopping service.");
 
     Bundle notifBundle;
-    synchronized (sLock) {
-      notifBundle = mCurrentNotificationBundle;
-      mCurrentNotificationId = null;
-      mCurrentForegroundServiceType = -1;
-      mCurrentNotificationBundle = null;
-      mCurrentNotification = null;
-      mCurrentHashCode = 0;
+    synchronized (sLifecycleLock) {
+      // shortService can report the first START of this run after same-ID updates. Reject only
+      // callbacks from an earlier run, not earlier STARTs within the current run.
+      if (sInstance != this || (mRunFirstStartId != 0 && startId < mRunFirstStartId)) {
+        return;
+      }
+      synchronized (sLock) {
+        notifBundle = sStateOwner == this ? mCurrentNotificationBundle : null;
+        clearOwnedState();
+      }
+      stopForegroundCompat();
+      stopSelf(startId);
     }
-
-    stopForegroundCompat();
-    stopSelf(startId);
 
     if (notifBundle != null) {
       NotificationModel model = NotificationModel.fromBundle(notifBundle);
