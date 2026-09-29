@@ -39,8 +39,13 @@ notifee.registerForegroundService(notification => {
 });
 ```
 
-Whenever you call `stopForegroundService`, the foreground service will close and the notification will be removed. The service can be
-stopped by the device (e.g. low memory) or if the user force quits from the application settings.
+Calling `stopForegroundService()` stops the active service and removes its notification. If no service is active or starting,
+the call is a no-op. Duplicate STOP calls are safe, and the library does not cold-start a `ForegroundService` just to stop it.
+
+On Android 12+ (API 31+), a `ForegroundServiceStartNotAllowedException` in the defensive terminal STOP/null path is handled
+without crashing the process. This denial handling does not apply to real START failures, unrelated errors, or configuration failures.
+
+The service can also be stopped by the device (e.g. low memory) or if the user force quits from the application settings.
 
 ### Attach a notification
 
