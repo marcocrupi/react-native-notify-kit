@@ -87,6 +87,7 @@
     "@types/node": "^22.0.0",
     "@tootallnate/once": "^3.0.1",
     "xcode/uuid": "11.1.1",
+    "nx/smol-toml": "1.7.1",
     "js-yaml": "4.3.1",
     "tar": "7.5.21"
   },
