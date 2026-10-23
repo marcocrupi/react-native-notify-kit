@@ -27,6 +27,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.app.NotificationManagerCompat;
 import app.notifee.core.event.InitialNotificationEvent;
 import app.notifee.core.event.MainComponentEvent;
@@ -43,7 +44,10 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -56,6 +60,12 @@ public class Notifee {
   private static final ExecutorService executorService = Executors.newCachedThreadPool();
   private static final ListeningExecutorService lExecutorService =
       MoreExecutors.listeningDecorator(executorService);
+
+  private static final Object initialNotificationLock = new Object();
+  // Activity Intents without an interaction id already returned by getInitialNotification().
+  // Intent has identity equality; weak keys let entries go with their Activity.
+  private static final Set<Intent> consumedInitialNotificationIntents =
+      Collections.newSetFromMap(new WeakHashMap<>());
 
   @KeepForSdk public static final int REQUEST_CODE_NOTIFICATION_PERMISSION = 11111;
 
@@ -432,31 +442,76 @@ public class Notifee {
 
   @KeepForSdk
   public void getInitialNotification(Activity activity, MethodCallResult<Bundle> result) {
-    InitialNotificationEvent event = EventBus.removeStickEvent(InitialNotificationEvent.class);
-    Bundle initialNotificationBundle = new Bundle();
+    Bundle initialNotificationBundle;
+    synchronized (initialNotificationLock) {
+      initialNotificationBundle = consumeInitialNotification(activity);
+    }
+    result.onComplete(null, initialNotificationBundle);
+  }
 
-    if (event != null) {
+  private static @Nullable Bundle consumeInitialNotification(@Nullable Activity activity) {
+    InitialNotificationEvent event = EventBus.removeStickEvent(InitialNotificationEvent.class);
+
+    // An event whose tap was already returned through its launch Intent is dropped.
+    if (event != null && InitialNotificationLedger.claimTap(event.getTapSequence())) {
+      Bundle initialNotificationBundle = new Bundle();
       initialNotificationBundle.putAll(event.getExtras());
       initialNotificationBundle.putBundle("notification", event.getNotificationModel().toBundle());
-      result.onComplete(null, initialNotificationBundle);
-      return;
-    } else if (activity != null) {
-      try {
-        // get intent from current activity
-        Intent intent = activity.getIntent();
-        if (intent != null && intent.getExtras() != null && intent.hasExtra("notification")) {
-          initialNotificationBundle.putBundle(
-              "notification", intent.getBundleExtra("notification"));
-          result.onComplete(null, initialNotificationBundle);
-          return;
-        }
-      } catch (Exception e) {
-        Logger.e(TAG, "getInitialNotification", e);
-      }
+      return initialNotificationBundle;
     }
 
-    // If no initial notification, return
-    result.onComplete(null, null);
+    if (activity == null) {
+      return null;
+    }
+
+    try {
+      // get intent from current activity
+      Intent intent = activity.getIntent();
+      if (intent == null) {
+        return null;
+      }
+
+      Bundle notification = intent.getBundleExtra("notification");
+      if (notification == null || !claimActivityIntent(intent)) {
+        return null;
+      }
+
+      Bundle initialNotificationBundle = new Bundle();
+      initialNotificationBundle.putBundle("notification", notification);
+      return initialNotificationBundle;
+    } catch (Exception e) {
+      Logger.e(TAG, "getInitialNotification", e);
+    }
+
+    return null;
+  }
+
+  /** Claims the interaction an Activity Intent carries, if it was not returned yet. */
+  private static boolean claimActivityIntent(Intent intent) {
+    String pendingIntentId =
+        intent.getStringExtra(NotificationPendingIntent.PENDING_INTENT_ID_INTENT_KEY);
+
+    if (intent.hasExtra(NotificationPendingIntent.EVENT_TYPE_INTENT_KEY)) {
+      // Launch Intent of a NotificationPendingIntent tap. The tap's sticky event returns it; the
+      // Intent stands in only for a recorded tap whose event was lost with its process.
+      return pendingIntentId != null && InitialNotificationLedger.claimLatestTap(pendingIntentId);
+    }
+
+    if (pendingIntentId != null) {
+      return InitialNotificationLedger.claimFullScreenLaunch(pendingIntentId);
+    }
+
+    // No id (foreign Intent, or full-screen Intent of an earlier version): consumption follows the
+    // Intent object.
+    return consumedInitialNotificationIntents.add(intent);
+  }
+
+  /** Drops in-memory state, as a new process would. */
+  @VisibleForTesting
+  static void resetInitialNotificationStateForTesting() {
+    synchronized (initialNotificationLock) {
+      consumedInitialNotificationIntents.clear();
+    }
   }
 
   @KeepForSdk

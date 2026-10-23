@@ -19,6 +19,7 @@ package app.notifee.core;
 
 import static app.notifee.core.NotificationPendingIntent.EVENT_TYPE_INTENT_KEY;
 import static app.notifee.core.NotificationPendingIntent.NOTIFICATION_ID_INTENT_KEY;
+import static app.notifee.core.NotificationPendingIntent.PENDING_INTENT_ID_INTENT_KEY;
 import static app.notifee.core.event.NotificationEvent.TYPE_ACTION_PRESS;
 import static app.notifee.core.event.NotificationEvent.TYPE_PRESS;
 
@@ -98,7 +99,11 @@ public class NotificationReceiverHandler {
     }
 
     InitialNotificationEvent initialNotificationEvent =
-        new InitialNotificationEvent(notificationModel, extras);
+        new InitialNotificationEvent(
+            notificationModel,
+            extras,
+            InitialNotificationLedger.recordTap(
+                intent.getStringExtra(PENDING_INTENT_ID_INTENT_KEY)));
     EventBus.postSticky(initialNotificationEvent);
 
     // Send event
@@ -127,7 +132,11 @@ public class NotificationReceiverHandler {
     EventBus.post(new NotificationEvent(TYPE_PRESS, notificationModel, extras));
 
     InitialNotificationEvent initialNotificationEvent =
-        new InitialNotificationEvent(notificationModel, extras);
+        new InitialNotificationEvent(
+            notificationModel,
+            extras,
+            InitialNotificationLedger.recordTap(
+                intent.getStringExtra(PENDING_INTENT_ID_INTENT_KEY)));
     EventBus.postSticky(initialNotificationEvent);
 
     if (pressActionBundle == null) {

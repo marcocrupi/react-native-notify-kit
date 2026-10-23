@@ -26,10 +26,21 @@ public class InitialNotificationEvent {
 
   private NotificationModel notificationModel;
   private Bundle extras;
+  private long tapSequence;
 
   public InitialNotificationEvent(NotificationModel notificationModel, Bundle extras) {
+    this(notificationModel, extras, 0);
+  }
+
+  /**
+   * @param tapSequence sequence number recorded for the tap that produced this event, or 0 when the
+   *     tap is not tracked.
+   */
+  public InitialNotificationEvent(
+      NotificationModel notificationModel, Bundle extras, long tapSequence) {
     this.notificationModel = notificationModel;
     this.extras = extras;
+    this.tapSequence = tapSequence;
   }
 
   public NotificationModel getNotificationModel() {
@@ -38,6 +49,10 @@ public class InitialNotificationEvent {
 
   public Bundle getExtras() {
     return extras;
+  }
+
+  public long getTapSequence() {
+    return tapSequence;
   }
 
   public Map<String, Object> toMap() {

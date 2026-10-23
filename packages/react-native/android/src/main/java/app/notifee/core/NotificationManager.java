@@ -415,6 +415,9 @@ class NotificationManager {
                           launchIntent.putExtra(
                               "mainComponent", fullScreenActionBundle.getMainComponent());
                           launchIntent.putExtra("notification", notificationModel.toBundle());
+                          launchIntent.putExtra(
+                              NotificationPendingIntent.PENDING_INTENT_ID_INTENT_KEY,
+                              InitialNotificationLedger.issueFullScreenLaunchId());
                           EventBus.postSticky(
                               new MainComponentEvent(fullScreenActionBundle.getMainComponent()));
                         }

@@ -29,6 +29,14 @@ import java.util.UUID;
 public class NotificationPendingIntent {
   public static final String EVENT_TYPE_INTENT_KEY = "notifee_event_type";
   public static final String NOTIFICATION_ID_INTENT_KEY = "notification_id";
+
+  /**
+   * Random id shared by the Intents of one PendingIntent, or issued for a full-screen Intent, so a
+   * launch Intent can be matched with the interactions recorded by {@link
+   * InitialNotificationLedger}.
+   */
+  static final String PENDING_INTENT_ID_INTENT_KEY = "notifee_pending_intent_id";
+
   private static final String TAG = "NotificationPendingIntent";
 
   /**
@@ -73,6 +81,12 @@ public class NotificationPendingIntent {
     // Set extras for each intent
     setIntentExtras(launchActivityIntent, eventType, notificationId, extraKeys, extraBundles);
     setIntentExtras(receiverIntent, eventType, notificationId, extraKeys, extraBundles);
+
+    String pendingIntentId = UUID.randomUUID().toString();
+    if (launchActivityIntent != null) {
+      launchActivityIntent.putExtra(PENDING_INTENT_ID_INTENT_KEY, pendingIntentId);
+    }
+    receiverIntent.putExtra(PENDING_INTENT_ID_INTENT_KEY, pendingIntentId);
 
     // Create pending intent with activities
     int uniqueInt = UUID.randomUUID().hashCode();
