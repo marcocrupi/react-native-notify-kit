@@ -66,6 +66,8 @@ public class Notifee {
   // Intent has identity equality; weak keys let entries go with their Activity.
   private static final Set<Intent> consumedInitialNotificationIntents =
       Collections.newSetFromMap(new WeakHashMap<>());
+  // Latest full-screen launch recorded by NotificationReceiverActivity, not returned yet.
+  @Nullable private static Intent recordedFullScreenLaunchIntent;
 
   @KeepForSdk public static final int REQUEST_CODE_NOTIFICATION_PERMISSION = 11111;
 
@@ -449,28 +451,92 @@ public class Notifee {
     result.onComplete(null, initialNotificationBundle);
   }
 
-  private static @Nullable Bundle consumeInitialNotification(@Nullable Activity activity) {
-    InitialNotificationEvent event = EventBus.removeStickEvent(InitialNotificationEvent.class);
+  /** Checks payload shape before any capture or durable retirement. */
+  static boolean isValidFullScreenLaunch(@Nullable Intent intent) {
+    try {
+      if (intent == null
+          || intent.hasExtra(NotificationPendingIntent.EVENT_TYPE_INTENT_KEY)
+          || intent.getBundleExtra("notification") == null) return false;
+      Object notificationId = intent.getBundleExtra("notification").get("id");
+      return notificationId instanceof String
+          && !((String) notificationId).isEmpty()
+          && intent.getStringExtra(NotificationPendingIntent.PENDING_INTENT_ID_INTENT_KEY) != null;
+    } catch (Exception e) {
+      return false;
+    }
+  }
 
-    // An event whose tap was already returned through its launch Intent is dropped.
-    if (event != null && InitialNotificationLedger.claimTap(event.getTapSequence())) {
-      Bundle initialNotificationBundle = new Bundle();
-      initialNotificationBundle.putAll(event.getExtras());
-      initialNotificationBundle.putBundle("notification", event.getNotificationModel().toBundle());
-      return initialNotificationBundle;
+  /**
+   * Records the launch of a full-screen Intent, from {@link FullScreenNotificationActivity} started
+   * before its consumer, independently of React Native. An existing launch Activity gets the launch
+   * through onNewIntent(), which React Native drops while its instance starts, and its getIntent()
+   * keeps returning the Intent that created it. A launch is recorded only if it was issued and not
+   * returned yet, in place of an earlier one, as the sticky event keeps the latest tap.
+   */
+  static void recordFullScreenLaunch(@Nullable Intent intent) {
+    try {
+      if (!isValidFullScreenLaunch(intent)) return;
+      String pendingIntentId =
+          intent.getStringExtra(NotificationPendingIntent.PENDING_INTENT_ID_INTENT_KEY);
+
+      synchronized (initialNotificationLock) {
+        if (InitialNotificationLedger.recordFullScreenLaunch(pendingIntentId)) {
+          recordedFullScreenLaunchIntent = new Intent(intent);
+          String mainComponent = intent.getStringExtra("mainComponent");
+          if (mainComponent != null) {
+            // A cold process lost the event posted when the notification was displayed. Restore
+            // it before the consumer asks for its React component during Activity creation.
+            EventBus.postSticky(new MainComponentEvent(mainComponent));
+          }
+        }
+      }
+    } catch (Exception e) {
+      Logger.e(TAG, "recordFullScreenLaunch", e);
+    }
+  }
+
+  private static @Nullable Bundle consumeInitialNotification(@Nullable Activity activity) {
+    InitialNotificationEvent event = EventBus.getStickyEvent(InitialNotificationEvent.class);
+
+    if (event != null) {
+      InitialNotificationLedger.TapClaim claim =
+          InitialNotificationLedger.claimTap(event.getTapSequence());
+      if (claim == InitialNotificationLedger.TapClaim.RETRY) {
+        // Keep the sticky payload, including ACTION_PRESS input, for a later durable claim.
+        return null;
+      }
+      // Remove only this event: a concurrent new tap must not be discarded with it.
+      EventBus.removeStickyEvent(event);
+      if (claim == InitialNotificationLedger.TapClaim.CLAIMED) {
+        Bundle initialNotificationBundle = new Bundle();
+        initialNotificationBundle.putAll(event.getExtras());
+        initialNotificationBundle.putBundle(
+            "notification", event.getNotificationModel().toBundle());
+        return initialNotificationBundle;
+      }
+      // Otherwise this tap was already returned through its launch Intent.
+    }
+
+    Bundle recordedLaunchBundle = consumeActivityIntent(recordedFullScreenLaunchIntent);
+    if (recordedLaunchBundle != null) {
+      recordedFullScreenLaunchIntent = null;
+      return recordedLaunchBundle;
     }
 
     if (activity == null) {
       return null;
     }
 
-    try {
-      // get intent from current activity
-      Intent intent = activity.getIntent();
-      if (intent == null) {
-        return null;
-      }
+    // get intent from current activity
+    return consumeActivityIntent(activity.getIntent());
+  }
 
+  private static @Nullable Bundle consumeActivityIntent(@Nullable Intent intent) {
+    if (intent == null) {
+      return null;
+    }
+
+    try {
       Bundle notification = intent.getBundleExtra("notification");
       if (notification == null || !claimActivityIntent(intent)) {
         return null;
@@ -511,6 +577,7 @@ public class Notifee {
   static void resetInitialNotificationStateForTesting() {
     synchronized (initialNotificationLock) {
       consumedInitialNotificationIntents.clear();
+      recordedFullScreenLaunchIntent = null;
     }
   }
 

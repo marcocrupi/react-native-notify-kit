@@ -422,12 +422,47 @@ class NotificationManager {
                               new MainComponentEvent(fullScreenActionBundle.getMainComponent()));
                         }
 
-                        PendingIntent fullScreenPendingIntent =
-                            PendingIntent.getActivity(
-                                getApplicationContext(),
-                                notificationModel.getHashCode(),
-                                launchIntent,
-                                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                        PendingIntent fullScreenPendingIntent;
+                        if (launchIntent.hasExtra(
+                            NotificationPendingIntent.PENDING_INTENT_ID_INTENT_KEY)) {
+                          // A sole Activity target must run before the consumer is started. In a
+                          // getActivities array, an intermediate, hidden Activity can stay
+                          // uncreated.
+                          Intent receiverIntent =
+                              new Intent(
+                                  getApplicationContext(), FullScreenNotificationActivity.class);
+                          receiverIntent.setAction(FullScreenNotificationActivity.ACTION);
+                          // Preserve the component partition of the original consumer
+                          // PendingIntent.
+                          // Payload, flags and mainComponent remain updateable extras of that
+                          // identity.
+                          receiverIntent.setData(
+                              android.net.Uri.fromParts(
+                                  "notifee-full-screen", launchActivityClass.getName(), null));
+                          receiverIntent.putExtras(launchIntent);
+                          // An unfinished NoDisplay root can lose a queued new Intent when it
+                          // finishes in onCreate. Give each capture its own short-lived task.
+                          receiverIntent.setFlags(
+                              Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+                          // Match the effective NEW_TASK flag of the original getActivity flow.
+                          launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                          receiverIntent.putExtra(
+                              FullScreenNotificationActivity.LAUNCH_INTENT,
+                              new Intent(launchIntent).replaceExtras((Bundle) null));
+                          fullScreenPendingIntent =
+                              PendingIntent.getActivity(
+                                  getApplicationContext(),
+                                  notificationModel.getHashCode(),
+                                  receiverIntent,
+                                  PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                        } else {
+                          fullScreenPendingIntent =
+                              PendingIntent.getActivity(
+                                  getApplicationContext(),
+                                  notificationModel.getHashCode(),
+                                  launchIntent,
+                                  PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+                        }
                         builder.setFullScreenIntent(fullScreenPendingIntent, true);
                       }
 

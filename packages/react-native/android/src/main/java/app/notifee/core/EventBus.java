@@ -57,6 +57,10 @@ public class EventBus {
     return getInstance().getDefault().removeStickyEvent(eventType);
   }
 
+  static boolean removeStickyEvent(Object event) {
+    return getInstance().getDefault().removeStickyEvent(event);
+  }
+
   private org.greenrobot.eventbus.EventBus getDefault() {
     return eventBus;
   }

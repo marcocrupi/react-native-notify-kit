@@ -12,6 +12,17 @@
   <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" android:minSdkVersion="23" />
 
   <application>
+    <!-- Each capture finishes itself; noHistory can cancel a queued launch before onCreate. -->
+    <activity
+      android:name="app.notifee.core.FullScreenNotificationActivity"
+      android:noHistory="false"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@android:style/Theme.NoDisplay"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:exported="false" />
+
     <!-- Receiver Service -->
     <service
       android:name="app.notifee.core.ReceiverService"
