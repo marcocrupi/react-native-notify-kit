@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [10.9.1] - 2026-10-24
+
 ### Fixed
 
 - **Android / initial-notification consumption ([#88](https://github.com/marcocrupi/react-native-notify-kit/issues/88))**: fix the originally reported replay of the cold-start notification after a later tap or return through Recents. Coordinate sticky events, Activity Intents and persistent interaction identity so identifiable interactions are consumed once, regardless of which source is read first. New taps remain eligible even when the notification ID is reused.

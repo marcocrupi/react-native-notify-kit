@@ -55,7 +55,7 @@ This fork fills the gap: it preserves all of Notifee's advanced features, migrat
 
 The native core (NotifeeCore) is compiled from source as part of the bridge module (since 9.2.0) and the public API is **100% compatible** with the original `@notifee/react-native` — migration is a safe, drop-in replacement.
 
-**Unreleased Android fix — [#88](https://github.com/marcocrupi/react-native-notify-kit/issues/88):** `getInitialNotification()` no longer replays consumed identifiable interactions; new interactions, including taps reusing a notification ID, remain available. Supported recovery and native full-screen capture use the [documented one-shot and latest-wins semantics and limits](docs/react-native/events.mdx#android-consumption-and-recovery). Related upstream [notifee#880](https://github.com/invertase/notifee/issues/880) is not claimed fully resolved by this qualification.
+**10.9.1 Android fixes — [#88](https://github.com/marcocrupi/react-native-notify-kit/issues/88):** `getInitialNotification()` no longer replays consumed identifiable interactions; new interactions, including taps reusing a notification ID, remain available. Supported recovery and native full-screen capture use the [documented one-shot and latest-wins semantics and limits](docs/react-native/events.mdx#android-consumption-and-recovery). Related upstream [notifee#880](https://github.com/invertase/notifee/issues/880) is not claimed fully resolved by this qualification.
 
 ## Installation
 
