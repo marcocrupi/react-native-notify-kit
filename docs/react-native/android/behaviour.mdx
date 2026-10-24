@@ -205,8 +205,15 @@ and, by adding the USE_FULL_SCREEN_INTENT permission in
 android/app/src/main/AndroidManifest.xml:
 
 ```xml
-  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT">
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 ```
+
+Declare the consumer Activity in your app manifest and configure its lock-screen presentation as above. Use a
+high-importance notification channel on Android 8+ and ensure notifications are enabled; for non-exempt notifications
+on Android 13+, declare and obtain `POST_NOTIFICATIONS` at runtime. `USE_FULL_SCREEN_INTENT` is required for apps targeting
+Android 10+; on Android 14+, full-screen intent special access must also be available. Check the effective merged manifest
+and access settings. See Android's [time-sensitive notification guide](https://developer.android.com/develop/ui/views/notifications/time-sensitive)
+and [full-screen intent restrictions](https://developer.android.com/about/versions/14/behavior-changes-14#secure-fsi).
 
 > After making these changes, be sure to run `cd android` and `./gradlew clean`, then re-install the app.
 
@@ -264,3 +271,24 @@ notifee.displayNotification({
   },
 });
 ```
+
+### Initial-notification capture
+
+When `fullScreenAction.mainComponent` is supplied, the library attaches an identifiable notification payload to the
+full-screen launch. Native capture runs before starting the consumer Activity, independently of React Native bootstrap,
+so a launch can be retained even before a ReactContext exists or when an existing Activity receives a new Intent.
+An Activity-only full-screen action without `mainComponent` does not acquire this payload-capture behaviour.
+
+The #88 fix requires no additional `onNewIntent` or `setIntent` override in your consumer MainActivity. Existing setup
+for [custom React components](/react-native/android/interaction#advanced-custom-component), including component registration
+and `getMainComponentName`, still applies. Capture preserves the consumer destination, effective launch flags and
+navigation behaviour; it does not replace the consumer's manifest or presentation configuration.
+
+Read the captured notification with `getInitialNotification()` once JavaScript is ready. Captures follow strict
+latest-wins in first valid capture order at the app, rather than FIFO or send order. A consumed or replaced interaction
+must not reappear from an older Activity Intent. See [Android consumption and recovery](/react-native/events#android-consumption-and-recovery)
+for the limits on process-death recovery, possible loss of an unread payload, and the total-persistence-failure exception.
+
+Native capture does not force Android to deliver or present a full-screen notification. System permissions, channel
+settings, device state and platform/OEM policy still determine whether the consumer opens full-screen, a heads-up appears,
+or no launch occurs. The tested emulator/Pixel configurations are not a universal OEM guarantee.

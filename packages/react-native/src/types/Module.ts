@@ -327,10 +327,17 @@ export interface Module {
    * API used to fetch the notification which causes the application to open.
    *
    * This API can be used to fetch which notification & press action has caused the application to
-   * open. The call returns a `null` value when the application wasn't launched by a notification.
+   * open. The call returns `null` when no eligible initial interaction is available.
    *
-   * Once the initial notification has been consumed by this API, it is removed and will no longer
-   * be available. It will also be removed if the user relaunches the application.
+   * A returned interaction is consumed by this API. On Android, identifiable library interactions
+   * are consumed at most once across supported Activity recreation and process-death recovery;
+   * a new interaction remains eligible even when the notification ID is reused. Valid full-screen
+   * captures are latest-wins in first valid capture order at the app, not a FIFO queue.
+   *
+   * Android recovery depends on the restored Intent and persistent state. Legacy/host Intents without
+   * an interaction identity have limited cross-process protection; unread full-screen payloads can be
+   * lost after process death. See the linked guide for persistence-failure limits. These Android
+   * guarantees do not extend to iOS or exactly-once JavaScript work. Event handlers remain separate.
    *
    * View the [App open events](/react-native/events#app-open-events) documentation for more
    * information and example usage.

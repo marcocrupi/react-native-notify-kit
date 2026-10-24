@@ -39,7 +39,11 @@ notifee.displayNotification({
 
 Notify Kit will now attempt to launch the application when the user presses the notification. View the
 [App Open Events](/react-native/events#app-open-events) documentation to learn how to read the notification
-which caused the app to launch.
+which caused the app to launch. On Android, reading an identifiable interaction consumes it once; a later tap remains
+available even if the notification ID is reused. Returning through Recents must not replay a consumed interaction.
+See [consumption and recovery](/react-native/events#android-consumption-and-recovery) for supported process-death recovery,
+latest-wins and persistence limits. `PRESS` and `ACTION_PRESS` event handlers remain separate from this read;
+coordinate navigation if you use both.
 
 ### (Advanced) Custom Component
 

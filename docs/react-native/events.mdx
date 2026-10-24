@@ -199,9 +199,53 @@ function App() {
 }
 ```
 
-If available, the `initialNotification` contains the notification & press action which triggered the app to open. Both
-can be combined to perform logic inside of your application which the user expects from their interaction, for example,
-opening a chat screen with a specific user who trigger the notification.
+If available, `initialNotification.notification` identifies the notification associated with the app opening. Depending
+on the delivery path, `pressAction` and reply `input` may also be available; check for them before use. Use the available
+details to perform the expected action, such as opening a chat screen.
 
-Once the initial notification has been consumed with a call to `getInitialNotification`, it is removed. If the app re-opens
-before the initial notification has been consumed (e.g. the user manual closing & reopening), it will not be available.
+### Android consumption and recovery
+
+On Android, `getInitialNotification()` reads the pending interaction made available by a notification press, an action
+press, or a supported payload-bearing [full-screen launch](/react-native/android/behaviour#full-screen).
+It returns `null` when no eligible interaction is available; displaying a notification alone does not make it available.
+
+A returned interaction is consumed before the result reaches JavaScript. For identifiable library interactions, pending
+sticky events, the Activity's launch Intent and persistent consumption state are coordinated so the same interaction
+cannot be read again. For example, after reading A, later calls return `null` until a new interaction becomes available.
+Reading B must not expose the old A again on the next call, on return through Recents, or after supported restoration.
+A new press is a new interaction even when it uses the same `notification.id`; redisplaying a notification does not by
+itself count as a press.
+
+Supported identifiable launch paths can recover an unread interaction after Activity recreation or process death when
+Android restores an Intent carrying its identity and sufficient persistent state remains. This is conditional recovery,
+not a durable queue of notification payloads. In particular, recovery from an Activity Intent does not promise to restore
+all event-only details such as RemoteInput. Read the interaction early, and use `onForegroundEvent` / `onBackgroundEvent`
+for `PRESS`, `ACTION_PRESS` and reply input as described above.
+
+This initial-notification lookup is not a FIFO queue. Valid, identifiable full-screen launches use **strict latest-wins**,
+ordered by the first valid capture of each interaction at the app. A newly captured valid interaction replaces the previous
+captured launch. Android can deliver captures in a different order from notification display or PendingIntent send order. Replaced captures stay retired, including after
+process death; invalid or already-retired deliveries do not replace the pending valid capture. Merely displaying another
+notification does not retire a captured launch.
+
+Calling this API consumes its pending result; it does not suppress the separate event handlers. If both paths trigger
+navigation or other application work, coordinate them in your app to avoid handling the same user action twice.
+The guarantee is **at-most-once consumption through this API** within the limits below, not exactly-once end-to-end
+execution of navigation, network requests or other JavaScript work.
+
+#### Recovery limits
+
+- Legacy or host-created Intents without a library interaction identity have only in-memory consumption protection;
+  cross-process deduplication and recovery are limited. Older Android tap paths do not all carry recoverable identities.
+- Full-screen payloads can be lost if the process terminates after native capture but before JavaScript consumption and
+  Android does not restore the matching payload-bearing Intent. Persisted identity/consumption state does not persist
+  the full payload, and an older replaced launch is not a substitute for the lost payload.
+- If a required consumption write fails, the identifiable interaction is not returned as successfully consumed; a later
+  call can retry. The narrow latest-wins exception requires all attempts to persist replacement invalidation to fail,
+  process death before the replacement is consumed, and no sufficient durable state to distinguish receipt from non-receipt.
+  Only in that total-persistence-failure window can an older launch be recovered. This does not permit replay after a
+  successful consumption write, or an older launch to win in the same process.
+
+These Android rules do not extend recovery guarantees to iOS. Full-screen presentation and device-specific behaviour
+remain subject to [Android requirements](/react-native/android/behaviour#full-screen); validation on the tested Pixel and
+emulators does not guarantee identical behaviour on every OEM device.
