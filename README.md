@@ -943,7 +943,9 @@ if (authorizationStatus === AuthorizationStatus.DENIED) {
 }
 ```
 
-It resolves `false` before the first request, below API 33, without a current Activity and on iOS. See
+It resolves `false` before the first request, below API 33, without a current Activity and on iOS. Before the
+first `requestPermission()` call `getNotificationSettings()` reports `AuthorizationStatus.NOT_DETERMINED` on
+Android 13+, so the `DENIED` check above already skips that case. See
 [Android Permissions: Asking again after a denial](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/permissions#asking-again-after-a-denial).
 
 ### `setNotificationConfig` (iOS)
