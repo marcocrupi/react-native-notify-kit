@@ -403,6 +403,23 @@ export interface Module {
   openNotificationSettings(channelId?: string): Promise<void>;
 
   /**
+   * API used to find out whether Android shows the notification permission dialog once
+   * more after the user denied it.
+   *
+   * Android 13 (API 33) and later show the `POST_NOTIFICATIONS` dialog at most twice. After
+   * the first denial this resolves `true`, the moment the Android guidelines want the app to
+   * explain why it needs notifications before it calls `requestPermission` again. After the
+   * second denial it resolves `false`, from then on only the system settings can turn
+   * notifications on. Wraps `Activity.shouldShowRequestPermissionRationale`.
+   *
+   * It also resolves `false` before the first request, below API 33, without a current
+   * Activity and on iOS.
+   *
+   * @platform android
+   */
+  shouldShowRequestPermissionRationale(): Promise<boolean>;
+
+  /**
    * API used to register a foreground service on Android devices.
    *
    * This method is used to register a long running task which can be used with Foreground Service

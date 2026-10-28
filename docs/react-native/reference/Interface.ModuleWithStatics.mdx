@@ -6,7 +6,7 @@
 
 # Interface: ModuleWithStatics
 
-Defined in: [packages/react-native/src/types/Module.ts:735](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L735)
+Defined in: [packages/react-native/src/types/Module.ts:752](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L752)
 
 ## Extends
 
@@ -18,7 +18,7 @@ Defined in: [packages/react-native/src/types/Module.ts:735](https://github.com/m
 
 > **SDK_VERSION**: `string`
 
-Defined in: [packages/react-native/src/types/Module.ts:732](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L732)
+Defined in: [packages/react-native/src/types/Module.ts:749](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L749)
 
 Returns the current Notify Kit SDK version in use.
 
@@ -32,7 +32,7 @@ Returns the current Notify Kit SDK version in use.
 
 > **buildFcmNotification**(`remoteMessage`): [`Notification`](react-native/reference/Interface.Notification) | `null`
 
-Defined in: [packages/react-native/src/types/Module.ts:694](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L694)
+Defined in: [packages/react-native/src/types/Module.ts:711](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L711)
 
 Builds a notification from an FCM remote message without displaying it.
 
@@ -440,7 +440,7 @@ to create a trigger.
 
 > **decrementBadgeCount**(`decrementBy?`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:548](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L548)
+Defined in: [packages/react-native/src/types/Module.ts:565](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L565)
 
 Decrements the badge count for this application on the current device by a specified
 value.
@@ -579,7 +579,7 @@ to create a notification for both Android & iOS.
 
 > **getBadgeCount**(): `Promise`<`number`>
 
-Defined in: [packages/react-native/src/types/Module.ts:514](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L514)
+Defined in: [packages/react-native/src/types/Module.ts:531](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L531)
 
 Get the current badge count value for this application on the current device.
 
@@ -800,7 +800,7 @@ but you will also receive a `onForegroundEvent`
 
 > **getNotificationCategories**(): `Promise`<[`IOSNotificationCategory`](react-native/reference/Interface.IOSNotificationCategory)\[]>
 
-Defined in: [packages/react-native/src/types/Module.ts:496](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L496)
+Defined in: [packages/react-native/src/types/Module.ts:513](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L513)
 
 Gets the currently set notification categories on this Apple device.
 
@@ -824,7 +824,7 @@ ios
 
 > **getNotificationSettings**(): `Promise`<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
 
-Defined in: [packages/react-native/src/types/Module.ts:505](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L505)
+Defined in: [packages/react-native/src/types/Module.ts:522](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L522)
 
 Get the current notification settings for this application on the current device.
 On Android 13+ (API 33+), `authorizationStatus` returns `AuthorizationStatus.NOT_DETERMINED` before
@@ -846,7 +846,7 @@ All properties on the `IOSNotificationSettings` interface response return as `AU
 
 > **getPowerManagerInfo**(): `Promise`<[`PowerManagerInfo`](react-native/reference/Interface.PowerManagerInfo)>
 
-Defined in: [packages/react-native/src/types/Module.ts:632](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L632)
+Defined in: [packages/react-native/src/types/Module.ts:649](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L649)
 
 API used to get best-effort information about the device and its power manager settings, including manufacturer, model, version and a known activity candidate.
 
@@ -934,7 +934,7 @@ API used to return the trigger notifications that are pending.
 
 > **handleFcmMessage**(`remoteMessage`): `Promise`<`string` | `null`>
 
-Defined in: [packages/react-native/src/types/Module.ts:706](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L706)
+Defined in: [packages/react-native/src/types/Module.ts:723](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L723)
 
 Processes an FCM remote message produced by the Notify Kit server SDK and
 displays a Notify Kit notification according to the embedded `notifee_options`.
@@ -965,7 +965,7 @@ intentional no-op (iOS background, `fallbackBehavior: 'ignore'`,
 
 > **hideNotificationDrawer**(): `void`
 
-Defined in: [packages/react-native/src/types/Module.ts:684](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L684)
+Defined in: [packages/react-native/src/types/Module.ts:701](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L701)
 
 API used to hide the notification drawer, for example,
 when the user presses one of the quick actions on the notification, you may wish to hide the drawer.
@@ -1002,7 +1002,7 @@ android
 
 > **incrementBadgeCount**(`incrementBy?`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:538](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L538)
+Defined in: [packages/react-native/src/types/Module.ts:555](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L555)
 
 Increments the badge count for this application on the current device by a specified
 value.
@@ -1035,7 +1035,7 @@ ios
 
 > **isBatteryOptimizationEnabled**(): `Promise`<`boolean`>
 
-Defined in: [packages/react-native/src/types/Module.ts:597](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L597)
+Defined in: [packages/react-native/src/types/Module.ts:614](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L614)
 
 API used to check if battery optimization is enabled for your application.
 
@@ -1220,7 +1220,7 @@ android
 
 > **openBatteryOptimizationSettings**(): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:586](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L586)
+Defined in: [packages/react-native/src/types/Module.ts:603](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L603)
 
 API used to open the Android System settings for the application.
 
@@ -1291,7 +1291,7 @@ android
 
 > **openPowerManagerSettings**(): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:663](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L663)
+Defined in: [packages/react-native/src/types/Module.ts:680](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L680)
 
 API used to best-effort open known Android System power manager settings for the device.
 
@@ -1337,7 +1337,7 @@ android
 
 > **prewarmForegroundService**(): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:448](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L448)
+Defined in: [packages/react-native/src/types/Module.ts:465](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L465)
 
 Pre-warms the foreground service notification path by eagerly loading critical
 classes and warming the `INotificationManager` Binder proxy on a background thread.
@@ -1372,7 +1372,7 @@ android
 
 > **registerForegroundService**(`task`): `void`
 
-Defined in: [packages/react-native/src/types/Module.ts:420](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L420)
+Defined in: [packages/react-native/src/types/Module.ts:437](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L437)
 
 API used to register a foreground service on Android devices.
 
@@ -1411,7 +1411,7 @@ android
 
 > **requestPermission**(`permissions?`): `Promise`<[`NotificationSettings`](react-native/reference/Interface.NotificationSettings)>
 
-Defined in: [packages/react-native/src/types/Module.ts:478](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L478)
+Defined in: [packages/react-native/src/types/Module.ts:495](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L495)
 
 Request specific notification permissions for your application on the current device.
 
@@ -1458,7 +1458,7 @@ and all of the properties on the `ios` interface response return as `AUTHORIZED`
 
 > **setBadgeCount**(`count`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:526](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L526)
+Defined in: [packages/react-native/src/types/Module.ts:543](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L543)
 
 Set the badge count value for this application on the current device.
 
@@ -1491,7 +1491,7 @@ ios
 
 > **setFcmConfig**(`config`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:716](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L716)
+Defined in: [packages/react-native/src/types/Module.ts:733](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L733)
 
 Configures defaults for [buildFcmNotification](#buildfcmnotification) and [handleFcmMessage](#handlefcmmessage).
 Call once at app startup, typically in `index.js` before `registerComponent`.
@@ -1520,7 +1520,7 @@ synchronously.
 
 > **setNotificationCategories**(`categories`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:487](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L487)
+Defined in: [packages/react-native/src/types/Module.ts:504](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L504)
 
 Set the notification categories to be used on this Apple device.
 
@@ -1548,7 +1548,7 @@ ios
 
 > **setNotificationConfig**(`config`): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:574](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L574)
+Defined in: [packages/react-native/src/types/Module.ts:591](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L591)
 
 API used to configure iOS notification handling behavior.
 
@@ -1593,11 +1593,43 @@ ios
 
 ---
 
+### shouldShowRequestPermissionRationale()
+
+> **shouldShowRequestPermissionRationale**(): `Promise`<`boolean`>
+
+Defined in: [packages/react-native/src/types/Module.ts:420](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L420)
+
+API used to find out whether Android shows the notification permission dialog once
+more after the user denied it.
+
+Android 13 (API 33) and later show the `POST_NOTIFICATIONS` dialog at most twice. After
+the first denial this resolves `true`, the moment the Android guidelines want the app to
+explain why it needs notifications before it calls `requestPermission` again. After the
+second denial it resolves `false`, from then on only the system settings can turn
+notifications on. Wraps `Activity.shouldShowRequestPermissionRationale`.
+
+It also resolves `false` before the first request, below API 33, without a current
+Activity and on iOS.
+
+#### Returns
+
+`Promise`<`boolean`>
+
+#### Platform
+
+android
+
+#### Inherited from
+
+`Module.shouldShowRequestPermissionRationale`
+
+---
+
 ### stopForegroundService()
 
 > **stopForegroundService**(): `Promise`<`void`>
 
-Defined in: [packages/react-native/src/types/Module.ts:428](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L428)
+Defined in: [packages/react-native/src/types/Module.ts:445](https://github.com/marcocrupi/react-native-notify-kit/blob/main/packages/react-native/src/types/Module.ts#L445)
 
 Call this to stop the foreground service that is running
 

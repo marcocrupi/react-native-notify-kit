@@ -553,6 +553,14 @@ export default class NotifeeApiModule extends NotifeeNativeModule implements Mod
     return Promise.resolve();
   };
 
+  public shouldShowRequestPermissionRationale = (): Promise<boolean> => {
+    if (isAndroid) {
+      return this.native.shouldShowRequestPermissionRationale();
+    }
+
+    return Promise.resolve(false);
+  };
+
   public requestPermission = (
     permissions: IOSNotificationPermissions = {},
   ): Promise<NotificationSettings> => {

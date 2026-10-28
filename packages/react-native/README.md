@@ -923,6 +923,29 @@ if (settings.android.fullScreenIntent === AndroidNotificationSetting.DISABLED) {
 notification will be presented full-screen. See [Android Behaviour: Full-screen](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/behaviour#full-screen)
 for the full requirements and presentation behavior.
 
+### `shouldShowRequestPermissionRationale` (Android)
+
+After the first denial on Android 13+, `getNotificationSettings()` reports `AuthorizationStatus.DENIED` both when the
+system would show the `POST_NOTIFICATIONS` dialog once more and when only the system settings can turn notifications
+on. `shouldShowRequestPermissionRationale()` tells the two apart:
+
+```typescript
+import notifee, { AuthorizationStatus } from 'react-native-notify-kit';
+
+const { authorizationStatus } = await notifee.getNotificationSettings();
+
+if (authorizationStatus === AuthorizationStatus.DENIED) {
+  if (await notifee.shouldShowRequestPermissionRationale()) {
+    // explain why notifications help, then call notifee.requestPermission()
+  } else {
+    // the dialog will not come back, offer notifee.openNotificationSettings()
+  }
+}
+```
+
+It resolves `false` before the first request, below API 33, without a current Activity and on iOS. See
+[Android Permissions: Asking again after a denial](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/permissions#asking-again-after-a-denial).
+
 ### `setNotificationConfig` (iOS)
 
 Controls whether Notifee intercepts remote (push) notification tap events on iOS.

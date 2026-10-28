@@ -287,6 +287,27 @@ describe('Notifee Api Module', () => {
     });
   });
 
+  describe('shouldShowRequestPermissionRationale', () => {
+    test('on iOS resolves false without a native call', async () => {
+      setPlatform('ios');
+
+      const res = await apiModule.shouldShowRequestPermissionRationale();
+
+      expect(res).toBe(false);
+      expect(mockNotifeeNativeModule.shouldShowRequestPermissionRationale).not.toBeCalled();
+    });
+
+    test('on Android resolves the native answer', async () => {
+      setPlatform('android');
+      mockNotifeeNativeModule.shouldShowRequestPermissionRationale.mockResolvedValueOnce(true);
+
+      const res = await apiModule.shouldShowRequestPermissionRationale();
+
+      expect(res).toBe(true);
+      expect(mockNotifeeNativeModule.shouldShowRequestPermissionRationale).toBeCalledTimes(1);
+    });
+  });
+
   describe('requestPermission', () => {
     test('passes Android full-screen intent access through from the native module', async () => {
       setPlatform('android');

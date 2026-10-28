@@ -276,6 +276,17 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    override fun shouldShowRequestPermissionRationale(promise: Promise) {
+        val activity = getReactApplicationContext().getCurrentActivity()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || activity == null) {
+            promise.resolve(false)
+            return
+        }
+        promise.resolve(
+            activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS),
+        )
+    }
+
     override fun openNotificationSettings(channelId: String?, promise: Promise) {
         Notifee.getInstance()
             .openNotificationSettings(channelId, getReactApplicationContext().getCurrentActivity()) { e, _ ->

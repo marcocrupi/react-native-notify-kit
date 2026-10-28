@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Android / permissions**: add `shouldShowRequestPermissionRationale()`, which wraps `Activity.shouldShowRequestPermissionRationale` for `POST_NOTIFICATIONS`. It tells apps whether Android 13+ shows the notification dialog once more after a denial, so they can explain first and ask again, or point to the system settings when the dialog will not come back. It resolves `false` before the first request, after the second denial, below API 33, without a current Activity and on iOS.
+
 ## [10.9.1] - 2026-10-24
 
 ### Fixed

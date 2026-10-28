@@ -44,6 +44,7 @@ export interface Spec extends TurboModule {
   isChannelBlocked(channelId: string): Promise<boolean>;
   openAlarmPermissionSettings(): Promise<void>;
   openNotificationSettings(channelId: string | null): Promise<void>;
+  shouldShowRequestPermissionRationale(): Promise<boolean>;
   openBatteryOptimizationSettings(): Promise<void>;
   isBatteryOptimizationEnabled(): Promise<boolean>;
   getPowerManagerInfo(): Promise<Object>;
