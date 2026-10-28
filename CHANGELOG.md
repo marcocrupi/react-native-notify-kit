@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Android / permissions**: add `shouldShowRequestPermissionRationale(): Promise<boolean>` to query Android's current recommendation for explanatory UI before requesting `POST_NOTIFICATIONS`. The result does not determine whether another permission dialog can appear. On Android 13+ a missing Activity rejects with `ERR_NO_ACTIVITY`; below API 33 and on other platforms the query resolves `false` (not applicable). Existing permission requests, settings and request-history behavior are unchanged.
+
 ## [10.9.1] - 2026-10-24
 
 ### Fixed

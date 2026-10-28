@@ -38,6 +38,7 @@ export const mockNotifeeNativeModule = {
   onBackgroundEvent: jest.fn(),
   onForegroundEvent: jest.fn(),
   openNotificationSettings: jest.fn(),
+  shouldShowRequestPermissionRationale: jest.fn(async () => false),
   requestPermission: jest.fn(),
   registerForegroundService: jest.fn(),
   setNotificationCategories: jest.fn(),

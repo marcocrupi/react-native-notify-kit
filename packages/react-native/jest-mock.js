@@ -146,6 +146,7 @@ export default {
   onBackgroundEvent: jest.fn(() => jest.fn()),
   onForegroundEvent: jest.fn(() => jest.fn()),
   openNotificationSettings: jest.fn(),
+  shouldShowRequestPermissionRationale: jest.fn(async () => false),
   requestPermission: jest.fn(async () => testNotificationSettings),
   registerForegroundService: jest.fn(() => jest.fn()),
   setNotificationCategories: jest.fn(async () => {}),

@@ -420,6 +420,11 @@ RCT_EXPORT_MODULE();
   resolve(nil);
 }
 
+- (void)shouldShowRequestPermissionRationale:(RCTPromiseResolveBlock)resolve
+                                    reject:(RCTPromiseRejectBlock)reject {
+  resolve(@(NO));
+}
+
 - (void)openBatteryOptimizationSettings:(RCTPromiseResolveBlock)resolve
                                  reject:(RCTPromiseRejectBlock)reject {
   resolve(nil);

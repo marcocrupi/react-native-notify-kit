@@ -505,6 +505,26 @@ export interface Module {
   getNotificationSettings(): Promise<NotificationSettings>;
 
   /**
+   * Query Android's current recommendation to show explanatory UI before requesting
+   * `POST_NOTIFICATIONS`. This does not request permission or change request history.
+   *
+   * On Android 13+ (API 33+), resolves the current Activity's platform rationale result.
+   * `false` means Android does not recommend rationale UI; it does not prove permanent
+   * denial or whether another permission dialog can appear. It can also occur before
+   * the first request or when permission is already granted. Do not infer dialog
+   * eligibility from this result combined with `authorizationStatus` or request history.
+   *
+   * On Android 13+ without a current Activity, rejects with code `ERR_NO_ACTIVITY`.
+   * Other native query failures reject. Retry when an Activity is available.
+   * On Android below API 33 and on other platforms, resolves `false` (not applicable).
+   * Each call queries current state; query again after returning from Settings.
+   * Target SDK, permission declarations and system policy affect platform behavior.
+   *
+   * @platform android
+   */
+  shouldShowRequestPermissionRationale(): Promise<boolean>;
+
+  /**
    * Get the current badge count value for this application on the current device.
    *
    * Returns `0` on Android.

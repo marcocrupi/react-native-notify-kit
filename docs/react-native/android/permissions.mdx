@@ -48,7 +48,7 @@ For each level, you can check whether notifications are permitted through a dire
 
 To check whether the user has enabled notifications for your app, call [`getNotificationSettings`](/react-native/reference/getnotificationsettings). The `authorizationStatus` attribute returns `AUTHORIZED` when notifications are enabled and `DENIED` when the permission is not granted after the permission request flow has run.
 
-On Android 13+ (`POST_NOTIFICATIONS` runtime permission), a fresh install can return `AuthorizationStatus.NOT_DETERMINED` before `requestPermission()` has been called. After the permission request flow has run, a non-granted permission is reported as `AuthorizationStatus.DENIED`. This lets apps distinguish a user who has not seen the prompt yet from a user who already denied notifications. Notify Kit tracks this internally with persistent state, so apps do not need native workarounds for this distinction.
+On Android 13+ (`POST_NOTIFICATIONS` runtime permission), a fresh install can return `AuthorizationStatus.NOT_DETERMINED` before `requestPermission()` has been called. After the permission request flow has run, a non-granted permission is reported as `AuthorizationStatus.DENIED`. This existing distinction uses Notify Kit's persistent request history, rather than Android permission flags. It does not prove the user saw or denied a dialog, or that a future dialog is impossible; interrupted requests, permission resets and settings changes can differ from that history.
 
 ```js
 import notifee, { AuthorizationStatus } from 'react-native-notify-kit';
@@ -65,6 +65,38 @@ async function checkNotificationPermission() {
 ```
 
 If you determine notifications are disabled, you may want to offer the user the ability to open notification settings to enable it. The [`openNotificationSettings`](/react-native/reference/opennotificationsettings) API may be used to implement this feature.
+
+### Explaining a permission request
+
+[`shouldShowRequestPermissionRationale`](/react-native/reference/Interface.ModuleWithStatics#shouldshowrequestpermissionrationale) queries whether Android currently recommends showing explanatory UI before requesting `POST_NOTIFICATIONS`. It does not request permission, open settings or update request history. Each call reads current platform state.
+
+- On Android 13+ (API 33+) with a current Activity, it returns the Activity's platform recommendation.
+- On Android 13+ without a current Activity, it rejects with `ERR_NO_ACTIVITY`. Retry when the app has an Activity. Other native query failures also reject, rather than becoming `false`.
+- On Android below API 33 and on other platforms, it resolves `false` because this query is not applicable.
+
+`true` means Android recommends an explanation. `false` does **not** prove permanent denial or predict whether another permission dialog will appear: it can occur before an initial request, when permission is granted, or when rationale is not recommended after denial. Combining it with `DENIED`, `NOT_DETERMINED` or local request history does not establish dialog eligibility.
+
+For example, in a user-initiated notification opt-in flow on Android 13+:
+
+```js
+async function requestNotificationsFromActivity(showExplanation) {
+  const settings = await notifee.getNotificationSettings();
+  if (settings.authorizationStatus === AuthorizationStatus.AUTHORIZED) return settings;
+
+  if (await notifee.shouldShowRequestPermissionRationale()) {
+    // Your UI should let the user continue or decline.
+    if (!(await showExplanation())) return settings;
+  }
+
+  // A false rationale result is not a reason to skip this user-initiated request.
+  // Android controls whether a system dialog is shown.
+  return notifee.requestPermission();
+}
+```
+
+Handle rejected queries in the calling UI; an unavailable Activity is not a negative platform recommendation. Recheck settings and rationale after returning from Settings. Offer `openNotificationSettings()` as a user choice when appropriate, without treating `false` as proof that Settings is the only option.
+
+Android's [rationale API](<https://developer.android.com/reference/android/app/Activity#shouldShowRequestPermissionRationale(java.lang.String)>) provides a UI recommendation, not a dialog counter. The [notification permission rules](https://developer.android.com/develop/ui/views/notifications/notification-permission) depend on the OS, target SDK, manifest declarations and system policy. In particular, apps targeting API 32 or lower have system-controlled prompt timing and different denial behavior; there is no universal two-dialog guarantee. The query forwards Android's result even if `POST_NOTIFICATIONS` is missing from the merged manifest; it neither validates nor adds the declaration. A negative result does not prove the app is configured correctly.
 
 ### Channels & Channels Groups
 

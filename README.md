@@ -923,6 +923,20 @@ if (settings.android.fullScreenIntent === AndroidNotificationSetting.DISABLED) {
 notification will be presented full-screen. See [Android Behaviour: Full-screen](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/behaviour#full-screen)
 for the full requirements and presentation behavior.
 
+### `shouldShowRequestPermissionRationale` (Android)
+
+`await notifee.shouldShowRequestPermissionRationale()` queries Android's current recommendation
+for explanatory UI before requesting `POST_NOTIFICATIONS`. It does not request permission or
+change request history. `false` does not prove permanent denial or whether another dialog can
+appear, even when `getNotificationSettings()` reports `DENIED`.
+
+On Android 13+ it returns the current Activity's platform result; without an Activity it rejects
+with `ERR_NO_ACTIVITY`. Other native failures reject. Below API 33 and on other platforms it
+resolves `false` (not applicable). Query again after returning from Settings. Target SDK,
+permission declarations and system policy affect Android's behavior. See
+[Android Permissions: Explaining a permission request](https://docs.page/marcocrupi/react-native-notify-kit/react-native/android/permissions#explaining-a-permission-request)
+for a consumer example and platform limitations.
+
 ### `setNotificationConfig` (iOS)
 
 Controls whether Notifee intercepts remote (push) notification tap events on iOS.

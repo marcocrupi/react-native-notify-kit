@@ -26,6 +26,7 @@ export interface Spec extends TurboModule {
   createTriggerNotification(notification: Object, trigger: Object): Promise<void>;
   requestPermission(permissions: Object): Promise<Object>;
   getNotificationSettings(): Promise<Object>;
+  shouldShowRequestPermissionRationale(): Promise<boolean>;
   getInitialNotification(): Promise<Object | null>;
 
   // ─── Android-only ─────────────────────────────────────────────────────────

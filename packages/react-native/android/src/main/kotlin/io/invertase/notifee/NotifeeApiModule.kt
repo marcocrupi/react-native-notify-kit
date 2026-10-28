@@ -233,6 +233,29 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
             }
     }
 
+    override fun shouldShowRequestPermissionRationale(promise: Promise) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            promise.resolve(false)
+            return
+        }
+
+        try {
+            val activity = getReactApplicationContext().getCurrentActivity()
+            if (activity == null) {
+                promise.reject(
+                    "ERR_NO_ACTIVITY",
+                    "A current Activity is required to query notification permission rationale.",
+                )
+                return
+            }
+            promise.resolve(
+                activity.shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS),
+            )
+        } catch (e: Exception) {
+            promise.reject(e)
+        }
+    }
+
     override fun requestPermission(permissions: ReadableMap, promise: Promise) {
         // permissions parameter is ignored on Android — only used by iOS
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
