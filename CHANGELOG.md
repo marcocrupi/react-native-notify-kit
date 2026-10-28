@@ -5,11 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [10.10.0] - 2026-10-28
 
 ### Added
 
 - **Android / permissions**: add `shouldShowRequestPermissionRationale(): Promise<boolean>` to query Android's current recommendation for explanatory UI before requesting `POST_NOTIFICATIONS`. The result does not determine whether another permission dialog can appear. On Android 13+ a missing Activity rejects with `ERR_NO_ACTIVITY`; below API 33 and on other platforms the query resolves `false` (not applicable). Existing permission requests, settings and request-history behavior are unchanged.
+
+### Fixed
+
+- **CI / Jest**: build the React Native package before running tests so the published Jest mock can resolve its generated `dist` imports on a clean checkout.
 
 ## [10.9.1] - 2026-10-24
 
