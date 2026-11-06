@@ -15,6 +15,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
 
@@ -284,18 +285,22 @@ class NotifeeApiModule(reactContext: ReactApplicationContext) :
                 NotifeeReactUtils.promiseResolver(promise, e, bundle)
             }
 
-        try {
-            activity.requestPermissions(
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                Notifee.REQUEST_CODE_NOTIFICATION_PERMISSION,
-                this,
-            )
-        } catch (e: Exception) {
-            Logger.d(
-                "requestPermission",
-                "Failed to request POST_NOTIFICATIONS permission: ${e.message}",
-            )
-            NotifeeReactUtils.promiseResolver(promise, e)
+        // starting the permission activity walks the view tree, so it must not run on the
+        // native modules thread while the UI thread changes it
+        UiThreadUtil.runOnUiThread {
+            try {
+                activity.requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    Notifee.REQUEST_CODE_NOTIFICATION_PERMISSION,
+                    this,
+                )
+            } catch (e: Exception) {
+                Logger.d(
+                    "requestPermission",
+                    "Failed to request POST_NOTIFICATIONS permission: ${e.message}",
+                )
+                NotifeeReactUtils.promiseResolver(promise, e)
+            }
         }
     }
 
