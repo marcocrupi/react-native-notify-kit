@@ -27,6 +27,14 @@ import {
   onNotificationOpenedApp,
   getInitialNotification,
 } from '@react-native-firebase/messaging/lib/modular';
+import { Issue92PermissionRaceScreen } from './Issue92PermissionRaceScreen';
+import {
+  createIssue92Harness,
+  r5MonotonicNow,
+  smokePermissionAdmission,
+  withSmokePermission,
+  type Issue92Run,
+} from './issue92PermissionRace';
 import { DeliveredTestScreen } from './DeliveredTestScreen';
 import { Feature15RepeatIntervalScreen } from './Feature15RepeatIntervalScreen';
 import { TriggerRaceTestScreen } from './TriggerRaceTestScreen';
@@ -50,6 +58,19 @@ import { displayRunLimitSmoke, recordRunLimitSmokeEvent } from './issue82RunLimi
 // App is imported before index.js registers the default FGS runner.
 const issue81Harness = installIssue81SmokeRouter();
 
+// Preserve R5 admission even if App remounts while a native Promise is pending.
+const issue92Harness = createIssue92Harness({
+  admission: smokePermissionAdmission,
+  api: notifee,
+  supported: () =>
+    Platform.OS === 'android' &&
+    Number(Platform.Version) >= 33 &&
+    AppState.currentState === 'active',
+  now: r5MonotonicNow,
+  event: logSmokeEvent,
+  result: logSmokeResult,
+});
+
 // VERIFY-549 AUTO-RUN FLAG — sed-toggled by scripts/verify-549-fix.sh.
 // When true, the app launches directly into the race-test screen and auto-runs
 // all scenarios 3 seconds after mount. The script flips this to true, force-stops
@@ -66,7 +87,7 @@ type Section = {
   buttons: Array<{ label: string; onPress: () => void; testID?: string }>;
 };
 
-type Screen = 'main' | 'delivered' | 'race549' | 'feature15';
+type Screen = 'main' | 'delivered' | 'race549' | 'feature15' | 'issue92-r5';
 
 type Feature15Request = {
   scenario: string;
@@ -84,6 +105,7 @@ type SmokeGlobal = typeof globalThis & {
 
 type SmokeDeepLinkRequest = SmokeDeepLinkCallback &
   (
+    | { scenario: 'issue92-r5'; id: string }
     | { scenario: 'fcm-token' }
     | { scenario: 'displayed' }
     | { scenario: 'listener-only' }
@@ -155,6 +177,8 @@ function extractSmokeDeepLink(url: string): SmokeDeepLinkRequest | null {
 
   if (parts[0] === 'run') {
     switch (parts[1]) {
+      case 'issue92-r5':
+        return { scenario: 'issue92-r5', id: query.id ?? '', callbackUrl };
       case 'fcm-token':
         return { scenario: 'fcm-token', callbackUrl };
       case 'displayed':
@@ -303,6 +327,7 @@ function extractForegroundFcmTitle(remoteMessage: {
 
 function App() {
   const [screen, setScreen] = useState<Screen>(VERIFY_549_AUTO_RUN ? 'race549' : 'main');
+  const [issue92Run, setIssue92Run] = useState<Issue92Run | null>(null);
   const [feature15Request, setFeature15Request] = useState<Feature15Request | null>(null);
   const log = useCallback((msg: string) => {
     console.log(`[Notifee] ${msg}`);
@@ -455,7 +480,10 @@ function App() {
       arm: (id, valid, session) => issue82Harness.arm(id, () => current && valid(), session),
       rejected: (id, error) =>
         console.log(
-          `ISSUE82:ARM_ERROR ${JSON.stringify({ correlationId: id, reason: smokeErrorReason(error) })}`,
+          `ISSUE82:ARM_ERROR ${JSON.stringify({
+            correlationId: id,
+            reason: smokeErrorReason(error),
+          })}`,
         ),
     });
     const stateSubscription = AppState.addEventListener('change', () => admission.changed());
@@ -870,7 +898,8 @@ function App() {
 
   const cancelAll = () => run('cancelAllNotifications', () => notifee.cancelAllNotifications());
 
-  const requestPermission = () => run('requestPermission', () => notifee.requestPermission());
+  const requestPermission = () =>
+    run('requestPermission', () => withSmokePermission(() => notifee.requestPermission()));
 
   const getFCMToken = () =>
     run('getFCMToken', async () => {
@@ -1212,6 +1241,14 @@ function App() {
 
       try {
         switch (request.scenario) {
+          case 'issue92-r5': {
+            const next = issue92Harness.start(request.id);
+            if (next) {
+              setIssue92Run(next);
+              setScreen('issue92-r5');
+            }
+            break;
+          }
           case 'fcm-token':
             await runSmokeFcmToken();
             break;
@@ -1257,6 +1294,7 @@ function App() {
   );
 
   // General smoke automation deep links:
+  // notifykit://smoke/run/issue92-r5?id=<unique-correlation-id> (explicit Android Activity intent)
   // notifykit://smoke/run/fcm-token
   // notifykit://smoke/run/displayed
   // notifykit://smoke/run/listener-only
@@ -1719,6 +1757,18 @@ function App() {
       ],
     },
   ];
+
+  if (screen === 'issue92-r5' && issue92Run) {
+    return (
+      <Issue92PermissionRaceScreen
+        key={issue92Run.id}
+        run={issue92Run}
+        onBack={() => {
+          if (!issue92Harness.isBusy()) setScreen('main');
+        }}
+      />
+    );
+  }
 
   if (screen === 'delivered') {
     return (

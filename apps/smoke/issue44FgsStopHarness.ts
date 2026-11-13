@@ -1,3 +1,4 @@
+import { withSmokePermission } from './issue92PermissionRace';
 import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import notifee, { AndroidForegroundServiceType, AndroidImportance } from 'react-native-notify-kit';
 import { logSmokeResult, smokeErrorReason } from './smokeAutomation';
@@ -160,7 +161,7 @@ async function ensureRecordAudioPermission(types: Issue44SupportedType[]): Promi
   }
 
   logIssue44('RECORD_AUDIO_REQUEST', {});
-  const result = await PermissionsAndroid.request(permission);
+  const result = await withSmokePermission(() => PermissionsAndroid.request(permission));
   const granted = result === PermissionsAndroid.RESULTS.GRANTED;
   logIssue44(granted ? 'RECORD_AUDIO_GRANTED' : 'RECORD_AUDIO_DENIED', { result });
   return granted;

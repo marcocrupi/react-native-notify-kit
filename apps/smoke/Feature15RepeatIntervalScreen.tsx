@@ -1,3 +1,4 @@
+import { withSmokePermission } from './issue92PermissionRace';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -479,7 +480,7 @@ export function Feature15RepeatIntervalScreen({ onBack, request }: Props) {
 
   const requestNotificationPermission = useCallback(async () => {
     const scenario = 'request-permission';
-    const settings = await notifee.requestPermission();
+    const settings = await withSmokePermission(() => notifee.requestPermission());
 
     emit('RESULT', {
       scenario,

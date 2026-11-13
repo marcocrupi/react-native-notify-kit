@@ -1,3 +1,4 @@
+import { withSmokePermission } from './issue92PermissionRace';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
@@ -241,16 +242,20 @@ export function TriggerRaceTestScreen({ onBack, autoRun = false }: Props) {
       await ensureChannel();
       if (Platform.OS === 'android') {
         try {
-          const res = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          const res = await withSmokePermission(() =>
+            PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS),
           );
           addLog(`POST_NOTIFICATIONS: ${res}`);
         } catch (e) {
           addLog(`POST_NOTIFICATIONS error: ${String(e)}`);
         }
       }
-      await notifee.requestPermission();
-      addLog('channel + permission ready');
+      try {
+        await withSmokePermission(() => notifee.requestPermission());
+        addLog('channel + permission ready');
+      } catch (error) {
+        addLog(`permission unavailable: ${String(error)}`);
+      }
     })();
   }, [addLog]);
 
