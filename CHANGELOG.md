@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Android / permissions**: start the `POST_NOTIFICATIONS` request of `requestPermission()` on the main thread. TurboModule promise methods run on the native modules thread, and `Activity.requestPermissions()` walks the view hierarchy (`cancelPendingInputEvents`) while the UI thread may be changing it, which could reject the request with a `NullPointerException` from `View.dispatchCancelPendingInputEvents()`. Results, the path below API 33 and the missing Activity path are unchanged.
+- **Android / permissions**: start the `POST_NOTIFICATIONS` request of `requestPermission()` on the main thread. TurboModule promise methods run on the native modules thread, and `Activity.requestPermissions()` walks the view hierarchy (`cancelPendingInputEvents`) while the UI thread may be changing it, which could reject the request with a `NullPointerException` from `View.dispatchCancelPendingInputEvents()`. Results, the path below API 33 and the missing Activity path are unchanged. (upstream: [invertase/notifee#1064](https://github.com/invertase/notifee/issues/1064))
 
 ## [10.10.0] - 2026-10-28
 
