@@ -1,19 +1,18 @@
 'use strict';
-
+Object.defineProperty(exports, '__esModule', { value: true });
+exports.patchPodfileForNotifyKitNse = patchPodfileForNotifyKitNse;
+const notifeeExtensionFlag_1 = require('./notifeeExtensionFlag');
 const DEFAULT_PACKAGE_PATH_FROM_IOS = '../node_modules/react-native-notify-kit';
 const RNFB_INFO_PLIST_INPUT_PATH = '$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)';
 const RNFB_POST_INSTALL_MARKER =
   'NotifyKitNSE: avoid an Xcode build cycle between the embedded app extension';
-
 function patchPodfileForNotifyKitNse(podfileText, options) {
-  let patched = podfileText;
-  let changed = false;
+  let patched = (0, notifeeExtensionFlag_1.ensureNotifeeExtensionFlag)(podfileText);
+  let changed = patched !== podfileText;
   const packagePathFromIos = options.packagePathFromIos ?? DEFAULT_PACKAGE_PATH_FROM_IOS;
   const placement = options.placement ?? 'nested';
   const useFrameworks = options.useFrameworks ?? false;
-
   const existingNseTarget = findUncommentedTargetBlock(patched, options.targetName);
-
   if (!existingNseTarget) {
     if (!hasUncommentedTarget(patched, options.targetName)) {
       const withNseTarget = insertNseTarget(
@@ -41,26 +40,20 @@ function patchPodfileForNotifyKitNse(podfileText, options) {
       changed = true;
     }
   }
-
   const withRnfbPatch = ensureRnfbPostInstallPatch(patched);
   if (withRnfbPatch !== patched) {
     patched = withRnfbPatch;
     changed = true;
   }
-
   return { contents: patched, didChange: changed };
 }
-
 function insertNseTarget(content, targetName, packagePathFromIos, placement, useFrameworks) {
   const block = buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrameworks);
-
   const targetMatch = content.match(/^target\s+['"][^'"]+['"]\s+do/m);
   if (!targetMatch || targetMatch.index === undefined) {
     return appendNseTarget(content, block, placement);
   }
-
   const targetEndIndex = findMatchingRubyBlockEnd(content, targetMatch.index);
-
   if (targetEndIndex === -1) {
     throw new Error(
       "Could not locate main app target's closing 'end' in Podfile. NSE insertion aborted. " +
@@ -68,21 +61,17 @@ function insertNseTarget(content, targetName, packagePathFromIos, placement, use
         'add the NSE target manually per the legacy guide.',
     );
   }
-
   if (placement === 'topLevel') {
     const insertIndex = findLineEnd(content, targetEndIndex);
     const separator = insertIndex > 0 && content[insertIndex - 1] === '\n' ? '\n' : '\n\n';
     return content.slice(0, insertIndex) + separator + block + content.slice(insertIndex);
   }
-
   const insertIndex = targetEndIndex;
   return content.slice(0, insertIndex) + block + content.slice(insertIndex);
 }
-
 function buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrameworks) {
   if (placement === 'topLevel') {
     const useFrameworksLine = buildUseFrameworksLine(useFrameworks, '  ');
-
     return (
       `target '${targetName}' do\n` +
       useFrameworksLine +
@@ -90,7 +79,6 @@ function buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrame
       `end\n`
     );
   }
-
   return (
     `\n  target '${targetName}' do\n` +
     `    inherit! :search_paths\n` +
@@ -98,7 +86,6 @@ function buildNseTargetBlock(targetName, packagePathFromIos, placement, useFrame
     `  end\n`
   );
 }
-
 function updateTopLevelNseTargetBlock(content, targetBlock, packagePathFromIos, useFrameworks) {
   const originalBlock = content.slice(targetBlock.startIndex, targetBlock.endIndex);
   const hasTrailingNewline = originalBlock.endsWith('\n');
@@ -106,11 +93,9 @@ function updateTopLevelNseTargetBlock(content, targetBlock, packagePathFromIos, 
     ? originalBlock.slice(0, -1)
     : originalBlock;
   const lines = blockWithoutTrailingNewline.split('\n');
-
   if (lines.length < 2) {
     return content;
   }
-
   const targetLine = lines[0];
   const endLine = lines[lines.length - 1];
   const targetIndent = targetLine.match(/^[ \t]*/)?.[0] ?? '';
@@ -127,60 +112,46 @@ function updateTopLevelNseTargetBlock(content, targetBlock, packagePathFromIos, 
   const updatedBlock =
     [targetLine, ...generatedLines, ...preservedBodyLines, endLine].join('\n') +
     (hasTrailingNewline ? '\n' : '');
-
   if (updatedBlock === originalBlock) {
     return content;
   }
-
   return (
-    content.slice(0, targetBlock.startIndex) +
-    updatedBlock +
-    content.slice(targetBlock.endIndex)
+    content.slice(0, targetBlock.startIndex) + updatedBlock + content.slice(targetBlock.endIndex)
   );
 }
-
 function buildUseFrameworksLine(useFrameworks, indent) {
   if (useFrameworks === 'static') {
     return `${indent}use_frameworks! :linkage => :static\n`;
   }
-
   if (useFrameworks === 'dynamic') {
     return `${indent}use_frameworks! :linkage => :dynamic\n`;
   }
-
   if (useFrameworks === true) {
     return `${indent}use_frameworks!\n`;
   }
-
   return '';
 }
-
 function appendNseTarget(content, block, placement) {
   if (placement === 'nested') {
     return content + '\n' + block;
   }
-
   const separator = content.length === 0 ? '' : content.endsWith('\n') ? '\n' : '\n\n';
   return content + separator + block;
 }
-
 function findLineEnd(content, lineStartIndex) {
   const newlineIndex = content.indexOf('\n', lineStartIndex);
   return newlineIndex === -1 ? content.length : newlineIndex + 1;
 }
-
 function ensureRnfbPostInstallPatch(content) {
   if (content.includes(RNFB_POST_INSTALL_MARKER)) {
     return content;
   }
-
   const postInstall = findPostInstallBlock(content);
   if (postInstall) {
     const snippet =
       '\n' + buildRnfbPostInstallSnippet(postInstall.bodyIndent, postInstall.paramName);
     return content.slice(0, postInstall.endIndex) + snippet + content.slice(postInstall.endIndex);
   }
-
   const separator = content.trim().length === 0 || content.endsWith('\n') ? '\n' : '\n\n';
   return (
     content +
@@ -190,7 +161,6 @@ function ensureRnfbPostInstallPatch(content) {
     'end\n'
   );
 }
-
 function buildRnfbPostInstallSnippet(indent, installerParamName) {
   return [
     `${indent}# ${RNFB_POST_INSTALL_MARKER}`,
@@ -230,11 +200,9 @@ function buildRnfbPostInstallSnippet(indent, installerParamName) {
     '',
   ].join('\n');
 }
-
 function findPostInstallBlock(content) {
   const postInstallPattern = /^([ \t]*)post_install\s+do\s+\|([^|]+)\|\s*(?:#.*)?$/gm;
   let match;
-
   while ((match = postInstallPattern.exec(content)) !== null) {
     const endIndex = findMatchingRubyBlockEnd(content, match.index);
     if (endIndex !== -1) {
@@ -245,96 +213,75 @@ function findPostInstallBlock(content) {
       };
     }
   }
-
   return null;
 }
-
 function findMatchingRubyBlockEnd(content, startIndex) {
   const afterStart = content.slice(startIndex);
   const lines = afterStart.split('\n');
   let depth = 0;
   let charIndex = startIndex;
-
   for (const line of lines) {
     const trimmed = stripRubyLineComment(line).trim();
-
     depth += countRubyBlockOpeners(trimmed);
-
     if (trimmed === 'end') {
       depth--;
       if (depth === 0) {
         return charIndex;
       }
     }
-
     charIndex += line.length + 1;
   }
-
   return -1;
 }
-
 function countRubyBlockOpeners(line) {
   if (line.length === 0) {
     return 0;
   }
-
   const startsWithKeywordBlock = /^(if|unless|case|begin|while|until|for|def|class|module)\b/.test(
     line,
   );
   if (startsWithKeywordBlock) {
     return 1;
   }
-
   if (/\bdo\b(\s*\|[^|]*\|)?\s*$/.test(line)) {
     return 1;
   }
-
   return 0;
 }
-
 function stripRubyLineComment(line) {
   return line.replace(/#.*$/, '');
 }
-
 function findUncommentedTargetBlock(content, targetName) {
   const pattern = new RegExp(
     `^[ \\t]*target\\s+['"]${escapeRegex(targetName)}['"]\\s+do\\b.*$`,
     'gm',
   );
   let match;
-
   while ((match = pattern.exec(content)) !== null) {
     const line = match[0];
     if (stripRubyLineComment(line).trim().length === 0) {
       continue;
     }
-
     const endLineStart = findMatchingRubyBlockEnd(content, match.index);
     if (endLineStart === -1) {
       return null;
     }
-
     return {
       startIndex: match.index,
       endIndex: findLineEnd(content, endLineStart),
     };
   }
-
   return null;
 }
-
 function isUncommentedUseFrameworksLine(line) {
   return /^use_frameworks!(?:\s|$)/.test(stripRubyLineComment(line).trim());
 }
-
 function isUncommentedRnNotifeeCorePodLine(line) {
   return /^pod\s+['"]RNNotifeeCore['"](?:\s|,|$)/.test(stripRubyLineComment(line).trim());
 }
-
 function isUncommentedSearchPathInheritanceLine(line) {
   return /^inherit!\s+:search_paths\b/.test(stripRubyLineComment(line).trim());
 }
-
 function hasUncommentedTarget(content, targetName) {
   const pattern = new RegExp(`target\\s+['"]${escapeRegex(targetName)}['"]`);
   for (const line of content.split('\n')) {
@@ -345,11 +292,6 @@ function hasUncommentedTarget(content, targetName) {
   }
   return false;
 }
-
 function escapeRegex(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
-
-module.exports = {
-  patchPodfileForNotifyKitNse,
-};

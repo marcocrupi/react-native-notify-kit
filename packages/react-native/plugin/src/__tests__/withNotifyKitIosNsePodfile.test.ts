@@ -369,6 +369,53 @@ describe('NotifyKit Expo Podfile mod', () => {
     expect(second.contents).toBe(first.contents);
   });
 
+  for (const linkage of ['static', 'dynamic'] as const) {
+    for (const state of ['missing', 'stale'] as const) {
+      for (const order of ['before', 'after'] as const) {
+        it(`issue95 ${linkage} config ${order} build-properties with ${state} disk properties`, async () => {
+          mockPodfileProperties(
+            state === 'missing'
+              ? {}
+              : { 'ios.useFrameworks': linkage === 'static' ? 'dynamic' : 'static' },
+          );
+          const buildProperties = ['expo-build-properties', { ios: { useFrameworks: linkage } }];
+          const notifyKit = [
+            'react-native-notify-kit',
+            { ios: { notificationServiceExtension: { enabled: true } } },
+          ];
+          const plugins =
+            order === 'before' ? [notifyKit, buildProperties] : [buildProperties, notifyKit];
+          const output = await runPodfileMod(PODFILE_WITH_EXPO_CONDITIONAL_USE_FRAMEWORKS, {
+            plugins,
+          });
+          expect(getTopLevelTargetBlock(output, 'NotifyKitNSE')).toContain(
+            `use_frameworks! :linkage => :${linkage}`,
+          );
+          expect(await runPodfileMod(output, { plugins })).toBe(output);
+        });
+      }
+    }
+  }
+
+  it('issue95 preserves active USE_FRAMEWORKS precedence over future configured properties', async () => {
+    mockPodfileProperties({});
+    process.env.USE_FRAMEWORKS = 'static';
+    const output = await runPodfileMod(PODFILE_WITH_EXPO_CONDITIONAL_USE_FRAMEWORKS, {
+      plugins: [['expo-build-properties', { ios: { useFrameworks: 'dynamic' } }]],
+    });
+    expect(getTopLevelTargetBlock(output, 'NotifyKitNSE')).toContain(
+      'use_frameworks! :linkage => :static',
+    );
+  });
+
+  it('issue95 does not enable NSE frameworks when the host does not consume the properties', async () => {
+    mockPodfileProperties({});
+    const output = await runPodfileMod(BASIC_PODFILE, {
+      plugins: [['expo-build-properties', { ios: { useFrameworks: 'dynamic' } }]],
+    });
+    expect(getTopLevelTargetBlock(output, 'NotifyKitNSE')).not.toContain('use_frameworks!');
+  });
+
   it('propagates expo-build-properties static use_frameworks to the Expo NSE target', async () => {
     mockPodfileProperties({ 'ios.useFrameworks': 'static' });
     const withPodfile = jest.fn((config, action) =>

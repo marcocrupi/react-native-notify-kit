@@ -89,6 +89,18 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
     process.exit(1);
   }
 
+  // Validate all Podfile changes before --force can overwrite consumer NSE
+  // templates, and before a dry run reports a configuration as repairable.
+  const podfilePath = path.join(projectInfo.iosDir, 'Podfile');
+  try {
+    if (fs.existsSync(podfilePath)) patchPodfile(podfilePath, targetName, true);
+  } catch (e: unknown) {
+    logger.error(
+      `Failed during NSE Podfile preflight: ${e instanceof Error ? e.message : String(e)}`,
+    );
+    return process.exit(2);
+  }
+
   if (dryRun) {
     logger.info('[DRY RUN] Would perform the following actions:');
     logger.info(`  iOS project: ${absIosDir}`);
@@ -103,7 +115,6 @@ export async function initNse(opts: InitNseOptions): Promise<void> {
   }
 
   // 4. Create backups (PID-stamped to avoid collision with parallel runs)
-  const podfilePath = path.join(projectInfo.iosDir, 'Podfile');
   const backups: Array<{ original: string; backup: string }> = [];
   const templateDirCreated = !dirExists; // Track if WE created the dir (for rollback)
   const bakSuffix = `.bak.${process.pid}.${Date.now()}`;

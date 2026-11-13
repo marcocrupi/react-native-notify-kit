@@ -1,3 +1,5 @@
+import { ensureNotifeeExtensionFlag } from './notifeeExtensionFlag';
+
 const DEFAULT_PACKAGE_PATH_FROM_IOS = '../node_modules/react-native-notify-kit';
 const RNFB_INFO_PLIST_INPUT_PATH = '$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)';
 const RNFB_POST_INSTALL_MARKER =
@@ -19,8 +21,8 @@ export function patchPodfileForNotifyKitNse(
   podfileText: string,
   options: NotifyKitNsePodfilePatchOptions,
 ): NotifyKitNsePodfilePatchResult {
-  let patched = podfileText;
-  let changed = false;
+  let patched = ensureNotifeeExtensionFlag(podfileText);
+  let changed = patched !== podfileText;
   const packagePathFromIos = options.packagePathFromIos ?? DEFAULT_PACKAGE_PATH_FROM_IOS;
   const placement = options.placement ?? 'nested';
   const useFrameworks = options.useFrameworks ?? false;

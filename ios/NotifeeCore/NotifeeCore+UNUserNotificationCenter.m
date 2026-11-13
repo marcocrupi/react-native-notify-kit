@@ -17,6 +17,8 @@
 
 #import "NotifeeCore+UNUserNotificationCenter.h"
 
+#import <objc/runtime.h>
+
 #import "NotifeeCore.h"
 #import "NotifeeCoreDelegateHolder.h"
 #import "NotifeeCoreUtil.h"
@@ -29,7 +31,6 @@ typedef void (^NotifeeCoreVoidCompletionHandler)(void);
 @end
 
 @interface NotifeeCoreUNUserNotificationCenter ()
-- (void)refreshOriginalDelegateSelectorFlags;
 - (void)rechainUserNotificationCenterDelegate;
 @end
 
@@ -78,13 +79,85 @@ static NotifeeCoreVoidCompletionHandler NotifeeCoreOneShotVoidCompletionHandler(
   return [oneShotCompletionHandler copy];
 }
 
-@implementation NotifeeCoreUNUserNotificationCenter
+// Class/ISA pointers differ when two images contain this implementation. Use
+// runtime names, then message the trusted peer's accessor; never read its ivars.
+static BOOL NotifeeCoreIsDelegatePeer(id delegate) {
+  for (Class cls = object_getClass(delegate); cls != Nil; cls = class_getSuperclass(cls)) {
+    if (strcmp(class_getName(cls), "NotifeeCoreUNUserNotificationCenter") == 0) return YES;
+  }
+  return NO;
+}
 
-struct {
-  unsigned int willPresentNotification : 1;
-  unsigned int didReceiveNotificationResponse : 1;
-  unsigned int openSettingsForNotification : 1;
-} originalUNCDelegateRespondsTo;
+@protocol NotifeeCoreDelegateChain <NSObject>
+- (id<UNUserNotificationCenterDelegate>)originalDelegate;
+@end
+
+static BOOL NotifeeCoreDelegateChainIsUnsafe(id owner, id candidate) {
+  NSMutableArray *visited = [NSMutableArray new];
+  id cursor = candidate;
+  for (NSUInteger hops = 0; cursor != nil; hops++) {
+    if (cursor == owner || [visited indexOfObjectIdenticalTo:cursor] != NSNotFound) return YES;
+    if (!NotifeeCoreIsDelegatePeer(cursor)) return NO;  // Opaque SDK: contain only on reentry.
+    if (hops >= 32) return YES;                         // Bounded, fail closed.
+    [visited addObject:cursor];
+    cursor = [(id<NotifeeCoreDelegateChain>)cursor originalDelegate];
+  }
+  return NO;
+}
+
+// Foundation containers and a versioned string key share the synchronous call
+// context across binary images, without relying on a per-image registry/Class.
+// Identity includes selector, center and event, so nested distinct notifications
+// and later deliveries of the same object are independent. No state survives an
+// unwind; ordinary asynchronous downstream completions remain unrestricted.
+static void NotifeeCoreForward(id owner, id downstream, id center, id event, SEL selector,
+                               void (^invoke)(void), void (^fallback)(void)) {
+  NSString *key = @"app.notifee.UNUserNotificationCenter.forwarding.v1";
+  NSMutableDictionary *threadState = [NSThread currentThread].threadDictionary;
+  NSMutableArray *frames = threadState[key];
+  for (NSMutableDictionary *active in frames) {
+    if (active[@"owner"] == owner && active[@"center"] == (center ?: [NSNull null]) &&
+        active[@"event"] == (event ?: [NSNull null]) &&
+        [active[@"selector"] isEqualToString:NSStringFromSelector(selector)]) {
+      active[@"cycle"] = @YES;
+      // The outer invocation completes after the SDK returns, allowing an SDK
+      // to supply its own options before or after the recursive call unwinds.
+      return;
+    }
+  }
+  if (NotifeeCoreDelegateChainIsUnsafe(owner, downstream)) {
+    fallback();
+    return;
+  }
+  if (frames == nil) {
+    frames = [NSMutableArray new];
+    threadState[key] = frames;
+  }
+  NSMutableDictionary *frame = [@{
+    @"owner" : owner,
+    @"center" : center ?: [NSNull null],
+    @"event" : event ?: [NSNull null],
+    @"selector" : NSStringFromSelector(selector),
+    @"cycle" : @NO
+  } mutableCopy];
+  [frames addObject:frame];
+  @try {
+    invoke();
+    // Only a proven synchronous cycle triggers fallback. The caller passes a
+    // one-shot block, preserving any options already supplied by the downstream.
+    if ([frame[@"cycle"] boolValue]) fallback();
+  } @finally {
+    [frames removeObjectIdenticalTo:frame];
+    if (frames.count == 0) [threadState removeObjectForKey:key];
+  }
+}
+
+static UNNotificationPresentationOptions NotifeeCoreDefaultPresentationOptions(void) {
+  return UNNotificationPresentationOptionBanner | UNNotificationPresentationOptionSound |
+         UNNotificationPresentationOptionList | UNNotificationPresentationOptionBadge;
+}
+
+@implementation NotifeeCoreUNUserNotificationCenter
 
 + (instancetype)instance {
   static dispatch_once_t once;
@@ -103,36 +176,20 @@ struct {
   [self rechainUserNotificationCenterDelegate];
 }
 
-- (void)refreshOriginalDelegateSelectorFlags {
-  id<UNUserNotificationCenterDelegate> originalDelegate = self.originalDelegate;
-
-  originalUNCDelegateRespondsTo.openSettingsForNotification =
-      originalDelegate != nil &&
-      [originalDelegate respondsToSelector:@selector(userNotificationCenter:
-                                                openSettingsForNotification:)];
-  originalUNCDelegateRespondsTo.willPresentNotification =
-      originalDelegate != nil &&
-      [originalDelegate respondsToSelector:@selector
-                        (userNotificationCenter:willPresentNotification:withCompletionHandler:)];
-  originalUNCDelegateRespondsTo.didReceiveNotificationResponse =
-      originalDelegate != nil &&
-      [originalDelegate
-          respondsToSelector:@selector(userNotificationCenter:
-                                 didReceiveNotificationResponse:withCompletionHandler:)];
-}
-
 - (void)rechainUserNotificationCenterDelegate {
   @synchronized(self) {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     id<UNUserNotificationCenterDelegate> currentDelegate = center.delegate;
+    if (currentDelegate == self) return;
 
-    if (currentDelegate == self) {
-      [self refreshOriginalDelegateSelectorFlags];
+    // Leave an installed peer in charge. Replacing it loses its healthy leaf
+    // and permits independent singletons to adopt each other on activation.
+    // Preserve our existing downstream when a candidate is demonstrably unsafe.
+    if (NotifeeCoreIsDelegatePeer(currentDelegate) ||
+        NotifeeCoreDelegateChainIsUnsafe(self, currentDelegate))
       return;
-    }
 
     self.originalDelegate = currentDelegate;
-    [self refreshOriginalDelegateSelectorFlags];
     center.delegate = self;
   }
 }
@@ -188,6 +245,7 @@ struct {
        willPresentNotification:(UNNotification *)notification
          withCompletionHandler:
              (void (^)(UNNotificationPresentationOptions options))completionHandler {
+  id<UNUserNotificationCenterDelegate> downstream = self.originalDelegate;
   NSDictionary *notifeeNotification =
       notification.request.content.userInfo[kNotifeeUserInfoNotification];
   BOOL isRollingTimestampNotification =
@@ -244,24 +302,21 @@ struct {
       [self topUpRollingTimestampTriggersForLifecycleEvent:@"foreground delivery"];
     }
 
-  } else if (_originalDelegate != nil && originalUNCDelegateRespondsTo.willPresentNotification) {
-    NotifeeCorePresentationCompletionHandler oneShotCompletionHandler =
+  } else if ([downstream respondsToSelector:_cmd]) {
+    NotifeeCorePresentationCompletionHandler done =
         NotifeeCoreOneShotPresentationCompletionHandler(completionHandler);
-    [_originalDelegate userNotificationCenter:center
-                      willPresentNotification:notification
-                        withCompletionHandler:oneShotCompletionHandler];
+    NotifeeCoreForward(
+        self, downstream, center, notification, _cmd,
+        ^{
+          [downstream userNotificationCenter:center
+                     willPresentNotification:notification
+                       withCompletionHandler:done];
+        },
+        ^{
+          done(NotifeeCoreDefaultPresentationOptions());
+        });
   } else {
-    // No original delegate captured and the notification is not Notifee-owned.
-    // Returning UNNotificationPresentationOptionNone would silently drop the
-    // notification (no banner, no sound, no badge, no Notification Center entry),
-    // making remote pushes invisible to users in apps that don't install a
-    // competing UNUserNotificationCenterDelegate (e.g. apps without
-    // @react-native-firebase/messaging). Fall back to the platform default
-    // presentation options instead so the system shows the notification as it
-    // would if Notifee had not installed a delegate at all.
-    completionHandler(UNNotificationPresentationOptionBanner |
-                      UNNotificationPresentationOptionSound | UNNotificationPresentationOptionList |
-                      UNNotificationPresentationOptionBadge);
+    completionHandler(NotifeeCoreDefaultPresentationOptions());
   }
 }
 
@@ -279,34 +334,30 @@ struct {
 
   _notificationOpenedAppID = notifeeNotification[@"id"];
 
-  // handle notification outside of notifee
+  // External notifications prefer downstream handling in both flag states.
   if (notifeeNotification == nil) {
-    if (!self.shouldHandleRemoteNotifications) {
-      // Flag OFF: always forward to original delegate, never parse as Notifee
-      if (_originalDelegate != nil &&
-          originalUNCDelegateRespondsTo.didReceiveNotificationResponse) {
-        NotifeeCoreVoidCompletionHandler oneShotCompletionHandler =
-            NotifeeCoreOneShotVoidCompletionHandler(completionHandler);
-        [_originalDelegate userNotificationCenter:center
-                   didReceiveNotificationResponse:response
-                            withCompletionHandler:oneShotCompletionHandler];
-      } else {
-        completionHandler();
-      }
-      return;
-    }
-    // Flag ON (default): existing behavior
-    if (_originalDelegate != nil && originalUNCDelegateRespondsTo.didReceiveNotificationResponse) {
-      NotifeeCoreVoidCompletionHandler oneShotCompletionHandler =
+    id<UNUserNotificationCenterDelegate> downstream = self.originalDelegate;
+    if ([downstream respondsToSelector:_cmd]) {
+      NotifeeCoreVoidCompletionHandler done =
           NotifeeCoreOneShotVoidCompletionHandler(completionHandler);
-      [_originalDelegate userNotificationCenter:center
-                 didReceiveNotificationResponse:response
-                          withCompletionHandler:oneShotCompletionHandler];
+      NotifeeCoreForward(
+          self, downstream, center, response, _cmd,
+          ^{
+            [downstream userNotificationCenter:center
+                didReceiveNotificationResponse:response
+                         withCompletionHandler:done];
+          },
+          ^{
+            done();
+          });
       return;
-    } else {
-      notifeeNotification =
-          [NotifeeCoreUtil parseUNNotificationRequest:response.notification.request];
     }
+    if (!self.shouldHandleRemoteNotifications) {
+      completionHandler();
+      return;
+    }
+    notifeeNotification =
+        [NotifeeCoreUtil parseUNNotificationRequest:response.notification.request];
   }
 
   if (notifeeNotification != nil) {
@@ -375,11 +426,16 @@ struct {
 
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
     openSettingsForNotification:(nullable UNNotification *)notification {
-  if (_originalDelegate != nil && originalUNCDelegateRespondsTo.openSettingsForNotification) {
+  id<UNUserNotificationCenterDelegate> downstream = self.originalDelegate;
+  if ([downstream respondsToSelector:_cmd]) {
     if (@available(iOS 12.0, macOS 10.14, macCatalyst 13.0, *)) {
-      [_originalDelegate userNotificationCenter:center openSettingsForNotification:notification];
-    } else {
-      // Fallback on earlier versions
+      NotifeeCoreForward(self, downstream, center, notification, _cmd,
+                         ^{
+                           [downstream userNotificationCenter:center
+                                  openSettingsForNotification:notification];
+                         },
+                         ^{
+                         });
     }
   }
 }

@@ -962,6 +962,344 @@ static void HarnessRunFutureRechainTests(UNUserNotificationCenter *center,
   HarnessFutureTestRechainRefreshesSelectorFlags(center, notifeeCenter, existingDelegate);
 }
 
+// Issue #95: production delegate is exercised; the SDK proxy only bounds RED recursion.
+@interface HarnessCycleProxy : NSObject <UNUserNotificationCenterDelegate>
+@property(nonatomic, weak) id<UNUserNotificationCenterDelegate> next;
+@property(nonatomic) NSInteger hops;
+@property(nonatomic) BOOL completeBefore;
+@property(nonatomic) BOOL completeAfter;
+@property(nonatomic, copy) void (^pendingPresentation)(UNNotificationPresentationOptions);
+@property(nonatomic, copy) void (^pendingResponse)(void);
+@property(nonatomic) BOOL asynchronous;
+@end
+@implementation HarnessCycleProxy
+- (void)step {
+  if (++_hops > 12) {
+    @throw [NSException exceptionWithName:@"BoundedCycle"
+                                   reason:@"forwarding revisited proxy"
+                                 userInfo:nil];
+  }
+}
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions))done {
+  [self step];
+  if (_asynchronous) {
+    self.pendingPresentation = done;
+    return;
+  }
+  if (_completeBefore) done(UNNotificationPresentationOptionSound);
+  [_next userNotificationCenter:center
+        willPresentNotification:notification
+          withCompletionHandler:done];
+  if (_completeAfter) done(UNNotificationPresentationOptionBadge);
+}
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+    didReceiveNotificationResponse:(UNNotificationResponse *)response
+             withCompletionHandler:(void (^)(void))done {
+  [self step];
+  if (_asynchronous) {
+    self.pendingResponse = done;
+    return;
+  }
+  if (_completeBefore) done();
+  [_next userNotificationCenter:center
+      didReceiveNotificationResponse:response
+               withCompletionHandler:done];
+  if (_completeAfter) done();
+}
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+    openSettingsForNotification:(UNNotification *)notification {
+  [self step];
+  [_next userNotificationCenter:center openSettingsForNotification:notification];
+}
+@end
+
+static void HarnessBoundDelegateRecursion(void) {
+  for (NSString *name in @[
+         @"userNotificationCenter:willPresentNotification:withCompletionHandler:",
+         @"userNotificationCenter:didReceiveNotificationResponse:withCompletionHandler:",
+         @"userNotificationCenter:openSettingsForNotification:"
+       ]) {
+    SEL selector = NSSelectorFromString(name);
+    Method method = class_getInstanceMethod(NotifeeCoreUNUserNotificationCenter.class, selector);
+    IMP original = method_getImplementation(method);
+    __block NSInteger depth = 0;
+    id block;
+    if ([name containsString:@"withCompletionHandler:"]) {
+      block = ^(id owner, id center, id event, id done) {
+        if (depth >= 12)
+          @throw [NSException exceptionWithName:@"BoundedCycle"
+                                         reason:@"production delegate revisited"
+                                       userInfo:nil];
+        depth++;
+        @try {
+          ((void (*)(id, SEL, id, id, id))original)(owner, selector, center, event, done);
+        } @finally {
+          depth--;
+        }
+      };
+    } else {
+      block = ^(id owner, id center, id event) {
+        if (depth >= 12)
+          @throw [NSException exceptionWithName:@"BoundedCycle"
+                                         reason:@"production delegate revisited"
+                                       userInfo:nil];
+        depth++;
+        @try {
+          ((void (*)(id, SEL, id, id))original)(owner, selector, center, event);
+        } @finally {
+          depth--;
+        }
+      };
+    }
+    method_setImplementation(method, imp_implementationWithBlock(block));
+  }
+}
+
+static void HarnessIssue95(UNUserNotificationCenter *center) {
+  HarnessBoundDelegateRecursion();
+  NSString *testName = @"issue95-peer-adoption-preserves-leaf";
+  NSInteger before = gFailures;
+  NotifeeCoreUNUserNotificationCenter *a = [NotifeeCoreUNUserNotificationCenter new];
+  NotifeeCoreUNUserNotificationCenter *b = [NotifeeCoreUNUserNotificationCenter new];
+  HarnessThirdPartyDelegate *leaf = [[HarnessThirdPartyDelegate alloc] initWithName:@"leaf"];
+  center.delegate = leaf;
+  [a observe];
+  [b observe];
+  [a observe];
+  HarnessAssert(a.originalDelegate == leaf, testName, @"healthy leaf lost to peer adoption");
+  HarnessAssert(!(a.originalDelegate == b && b.originalDelegate == a), testName,
+                @"A-B-A adoption formed cycle");
+  HarnessFinishTest(testName, before);
+
+  for (NSNumber *flag in @[ @NO, @YES ]) {
+    for (NSString *topology in @[ @"self", @"trusted-three", @"opaque-one", @"opaque-three" ]) {
+      for (NSNumber *completionMode in @[ @0, @1, @2 ]) {
+        testName = [NSString
+            stringWithFormat:@"issue95-%@-flag%@-completion%@", topology, flag, completionMode];
+        before = gFailures;
+        a = [NotifeeCoreUNUserNotificationCenter new];
+        b = [NotifeeCoreUNUserNotificationCenter new];
+        NotifeeCoreUNUserNotificationCenter *c = [NotifeeCoreUNUserNotificationCenter new];
+        HarnessCycleProxy *proxy = [HarnessCycleProxy new];
+        proxy.completeBefore = completionMode.intValue == 1;
+        proxy.completeAfter = completionMode.intValue == 2;
+        a.shouldHandleRemoteNotifications = flag.boolValue;
+        center.delegate = leaf;
+        [a observe];
+        if ([topology isEqualToString:@"self"]) a.originalDelegate = a;
+        if ([topology isEqualToString:@"trusted-three"]) {
+          a.originalDelegate = b;
+          b.originalDelegate = c;
+          c.originalDelegate = a;
+        }
+        if ([topology isEqualToString:@"opaque-one"]) {
+          proxy.next = a;
+          center.delegate = proxy;
+          [a observe];
+        }
+        if ([topology isEqualToString:@"opaque-three"]) {
+          a.originalDelegate = b;
+          b.originalDelegate = c;
+          c.originalDelegate = proxy;
+          proxy.next = a;
+        }
+        UNNotification *notification = HarnessNonNotifeeNotification(@"same-id");
+        UNNotificationResponse *response = HarnessNonNotifeeResponse(@"same-id");
+        HarnessClearCoreEvents();
+        for (NSInteger selector = 0; selector < 3; selector++) {
+          proxy.hops = 0;
+          __block NSInteger completions = 0;
+          __block UNNotificationPresentationOptions options = 0;
+          @try {
+            if (selector == 0)
+              [a userNotificationCenter:center
+                  willPresentNotification:notification
+                    withCompletionHandler:^(UNNotificationPresentationOptions value) {
+                      completions++;
+                      options = value;
+                    }];
+            if (selector == 1)
+              [a userNotificationCenter:center
+                  didReceiveNotificationResponse:response
+                           withCompletionHandler:^{
+                             completions++;
+                           }];
+            if (selector == 2)
+              [a userNotificationCenter:center openSettingsForNotification:notification];
+          } @catch (NSException *exception) {
+            if (![exception.name isEqualToString:@"BoundedCycle"]) @throw;
+            HarnessFail(testName, [NSString stringWithFormat:@"selector %ld recursed beyond bound",
+                                                             (long)selector]);
+          }
+          if (selector < 2) HarnessAssert(completions == 1, testName, @"cycle must complete once");
+          if (selector == 0 && [topology isEqualToString:@"opaque-one"] &&
+              completionMode.intValue != 0) {
+            HarnessAssert(
+                options == (completionMode.intValue == 1 ? UNNotificationPresentationOptionSound
+                                                         : UNNotificationPresentationOptionBadge),
+                testName, @"lost already supplied downstream options");
+          }
+        }
+        HarnessAssert(HarnessCoreEventCount() == 0, testName,
+                      @"cycle emitted spurious external events");
+        // Repeat the identical object after synchronous unwind: containment must be scoped to the
+        // call.
+        proxy.next = leaf;
+        a.originalDelegate = proxy;
+        proxy.hops = 0;
+        __block NSInteger repeated = 0;
+        [a userNotificationCenter:center
+            willPresentNotification:notification
+              withCompletionHandler:^(UNNotificationPresentationOptions value) {
+                repeated++;
+              }];
+        HarnessAssert(repeated == 1 && proxy.hops == 1, testName,
+                      @"sequential notification was suppressed");
+        HarnessFinishTest(testName, before);
+      }
+    }
+  }
+
+  testName = @"issue95-async-completion-and-deallocated-leaf";
+  before = gFailures;
+  a = [NotifeeCoreUNUserNotificationCenter new];
+  HarnessCycleProxy *async = [HarnessCycleProxy new];
+  async.asynchronous = YES;
+  center.delegate = async;
+  [a observe];
+  __block NSInteger presentations = 0, responses = 0;
+  __block UNNotificationPresentationOptions received = 0;
+  [a userNotificationCenter:center
+      willPresentNotification:HarnessNonNotifeeNotification(@"async")
+        withCompletionHandler:^(UNNotificationPresentationOptions value) {
+          presentations++;
+          received = value;
+        }];
+  [a userNotificationCenter:center
+      didReceiveNotificationResponse:HarnessNonNotifeeResponse(@"async")
+               withCompletionHandler:^{
+                 responses++;
+               }];
+  HarnessAssert(presentations == 0 && responses == 0, testName, @"eager downstream completion");
+  async.pendingPresentation(UNNotificationPresentationOptionSound);
+  async.pendingPresentation(UNNotificationPresentationOptionBadge);
+  async.pendingResponse();
+  async.pendingResponse();
+  HarnessAssert(
+      presentations == 1 && responses == 1 && received == UNNotificationPresentationOptionSound,
+      testName, @"asynchronous one-shot contract changed");
+  async.pendingPresentation = nil;
+  async.pendingResponse = nil;
+  a.originalDelegate = nil;
+  @autoreleasepool {
+    HarnessThirdPartyDelegate *temporary =
+        [[HarnessThirdPartyDelegate alloc] initWithName:@"temporary"];
+    a.originalDelegate = temporary;
+  }
+  HarnessAssert(a.originalDelegate == nil, testName, @"downstream unexpectedly retained");
+  [a userNotificationCenter:center
+      willPresentNotification:HarnessNonNotifeeNotification(@"nil")
+        withCompletionHandler:^(UNNotificationPresentationOptions value) {
+          presentations++;
+        }];
+  HarnessAssert(presentations == 2, testName, @"deallocated leaf did not complete");
+  HarnessFinishTest(testName, before);
+}
+
+@interface HarnessNestedDelegate : NSObject <UNUserNotificationCenterDelegate>
+@property(nonatomic, weak) id<UNUserNotificationCenterDelegate> owner;
+@property(nonatomic) BOOL inside;
+@property(nonatomic) NSInteger visits;
+@property(nonatomic) NSInteger nestedCompletions;
+@end
+@implementation HarnessNestedDelegate
+- (void)userNotificationCenter:(UNUserNotificationCenter *)center
+       willPresentNotification:(UNNotification *)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions))done {
+  self.visits++;
+  if (!self.inside) {
+    self.inside = YES;
+    // Distinct object, identical identifier: it must reach this downstream too.
+    [self.owner
+         userNotificationCenter:center
+        willPresentNotification:HarnessNonNotifeeNotification(notification.request.identifier)
+          withCompletionHandler:^(UNNotificationPresentationOptions value) {
+            self.nestedCompletions++;
+          }];
+    self.inside = NO;
+  }
+  done(UNNotificationPresentationOptionSound);
+}
+@end
+
+static void HarnessIssue95Audit(UNUserNotificationCenter *center) {
+  NSString *name = @"issue95-distinct-nested-same-id-and-selector-snapshots";
+  NSInteger before = gFailures;
+  NotifeeCoreUNUserNotificationCenter *a = [NotifeeCoreUNUserNotificationCenter new];
+  HarnessNestedDelegate *nested = [HarnessNestedDelegate new];
+  nested.owner = a;
+  center.delegate = nested;
+  [a observe];
+  __block NSInteger completions = 0;
+  [a userNotificationCenter:center
+      willPresentNotification:HarnessNonNotifeeNotification(@"same-id")
+        withCompletionHandler:^(UNNotificationPresentationOptions value) {
+          completions++;
+        }];
+  HarnessAssert(nested.visits == 2 && nested.nestedCompletions == 1 && completions == 1, name,
+                @"distinct nested notification was conflated with recursion");
+  HarnessThirdPartyDelegate *leaf = [[HarnessThirdPartyDelegate alloc] initWithName:@"healthy"];
+  NotifeeCoreUNUserNotificationCenter *b = [NotifeeCoreUNUserNotificationCenter new];
+  b.originalDelegate = leaf;
+  a.originalDelegate = b;
+  // Another instance rechain must not overwrite this instance's selector support.
+  HarnessDidReceiveOnlyDelegate *sparse = [HarnessDidReceiveOnlyDelegate new];
+  NotifeeCoreUNUserNotificationCenter *other = [NotifeeCoreUNUserNotificationCenter new];
+  center.delegate = sparse;
+  [other observe];
+  [a userNotificationCenter:center
+      willPresentNotification:HarnessNonNotifeeNotification(@"leaf")
+        withCompletionHandler:^(UNNotificationPresentationOptions value) {
+          completions++;
+        }];
+  [a userNotificationCenter:center openSettingsForNotification:nil];
+  HarnessAssert(leaf.willPresentCount == 1 && leaf.openSettingsCount == 1 && completions == 2, name,
+                @"healthy retained peer/leaf lost callbacks");
+  HarnessFinishTest(name, before);
+
+  for (NSNumber *flag in @[ @NO, @YES ]) {
+    name = [NSString stringWithFormat:@"issue95-owned-cycle-flag%@", flag];
+    before = gFailures;
+    a.shouldHandleRemoteNotifications = flag.boolValue;
+    HarnessCycleProxy *proxy = [HarnessCycleProxy new];
+    proxy.next = a;
+    a.originalDelegate = proxy;
+    HarnessClearCoreEvents();
+    __block NSInteger ownedCompletions = 0;
+    [a userNotificationCenter:center
+        willPresentNotification:HarnessNotifeeNotification(@"local")
+          withCompletionHandler:^(UNNotificationPresentationOptions value) {
+            ownedCompletions++;
+          }];
+    [a userNotificationCenter:center
+        didReceiveNotificationResponse:HarnessNotifeeResponse(@"trigger")
+                 withCompletionHandler:^{
+                   ownedCompletions++;
+                 }];
+    [a userNotificationCenter:center
+        didReceiveNotificationResponse:HarnessFcmResponse(@"physical", @"logical",
+                                                          UNNotificationDefaultActionIdentifier)
+                 withCompletionHandler:^{
+                   ownedCompletions++;
+                 }];
+    HarnessAssert(ownedCompletions == 3 && HarnessCoreEventCount() == 3 && proxy.hops == 0, name,
+                  @"owned local/trigger/FCM paths changed under cycle state");
+    HarnessFinishTest(name, before);
+  }
+}
+
 int main(void) {
   @autoreleasepool {
     HarnessInstallUserNotificationCenterStub();
@@ -995,6 +1333,8 @@ int main(void) {
                                               existingDelegate);
     HarnessRunFutureRechainTests(center, notifeeCenter, lateDelegate, existingDelegate);
 
+    HarnessIssue95(center);
+    HarnessIssue95Audit(center);
     center.delegate = nil;
   }
 

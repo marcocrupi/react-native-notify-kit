@@ -1,3 +1,5 @@
+import { ensureNotifeeExtensionFlag } from './notifeeExtensionFlag';
+
 import * as fs from 'fs';
 
 const DEFAULT_PACKAGE_PATH_FROM_IOS = '../node_modules/react-native-notify-kit';
@@ -42,8 +44,8 @@ export function patchPodfileForNotifyKitNse(
   podfileText: string,
   options: NotifyKitNsePodfilePatchOptions,
 ): NotifyKitNsePodfilePatchResult {
-  let patched = podfileText;
-  let changed = false;
+  let patched = ensureNotifeeExtensionFlag(podfileText);
+  let changed = patched !== podfileText;
   const packagePathFromIos = options.packagePathFromIos ?? DEFAULT_PACKAGE_PATH_FROM_IOS;
 
   // Idempotency check — skip commented lines (# prefix)

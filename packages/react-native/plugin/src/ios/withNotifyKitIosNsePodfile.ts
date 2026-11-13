@@ -57,9 +57,16 @@ export function withNotifyKitIosNsePodfile<TConfig extends ExpoConfigLike>(
   return withPodfile(config, modConfig => {
     const { projectRoot, platformProjectRoot } = modConfig.modRequest;
     const packagePathFromIos = resolveNotifyKitPackagePathFromIos(projectRoot, platformProjectRoot);
+    // Podfile mods can run before expo-build-properties writes its properties
+    // mod. Read the configuration that the host will consume at pod install,
+    // rather than a missing/stale file left by a clean/incremental prebuild.
+    const podfileProperties = readExpoPodfileProperties(platformProjectRoot);
+    if (configuredUseFrameworks === 'static' || configuredUseFrameworks === 'dynamic') {
+      podfileProperties['ios.useFrameworks'] = configuredUseFrameworks;
+    }
     const hostUseFrameworks = detectPodfileUseFrameworks(modConfig.modResults.contents, {
       ignoredTargetName: nseOptions.targetName,
-      podfileProperties: readExpoPodfileProperties(platformProjectRoot),
+      podfileProperties,
       env: process.env,
     });
     const useFrameworks = resolveNseUseFrameworks(hostUseFrameworks, configuredUseFrameworks);

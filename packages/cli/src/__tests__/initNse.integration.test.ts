@@ -195,3 +195,48 @@ describe('initNse integration', () => {
     expect(mockExit).toHaveBeenCalledWith(1);
   });
 });
+
+describe('issue95 CLI no partial writes', () => {
+  for (const flag of [
+    '$NotifeeExtension = false',
+    'if ENV["NSE"]\n$NotifeeExtension = true\nend',
+  ]) {
+    for (const dryRun of [false, true]) {
+      it(`preflights ${flag} before --force can overwrite custom NSE files; dryRun=${dryRun}`, async () => {
+        const { root, cleanup } = copyFixture();
+        try {
+          const ios = path.join(root, 'ios');
+          const target = path.join(ios, 'NotifyKitNSE');
+          fs.mkdirSync(target);
+          const sentinels = [
+            'NotificationService.swift',
+            'Info.plist',
+            'NotifyKitNSE.entitlements',
+          ];
+          for (const file of sentinels)
+            fs.writeFileSync(path.join(target, file), `CUSTOM ${file}\n`);
+          const podfile = path.join(ios, 'Podfile');
+          const beforePod = flag + '\n' + fs.readFileSync(podfile, 'utf8');
+          fs.writeFileSync(podfile, beforePod);
+          const pbx = path.join(ios, 'MyApp.xcodeproj/project.pbxproj');
+          const beforePbx = fs.readFileSync(pbx, 'utf8');
+          await initNse({
+            iosPath: ios,
+            targetName: 'NotifyKitNSE',
+            bundleSuffix: '.NotifyKitNSE',
+            force: true,
+            dryRun,
+          });
+          expect(mockExit).toHaveBeenCalledWith(2);
+          for (const file of sentinels)
+            expect(fs.readFileSync(path.join(target, file), 'utf8')).toBe(`CUSTOM ${file}\n`);
+          expect(fs.readFileSync(podfile, 'utf8')).toBe(beforePod);
+          expect(fs.readFileSync(pbx, 'utf8')).toBe(beforePbx);
+          expect(fs.readdirSync(ios).some(file => file.includes('.bak.'))).toBe(false);
+        } finally {
+          cleanup();
+        }
+      });
+    }
+  }
+});

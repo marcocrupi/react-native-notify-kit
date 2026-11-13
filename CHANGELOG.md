@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **iOS / NSE ([#95](https://github.com/marcocrupi/react-native-notify-kit/issues/95))**: generate the global `$NotifeeExtension = true` flag before autolinking in both Expo and bare CLI Podfiles, preserving existing true settings and rejecting conflicting or ambiguous Ruby before writing. Match Expo NSE framework linkage from the current build-properties configuration even before its properties file is written; preserve Firebase workarounds. Existing bare NSE projects can repair the Podfile without overwriting their extension.
+- **iOS / delegate forwarding**: refuse duplicate NotifyKit peers during rechain and contain retained or opaque synchronous delegate cycles for presentation, response and settings callbacks. Preserve healthy late overrides, per-delegate selector support, owned notifications and asynchronous one-shot completion. Containment does not qualify duplicate-core configurations or recover previously lost delegates.
+
 - **Android / permissions**: start the `POST_NOTIFICATIONS` request of `requestPermission()` on the main thread. TurboModule promise methods run on the native modules thread, and `Activity.requestPermissions()` walks the view hierarchy (`cancelPendingInputEvents`) while the UI thread may be changing it, which could reject the request with a `NullPointerException` from `View.dispatchCancelPendingInputEvents()`. Results, the path below API 33 and the missing Activity path are unchanged. (upstream: [invertase/notifee#1064](https://github.com/invertase/notifee/issues/1064))
 
 ## [10.10.0] - 2026-10-28

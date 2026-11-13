@@ -425,6 +425,11 @@ cd ios && pod install
 
 The CLI scaffolds a Swift NSE target (default name: `NotifyKitNSE`), patches your Podfile, and wires `.pbxproj`. Open your `.xcworkspace` in Xcode, verify the NSE target's signing, and build. Expo users should use the config plugin instead of running `init-nse` against generated native folders. See [docs/fcm-mode.mdx#ios-nse-setup](docs/fcm-mode.mdx#ios-nse-setup) for the full CLI reference (target name, bundle suffix, `--dry-run`, `--force`).
 
+
+Both generators set `$NotifeeExtension = true` globally before autolinking so the host uses `RNNotifeeCore` rather than compiling a second core. Existing literal `true` is preserved; conflicting or conditional flag settings stop generation before the Podfile is written. Ruby with its standard `Ripper` parser (part of the CocoaPods toolchain) is needed to validate an existing flag configuration.
+
+For an existing bare NSE, review your Podfile and add an unconditional `$NotifeeExtension = true` after its Ruby header comments and before requires/autolinking, then run `pod install`. Keep the existing target and custom service files. The CLI still rejects an existing target without `--force`; `--force` overwrites generated files and is not needed for this Podfile repair. `$NotifeeCoreFromSources` remains a separate development configuration. Native cycle containment prevents recursive forwarding; it does not make duplicate-core builds supported or recover a delegate already lost by another SDK.
+
 ### Manual setup
 
 For bare React Native projects with non-standard iOS paths or heavily-customized Xcode configurations where automation cannot patch the project cleanly:
