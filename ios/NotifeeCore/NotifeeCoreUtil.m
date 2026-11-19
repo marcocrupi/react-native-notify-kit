@@ -918,9 +918,12 @@ static BOOL NotifeeCoreIsRemoteURLString(id value) {
       return nil;
     }
   } else {
-    // Needs to match exactly to the second
+    // Needs to match exactly to the second. The time zone pins the components to
+    // the moment of `timestamp`: without it the trigger is "floating" and fires on
+    // the wall-clock numbers of whatever zone the device is in at fire time.
     calendarUnit = NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay |
-                   NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond;
+                   NSCalendarUnitHour | NSCalendarUnitMinute | NSCalendarUnitSecond |
+                   NSCalendarUnitTimeZone;
   }
 
   NSDateComponents *components = [[NSCalendar currentCalendar] components:calendarUnit
