@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **iOS / triggers ([#97](https://github.com/marcocrupi/react-native-notify-kit/issues/97))**: a one-off `TimestampTrigger` keeps the moment of its `timestamp` when the device changes time zone. The calendar trigger was built from date components without a time zone, so iOS matched those wall-clock numbers in the zone the device was in at fire time: after travelling from UTC+3 to UTC+2, a pending notification fired an hour late. The components now carry the time zone they were computed in. Repeating triggers, which use the rolling schedule, are unchanged. Android already schedules absolute instants.
+
 ## [10.10.1] - 2026-11-13
 
 ### Fixed
